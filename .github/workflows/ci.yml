@@ -21,16 +21,10 @@ jobs:
         include:
           - name: Windows / MSVC
             os: windows-latest
-            qt-host: windows
-            qt-arch: win64_msvc2022_64
           - name: Linux / GCC
             os: ubuntu-latest
-            qt-host: linux
-            qt-arch: gcc_64
           - name: macOS / Clang
-            os: macos-13
-            qt-host: mac
-            qt-arch: clang_64
+            os: macos-15
 
     steps:
       - name: Checkout
@@ -55,11 +49,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.3'
-          host: ${{ matrix.qt-host }}
-          target: desktop
-          arch: ${{ matrix.qt-arch }}
-          modules: qtserialport
+          version: '6.8.0'
+          modules: 'qtserialport'
           cache: true
 
       - name: Configure
