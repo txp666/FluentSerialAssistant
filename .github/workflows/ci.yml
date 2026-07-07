@@ -59,7 +59,7 @@ jobs:
           host: ${{ matrix.qt-host }}
           target: desktop
           arch: ${{ matrix.qt-arch }}
-          modules: qtserialport qtsvg
+          modules: qtserialport
           cache: true
 
       - name: Configure
