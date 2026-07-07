@@ -88,4 +88,9 @@ endif()
 
 set_target_properties(FluentSerialAssistant PROPERTIES
     WIN32_EXECUTABLE TRUE
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_BUNDLE_NAME "Fluent Serial Assistant"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "tech.zhangshu.FluentSerialAssistant"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
 )

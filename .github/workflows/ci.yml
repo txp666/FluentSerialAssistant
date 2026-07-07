@@ -73,6 +73,8 @@ jobs:
         run: |
           $exe = if ($env:RUNNER_OS -eq "Windows") {
             "build/ci/FluentSerialAssistant.exe"
+          } elseif ($env:RUNNER_OS -eq "macOS") {
+            "build/ci/FluentSerialAssistant.app/Contents/MacOS/FluentSerialAssistant"
           } else {
             "build/ci/FluentSerialAssistant"
           }

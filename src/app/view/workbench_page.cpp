@@ -20,6 +20,7 @@
 #include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextOption>
+#include <QtWidgets/QGridLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPlainTextEdit>
@@ -424,28 +425,47 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     m_displayModeSegment->setCurrentItem(QStringLiteral("text"));
     root->addWidget(m_displayModeSegment);
 
-    root->addWidget(createCheckRow({QStringLiteral("保存接收"), QStringLiteral("自动滚动")},
-                                   {&m_saveReceiveCheck, &m_autoScrollCheck},
-                                   section));
-    root->addWidget(createCheckRow({QStringLiteral("时间戳"), QStringLiteral("暂停显示")},
-                                   {&m_timestampCheck, &m_pauseCheck},
-                                   section));
+    auto *receiveOptions = new QWidget(section);
+    auto *receiveOptionsGrid = new QGridLayout(receiveOptions);
+    receiveOptionsGrid->setContentsMargins(0, 0, 0, 0);
+    receiveOptionsGrid->setHorizontalSpacing(12);
+    receiveOptionsGrid->setVerticalSpacing(6);
+    receiveOptionsGrid->setColumnStretch(0, 1);
+    receiveOptionsGrid->setColumnStretch(1, 1);
+    m_saveReceiveCheck = new CheckBox(QStringLiteral("保存接收"), receiveOptions);
+    m_autoScrollCheck = new CheckBox(QStringLiteral("自动滚动"), receiveOptions);
+    m_timestampCheck = new CheckBox(QStringLiteral("时间戳"), receiveOptions);
+    m_pauseCheck = new CheckBox(QStringLiteral("暂停显示"), receiveOptions);
+    for(CheckBox *check : {m_saveReceiveCheck, m_autoScrollCheck, m_timestampCheck, m_pauseCheck}) {
+        check->setMinimumWidth(0);
+        check->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+    receiveOptionsGrid->addWidget(m_saveReceiveCheck, 0, 0);
+    receiveOptionsGrid->addWidget(m_autoScrollCheck, 0, 1);
+    receiveOptionsGrid->addWidget(m_timestampCheck, 1, 0);
+    receiveOptionsGrid->addWidget(m_pauseCheck, 1, 1);
+    root->addWidget(receiveOptions);
 
     auto *frameRowWidget = new QWidget(section);
     auto *frameRow = new QHBoxLayout(frameRowWidget);
     frameRow->setContentsMargins(0, 0, 0, 0);
-    frameRow->setSpacing(10);
+    frameRow->setSpacing(6);
     m_autoFrameBreakCheck = new CheckBox(QStringLiteral("自动断帧"), frameRowWidget);
     m_autoFrameBreakCheck->setMinimumWidth(0);
     m_autoFrameBreakCheck->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_frameBreakIntervalSpin = new SpinBox(frameRowWidget);
     m_frameBreakIntervalSpin->setRange(1, 60000);
     m_frameBreakIntervalSpin->setValue(20);
-    m_frameBreakIntervalSpin->setSuffix(QStringLiteral(" ms"));
+    m_frameBreakIntervalSpin->setSymbolVisible(false);
     m_frameBreakIntervalSpin->setFixedHeight(CompactControlHeight);
-    setFixedControlWidth(m_frameBreakIntervalSpin, 116);
+    setFixedControlWidth(m_frameBreakIntervalSpin, 92);
+    auto *frameBreakUnitLabel = new CaptionLabel(QStringLiteral("ms"), frameRowWidget);
+    frameBreakUnitLabel->setFixedHeight(CompactControlHeight);
+    frameBreakUnitLabel->setFixedWidth(22);
+    frameBreakUnitLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     frameRow->addWidget(m_autoFrameBreakCheck);
     frameRow->addWidget(m_frameBreakIntervalSpin);
+    frameRow->addWidget(frameBreakUnitLabel);
     root->addWidget(frameRowWidget);
 
     auto *actionRow = new QHBoxLayout;
@@ -542,25 +562,29 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     m_lineEndingCombo->setCurrentIndex(0);
     addFormRow(root, QStringLiteral("换行"), m_lineEndingCombo);
 
-    auto *txRowWidget = new QWidget(section);
-    auto *txRow = new QHBoxLayout(txRowWidget);
-    txRow->setContentsMargins(0, 0, 0, 0);
-    txRow->setSpacing(10);
-    m_hexSendCheck = new CheckBox(QStringLiteral("HEX 发送"), txRowWidget);
-    m_hexSendCheck->setMinimumWidth(0);
-    m_hexSendCheck->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_showTxCheck = new CheckBox(QStringLiteral("显示发送字符串"), txRowWidget);
-    m_showTxCheck->setMinimumWidth(0);
-    m_showTxCheck->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_txColorButton = new ColorPickerButton(defaultTxColor(), QStringLiteral("TX 颜色"), txRowWidget);
+    auto *sendOptions = new QWidget(section);
+    auto *sendOptionsGrid = new QGridLayout(sendOptions);
+    sendOptionsGrid->setContentsMargins(0, 0, 0, 0);
+    sendOptionsGrid->setHorizontalSpacing(12);
+    sendOptionsGrid->setVerticalSpacing(6);
+    sendOptionsGrid->setColumnStretch(0, 1);
+    sendOptionsGrid->setColumnStretch(1, 1);
+    m_hexSendCheck = new CheckBox(QStringLiteral("HEX 发送"), sendOptions);
+    m_showTxCheck = new CheckBox(QStringLiteral("显示发送字符串"), sendOptions);
+    m_loopCheck = new CheckBox(QStringLiteral("定时发送"), sendOptions);
+    m_autoReconnectCheck = new CheckBox(QStringLiteral("自动重连"), sendOptions);
+    for(CheckBox *check : {m_hexSendCheck, m_showTxCheck, m_loopCheck, m_autoReconnectCheck}) {
+        check->setMinimumWidth(0);
+        check->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+    m_txColorButton = new ColorPickerButton(defaultTxColor(), QStringLiteral("TX 颜色"), sendOptions);
     m_txColorButton->setFixedSize(64, CompactControlHeight);
-    txRow->addWidget(m_hexSendCheck);
-    txRow->addWidget(m_showTxCheck);
-    txRow->addWidget(m_txColorButton);
-    root->addWidget(txRowWidget);
-    root->addWidget(createCheckRow({QStringLiteral("定时发送"), QStringLiteral("自动重连")},
-                                   {&m_loopCheck, &m_autoReconnectCheck},
-                                   section));
+    sendOptionsGrid->addWidget(m_hexSendCheck, 0, 0);
+    sendOptionsGrid->addWidget(m_showTxCheck, 0, 1);
+    sendOptionsGrid->addWidget(m_txColorButton, 0, 2);
+    sendOptionsGrid->addWidget(m_loopCheck, 1, 0);
+    sendOptionsGrid->addWidget(m_autoReconnectCheck, 1, 1);
+    root->addWidget(sendOptions);
 
     m_historyCombo = new ComboBox(section);
     makeCompactControl(m_historyCombo);

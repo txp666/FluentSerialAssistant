@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows / MSVC
+            os: windows-latest
+            asset: windows-x64
+          - name: Linux / GCC
+            os: ubuntu-latest
+            asset: linux-x64
+          - name: macOS / Clang
+            os: macos-15
+            asset: macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev
+
+      - name: Install macOS packages
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          modules: 'qtserialport'
+          cache: true
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $qtPrefix = $env:QT_ROOT_DIR
+          if (-not $qtPrefix -and $env:Qt6_DIR) {
+            $qtPrefix = (Resolve-Path (Join-Path $env:Qt6_DIR "../../..")).Path
+          }
+          if (-not $qtPrefix) {
+            throw "Qt prefix was not found."
+          }
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$qtPrefix"
+
+      - name: Build
+        run: cmake --build build/release --parallel
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          release_name="FluentSerialAssistant-${GITHUB_REF_NAME}-${{ matrix.asset }}"
+          package_root="${RUNNER_TEMP}/${release_name}"
+          rm -rf "$package_root"
+          mkdir -p "$package_root"
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            binary_target="$(find build/release -maxdepth 6 -type f -name 'FluentSerialAssistant.exe' | head -n 1 || true)"
+            if [ -z "$binary_target" ]; then
+              echo "Unable to locate Windows executable."
+              find build/release -maxdepth 6 -print
+              exit 1
+            fi
+            cp "$binary_target" "$package_root/"
+            windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw "$package_root/FluentSerialAssistant.exe"
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            app_target="$(find build/release -maxdepth 6 -type d -name 'FluentSerialAssistant.app' | head -n 1 || true)"
+            if [ -z "$app_target" ]; then
+              echo "Unable to locate macOS app bundle."
+              find build/release -maxdepth 6 -print
+              exit 1
+            fi
+            cp -R "$app_target" "$package_root/"
+            macdeployqt "$package_root/FluentSerialAssistant.app"
+          else
+            binary_target="$(find build/release -maxdepth 6 -type f -name 'FluentSerialAssistant' | head -n 1 || true)"
+            if [ -z "$binary_target" ]; then
+              echo "Unable to locate Linux executable."
+              find build/release -maxdepth 6 -print
+              exit 1
+            fi
+            cp "$binary_target" "$package_root/"
+            chmod +x "$package_root/FluentSerialAssistant"
+          fi
+
+          cp README.md CHANGELOG.md LICENSE "$package_root/"
+
+          if [ "${{ runner.os }}" = "Windows" ] && command -v 7z >/dev/null 2>&1; then
+            7z a "artifacts/${release_name}.zip" "$package_root/."
+          else
+            tar -czf "artifacts/${release_name}.tar.gz" -C "${RUNNER_TEMP}" "${release_name}"
+          fi
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: docs/release-notes/${{ github.ref_name }}.md
+          files: artifacts/*
+          fail_on_unmatched_files: true
+          overwrite_files: true
