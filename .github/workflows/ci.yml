@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows / MSVC
+            os: windows-latest
+            qt-host: windows
+            qt-arch: win64_msvc2022_64
+          - name: Linux / GCC
+            os: ubuntu-latest
+            qt-host: linux
+            qt-arch: gcc_64
+          - name: macOS / Clang
+            os: macos-13
+            qt-host: mac
+            qt-arch: clang_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev
+
+      - name: Install macOS packages
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: ${{ matrix.qt-host }}
+          target: desktop
+          arch: ${{ matrix.qt-arch }}
+          modules: qtserialport qtsvg
+          cache: true
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $qtPrefix = $env:QT_ROOT_DIR
+          if (-not $qtPrefix -and $env:Qt6_DIR) {
+            $qtPrefix = (Resolve-Path (Join-Path $env:Qt6_DIR "../../..")).Path
+          }
+          if (-not $qtPrefix) {
+            throw "Qt prefix was not found."
+          }
+          cmake -S . -B build/ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$qtPrefix"
+
+      - name: Build
+        run: cmake --build build/ci --parallel
+
+      - name: Check artifact
+        shell: pwsh
+        run: |
+          $exe = if ($env:RUNNER_OS -eq "Windows") {
+            "build/ci/FluentSerialAssistant.exe"
+          } else {
+            "build/ci/FluentSerialAssistant"
+          }
+          if (!(Test-Path $exe)) {
+            throw "Build output was not found: $exe"
+          }
