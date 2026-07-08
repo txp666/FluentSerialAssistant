@@ -111,6 +111,8 @@ class WorkbenchPage : public AppPage
     QString selectedLineEndingKey() const;
     QString receiveEncodingKey() const;
     QString sendEncodingKey() const;
+    QString frameBreakModeKey() const;
+    QByteArray frameBoundaryPattern(bool *ok = nullptr) const;
     QString checksumAlgorithmKey() const;
     AppChecksum::ByteOrder checksumByteOrder() const;
     QString terminalSearchText() const;
@@ -124,7 +126,12 @@ class WorkbenchPage : public AppPage
     void calculateChecksumForCurrentPayload();
     void setChecksumResultText(const QString &text);
     bool recordMatchesTerminalFilter(const SessionRecord &record) const;
-    void appendRecord(RecordDirection direction, const QByteArray &data);
+    void handleReceivedData(const QByteArray &data);
+    void recordReceivedBytes(const QByteArray &data);
+    void processBufferedFrameData(const QByteArray &data);
+    void flushRxFrameBuffer();
+    void updateFrameControlState();
+    void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true);
     void trimRecords();
     void renderTerminal();
     bool appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious);
@@ -158,6 +165,7 @@ class WorkbenchPage : public AppPage
     QList<SendHistoryItem> m_sendHistory;
     QList<SendPacket> m_sendPackets;
     SerialPortConfig m_lastConfig;
+    QByteArray m_rxFrameBuffer;
     qint64 m_rxCount = 0;
     qint64 m_txCount = 0;
     qint64 m_lastStatsRxCount = 0;
@@ -186,12 +194,14 @@ class WorkbenchPage : public AppPage
     FluentQt::SearchLineEdit *m_terminalSearchEdit = nullptr;
     FluentQt::ComboBox *m_terminalFilterCombo = nullptr;
     FluentQt::ComboBox *m_receiveEncodingCombo = nullptr;
+    FluentQt::ComboBox *m_frameModeCombo = nullptr;
     FluentQt::ComboBox *m_lineEndingCombo = nullptr;
     FluentQt::ComboBox *m_sendEncodingCombo = nullptr;
     FluentQt::ComboBox *m_checksumAlgorithmCombo = nullptr;
     FluentQt::ComboBox *m_checksumByteOrderCombo = nullptr;
     FluentQt::ComboBox *m_historyCombo = nullptr;
     FluentQt::LineEdit *m_packetNameEdit = nullptr;
+    FluentQt::LineEdit *m_framePatternEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
     FluentQt::ComboBox *m_packetModeCombo = nullptr;
     FluentQt::ComboBox *m_packetLineEndingCombo = nullptr;
@@ -230,6 +240,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_rtsCheck = nullptr;
     FluentQt::CheckBox *m_dtrCheck = nullptr;
     FluentQt::SpinBox *m_frameBreakIntervalSpin = nullptr;
+    FluentQt::SpinBox *m_frameFixedLengthSpin = nullptr;
     FluentQt::SpinBox *m_loopIntervalSpin = nullptr;
     FluentQt::SpinBox *m_fileChunkSizeSpin = nullptr;
     FluentQt::SpinBox *m_fileIntervalSpin = nullptr;

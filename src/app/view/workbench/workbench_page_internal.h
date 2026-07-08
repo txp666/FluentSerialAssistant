@@ -55,6 +55,7 @@ constexpr int ReconnectIntervalMs = 2000;
 constexpr int CompactControlHeight = 32;
 constexpr int DefaultFileChunkSize = 256;
 constexpr int DefaultFileChunkIntervalMs = 10;
+constexpr int MaxFrameBufferBytes = 1024 * 1024;
 
 inline QColor terminalTimestampColor()
 {
@@ -324,6 +325,14 @@ inline void selectEncodingOption(ComboBox *combo, const QString &key)
 {
     const int index = combo->findData(AppTextEncoding::normalizedKey(key));
     combo->setCurrentIndex(index >= 0 ? index : combo->findData(AppTextEncoding::defaultKey()));
+}
+
+inline void addFrameModeOptions(ComboBox *combo)
+{
+    combo->addItem(QStringLiteral("超时"), QIcon(), QStringLiteral("timeout"));
+    combo->addItem(QStringLiteral("帧头"), QIcon(), QStringLiteral("header"));
+    combo->addItem(QStringLiteral("帧尾"), QIcon(), QStringLiteral("tail"));
+    combo->addItem(QStringLiteral("固定长度"), QIcon(), QStringLiteral("length"));
 }
 
 inline void addChecksumAlgorithmOptions(ComboBox *combo)

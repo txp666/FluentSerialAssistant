@@ -121,27 +121,35 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     receiveOptionsGrid->addWidget(m_pauseCheck, 1, 1);
     root->addWidget(receiveOptions);
 
-    auto *frameRowWidget = new QWidget(section);
-    auto *frameRow = new QHBoxLayout(frameRowWidget);
-    frameRow->setContentsMargins(0, 0, 0, 0);
-    frameRow->setSpacing(6);
-    m_autoFrameBreakCheck = new CheckBox(QStringLiteral("自动断帧"), frameRowWidget);
+    m_frameModeCombo = new ComboBox(section);
+    addFrameModeOptions(m_frameModeCombo);
+    makeCompactControl(m_frameModeCombo);
+    m_autoFrameBreakCheck = new CheckBox(QStringLiteral("启用"), section);
     m_autoFrameBreakCheck->setMinimumWidth(0);
-    m_autoFrameBreakCheck->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    m_frameBreakIntervalSpin = new SpinBox(frameRowWidget);
+    m_autoFrameBreakCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    addFormRow(root, QStringLiteral("断帧"), m_frameModeCombo, m_autoFrameBreakCheck);
+
+    m_framePatternEdit = new LineEdit(section);
+    m_framePatternEdit->setPlaceholderText(QStringLiteral("HEX 边界，如 AA 55 或 0D 0A"));
+    makeCompactControl(m_framePatternEdit);
+    addFormRow(root, QStringLiteral("边界"), m_framePatternEdit);
+
+    m_frameFixedLengthSpin = new SpinBox(section);
+    m_frameFixedLengthSpin->setRange(1, 65536);
+    m_frameFixedLengthSpin->setValue(8);
+    m_frameFixedLengthSpin->setSuffix(QStringLiteral(" B"));
+    addFormRow(root, QStringLiteral("长度"), m_frameFixedLengthSpin);
+
+    m_frameBreakIntervalSpin = new SpinBox(section);
     m_frameBreakIntervalSpin->setRange(1, 60000);
     m_frameBreakIntervalSpin->setValue(20);
     m_frameBreakIntervalSpin->setSymbolVisible(false);
     m_frameBreakIntervalSpin->setFixedHeight(CompactControlHeight);
-    setFixedControlWidth(m_frameBreakIntervalSpin, 92);
-    auto *frameBreakUnitLabel = new CaptionLabel(QStringLiteral("ms"), frameRowWidget);
+    auto *frameBreakUnitLabel = new CaptionLabel(QStringLiteral("ms"), section);
     frameBreakUnitLabel->setFixedHeight(CompactControlHeight);
     frameBreakUnitLabel->setFixedWidth(22);
     frameBreakUnitLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    frameRow->addWidget(m_autoFrameBreakCheck);
-    frameRow->addWidget(m_frameBreakIntervalSpin);
-    frameRow->addWidget(frameBreakUnitLabel);
-    root->addWidget(frameRowWidget);
+    addFormRow(root, QStringLiteral("超时"), m_frameBreakIntervalSpin, frameBreakUnitLabel);
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
@@ -177,8 +185,25 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
         renderTerminal();
     });
     connect(m_receiveEncodingCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        flushRxFrameBuffer();
         QSettings settings;
         settings.setValue(QStringLiteral("receive/encoding"), receiveEncodingKey());
+    });
+    connect(m_frameModeCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        flushRxFrameBuffer();
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/frameMode"), frameBreakModeKey());
+        updateFrameControlState();
+    });
+    connect(m_framePatternEdit, &LineEdit::textChanged, this, [this](const QString &text) {
+        flushRxFrameBuffer();
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/framePattern"), text);
+    });
+    connect(m_frameFixedLengthSpin, &SpinBox::valueChanged, this, [this](int value) {
+        flushRxFrameBuffer();
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/frameFixedLength"), value);
     });
     connect(m_saveReceiveCheck, &CheckBox::toggled, this, &WorkbenchPage::updateReceiveCapture);
     connect(m_autoScrollCheck, &CheckBox::toggled, this, [this](bool checked) {
@@ -199,17 +224,20 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
         }
     });
     connect(m_autoFrameBreakCheck, &CheckBox::toggled, this, [this](bool checked) {
+        flushRxFrameBuffer();
         QSettings settings;
         settings.setValue(QStringLiteral("receive/autoFrameBreak"), checked);
         if (!checked) {
             m_lastRxTimestamp = QDateTime();
         }
+        updateFrameControlState();
     });
     connect(m_frameBreakIntervalSpin, &SpinBox::valueChanged, this, [](int value) {
         QSettings settings;
         settings.setValue(QStringLiteral("receive/frameBreakMs"), value);
     });
     connect(m_clearButton, &PushButton::clicked, this, [this]() {
+        m_rxFrameBuffer.clear();
         m_terminalStartRecord = m_records.size();
         m_pendingRecordIndexes.clear();
         m_terminalView->clear();

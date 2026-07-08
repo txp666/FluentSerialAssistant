@@ -85,6 +85,38 @@ QString WorkbenchPage::sendEncodingKey() const
                                                               : AppTextEncoding::defaultKey());
 }
 
+QString WorkbenchPage::frameBreakModeKey() const
+{
+    const QString mode = m_frameModeCombo ? m_frameModeCombo->currentData().toString() : QStringLiteral("timeout");
+    if (mode == QStringLiteral("header") || mode == QStringLiteral("tail") || mode == QStringLiteral("length")) {
+        return mode;
+    }
+    return QStringLiteral("timeout");
+}
+
+QByteArray WorkbenchPage::frameBoundaryPattern(bool *ok) const
+{
+    if (ok) {
+        *ok = false;
+    }
+    if (!m_framePatternEdit) {
+        return {};
+    }
+    const QString patternText = m_framePatternEdit->text().trimmed();
+    if (patternText.isEmpty()) {
+        return {};
+    }
+
+    const HexParseResult result = parseHexPayload(patternText);
+    if (!result.ok || result.bytes.isEmpty()) {
+        return {};
+    }
+    if (ok) {
+        *ok = true;
+    }
+    return result.bytes;
+}
+
 QString WorkbenchPage::currentDisplayMode() const
 {
     return m_displayModeSegment ? m_displayModeSegment->currentItem() : QStringLiteral("text");
@@ -195,7 +227,132 @@ bool WorkbenchPage::recordMatchesTerminalFilter(const SessionRecord &record) con
            record.displayText.contains(searchText, Qt::CaseInsensitive);
 }
 
-void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &data)
+void WorkbenchPage::handleReceivedData(const QByteArray &data)
+{
+    if (data.isEmpty()) {
+        return;
+    }
+
+    if (!m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked() ||
+        frameBreakModeKey() == QStringLiteral("timeout")) {
+        appendRecord(RecordDirection::Rx, data);
+        return;
+    }
+
+    recordReceivedBytes(data);
+    processBufferedFrameData(data);
+}
+
+void WorkbenchPage::recordReceivedBytes(const QByteArray &data)
+{
+    if (data.isEmpty()) {
+        return;
+    }
+
+    m_rxCount += data.size();
+    if (m_saveReceiveCheck && m_saveReceiveCheck->isChecked()) {
+        if (!m_receiveCaptureFile.isOpen()) {
+            updateReceiveCapture(true);
+        }
+        if (m_receiveCaptureFile.isOpen()) {
+            m_receiveCaptureFile.write(data);
+            m_receiveCaptureFile.flush();
+        }
+    }
+    updateCounters();
+}
+
+void WorkbenchPage::processBufferedFrameData(const QByteArray &data)
+{
+    const QString mode = frameBreakModeKey();
+    if (mode == QStringLiteral("length")) {
+        const int frameLength = m_frameFixedLengthSpin ? qBound(1, m_frameFixedLengthSpin->value(), 65536) : 1;
+        m_rxFrameBuffer.append(data);
+        while (m_rxFrameBuffer.size() >= frameLength) {
+            appendRecord(RecordDirection::Rx, m_rxFrameBuffer.left(frameLength), false);
+            m_rxFrameBuffer.remove(0, frameLength);
+        }
+        return;
+    }
+
+    bool patternOk = false;
+    const QByteArray pattern = frameBoundaryPattern(&patternOk);
+    if (!patternOk || pattern.isEmpty()) {
+        appendRecord(RecordDirection::Rx, data, false);
+        return;
+    }
+
+    m_rxFrameBuffer.append(data);
+    if (mode == QStringLiteral("tail")) {
+        while (true) {
+            const int index = m_rxFrameBuffer.indexOf(pattern);
+            if (index < 0) {
+                break;
+            }
+            const int frameEnd = index + pattern.size();
+            appendRecord(RecordDirection::Rx, m_rxFrameBuffer.left(frameEnd), false);
+            m_rxFrameBuffer.remove(0, frameEnd);
+        }
+    } else if (mode == QStringLiteral("header")) {
+        while (true) {
+            const int firstHeader = m_rxFrameBuffer.indexOf(pattern);
+            if (firstHeader < 0) {
+                const int keepBytes = qMin(pattern.size() - 1, m_rxFrameBuffer.size());
+                const int emitBytes = m_rxFrameBuffer.size() - keepBytes;
+                if (emitBytes > 0) {
+                    appendRecord(RecordDirection::Rx, m_rxFrameBuffer.left(emitBytes), false);
+                    m_rxFrameBuffer.remove(0, emitBytes);
+                }
+                break;
+            }
+            if (firstHeader > 0) {
+                appendRecord(RecordDirection::Rx, m_rxFrameBuffer.left(firstHeader), false);
+                m_rxFrameBuffer.remove(0, firstHeader);
+            }
+
+            const int nextHeader = m_rxFrameBuffer.indexOf(pattern, pattern.size());
+            if (nextHeader < 0) {
+                break;
+            }
+            appendRecord(RecordDirection::Rx, m_rxFrameBuffer.left(nextHeader), false);
+            m_rxFrameBuffer.remove(0, nextHeader);
+        }
+    }
+
+    if (m_rxFrameBuffer.size() > MaxFrameBufferBytes) {
+        flushRxFrameBuffer();
+    }
+}
+
+void WorkbenchPage::flushRxFrameBuffer()
+{
+    if (m_rxFrameBuffer.isEmpty()) {
+        return;
+    }
+    const QByteArray data = m_rxFrameBuffer;
+    m_rxFrameBuffer.clear();
+    appendRecord(RecordDirection::Rx, data, false);
+}
+
+void WorkbenchPage::updateFrameControlState()
+{
+    const bool enabled = m_autoFrameBreakCheck && m_autoFrameBreakCheck->isChecked();
+    const QString mode = frameBreakModeKey();
+    if (m_frameModeCombo) {
+        m_frameModeCombo->setEnabled(true);
+    }
+    if (m_framePatternEdit) {
+        m_framePatternEdit->setEnabled(enabled && (mode == QStringLiteral("header") || mode == QStringLiteral("tail")));
+    }
+    if (m_frameFixedLengthSpin) {
+        m_frameFixedLengthSpin->setEnabled(enabled && mode == QStringLiteral("length"));
+    }
+    if (m_frameBreakIntervalSpin) {
+        m_frameBreakIntervalSpin->setEnabled(enabled && mode == QStringLiteral("timeout"));
+    }
+}
+
+void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats)
 {
     if (data.isEmpty()) {
         return;
@@ -203,7 +360,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
 
     const QDateTime now = QDateTime::currentDateTime();
     if (direction == RecordDirection::Rx && m_autoFrameBreakCheck && m_autoFrameBreakCheck->isChecked() &&
-        m_lastRxTimestamp.isValid()) {
+        frameBreakModeKey() == QStringLiteral("timeout") && m_lastRxTimestamp.isValid()) {
         const int thresholdMs = m_frameBreakIntervalSpin ? m_frameBreakIntervalSpin->value() : 20;
         if (m_lastRxTimestamp.msecsTo(now) >= thresholdMs) {
             SessionRecord separator;
@@ -225,7 +382,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     m_records.append(record);
     m_pendingRecordIndexes.append(m_records.size() - 1);
 
-    if (direction == RecordDirection::Rx) {
+    if (direction == RecordDirection::Rx && updateStats) {
         m_lastRxTimestamp = now;
         m_rxCount += data.size();
         if (m_saveReceiveCheck && m_saveReceiveCheck->isChecked()) {
@@ -237,7 +394,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
                 m_receiveCaptureFile.flush();
             }
         }
-    } else {
+    } else if (direction == RecordDirection::Tx && updateStats) {
         m_txCount += data.size();
     }
 

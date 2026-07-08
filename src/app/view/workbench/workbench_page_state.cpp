@@ -9,6 +9,7 @@ void WorkbenchPage::setupSerialSignals()
         m_reconnectTimer.stop();
         m_manualDisconnect = false;
         m_lastRxTimestamp = QDateTime();
+        m_rxFrameBuffer.clear();
         m_connectionStartedAt = QDateTime::currentDateTime();
         m_lastStatsRxCount = m_rxCount;
         m_lastStatsTxCount = m_txCount;
@@ -21,6 +22,7 @@ void WorkbenchPage::setupSerialSignals()
         showSuccess(QStringLiteral("连接成功"), QStringLiteral("%1 已打开").arg(portName));
     });
     connect(&m_serial, &SerialController::closed, this, [this]() {
+        flushRxFrameBuffer();
         if (m_fileSendFile.isOpen()) {
             m_fileSendTimer.stop();
             m_fileSendFile.close();
@@ -39,7 +41,7 @@ void WorkbenchPage::setupSerialSignals()
         showInfo(QStringLiteral("连接已关闭"), QStringLiteral("串口已断开"));
     });
     connect(&m_serial, &SerialController::dataReceived, this,
-            [this](const QByteArray &data) { appendRecord(RecordDirection::Rx, data); });
+            [this](const QByteArray &data) { handleReceivedData(data); });
     connect(&m_serial, &SerialController::errorOccurred, this, [this](const QString &message) {
         if (!message.isEmpty()) {
             if (m_reconnectTimer.isActive()) {
@@ -101,6 +103,9 @@ void WorkbenchPage::restoreSettings()
                                           .toString();
     const QString lineEnding = settings.value(QStringLiteral("send/lineEnding"), QStringLiteral("none")).toString();
     const int loopInterval = settings.value(QStringLiteral("send/loopIntervalMs"), 1000).toInt();
+    const QString frameMode = settings.value(QStringLiteral("receive/frameMode"), QStringLiteral("timeout")).toString();
+    const QString framePattern = settings.value(QStringLiteral("receive/framePattern")).toString();
+    const int frameFixedLength = settings.value(QStringLiteral("receive/frameFixedLength"), 8).toInt();
     const int frameBreakMs = settings.value(QStringLiteral("receive/frameBreakMs"), 20).toInt();
     const QString sendPayload = settings.value(QStringLiteral("send/currentPayload")).toString();
     const QString packetName = settings.value(QStringLiteral("send/currentPacketName")).toString();
@@ -155,8 +160,14 @@ void WorkbenchPage::restoreSettings()
     m_saveReceiveCheck->setChecked(settings.value(QStringLiteral("receive/saveToFile"), false).toBool());
     m_autoScrollCheck->setChecked(settings.value(QStringLiteral("receive/autoScroll"), true).toBool());
     m_timestampCheck->setChecked(settings.value(QStringLiteral("receive/timestamp"), false).toBool());
+    const int frameModeIndex = m_frameModeCombo->findData(frameMode);
+    m_frameModeCombo->setCurrentIndex(frameModeIndex >= 0 ? frameModeIndex
+                                                          : m_frameModeCombo->findData(QStringLiteral("timeout")));
+    m_framePatternEdit->setText(framePattern);
+    m_frameFixedLengthSpin->setValue(qBound(1, frameFixedLength, 65536));
     m_autoFrameBreakCheck->setChecked(settings.value(QStringLiteral("receive/autoFrameBreak"), false).toBool());
     m_frameBreakIntervalSpin->setValue(qBound(1, frameBreakMs, 60000));
+    updateFrameControlState();
     m_showTxCheck->setChecked(settings.value(QStringLiteral("send/showTx"), true).toBool());
     const QColor txColor(
         settings.value(QStringLiteral("send/txColor"), defaultTxColor().name(QColor::HexRgb)).toString());
@@ -203,6 +214,9 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("receive/autoScroll"), m_autoScrollCheck->isChecked());
     settings.setValue(QStringLiteral("receive/timestamp"), m_timestampCheck->isChecked());
     settings.setValue(QStringLiteral("receive/autoFrameBreak"), m_autoFrameBreakCheck->isChecked());
+    settings.setValue(QStringLiteral("receive/frameMode"), frameBreakModeKey());
+    settings.setValue(QStringLiteral("receive/framePattern"), m_framePatternEdit->text());
+    settings.setValue(QStringLiteral("receive/frameFixedLength"), m_frameFixedLengthSpin->value());
     settings.setValue(QStringLiteral("receive/frameBreakMs"), m_frameBreakIntervalSpin->value());
     settings.setValue(QStringLiteral("receive/encoding"), receiveEncodingKey());
     settings.setValue(QStringLiteral("terminal/displayMode"), currentDisplayMode());
