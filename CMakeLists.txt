@@ -59,6 +59,8 @@ add_subdirectory("${FLUENTQTWIDGETS_ROOT}" "${CMAKE_BINARY_DIR}/_deps/fluentqtwi
 add_executable(FluentSerialAssistant
     src/app/core/font_preferences.cpp
     src/app/core/font_preferences.h
+    src/app/core/checksum_utils.cpp
+    src/app/core/checksum_utils.h
     src/app/core/hex_utils.cpp
     src/app/core/hex_utils.h
     src/app/core/text_encoding.cpp
@@ -75,6 +77,7 @@ add_executable(FluentSerialAssistant
     src/app/view/settings_page.h
     src/app/view/workbench_page.cpp
     src/app/view/workbench_page.h
+    src/app/view/workbench/workbench_page_checksum.cpp
     src/app/view/workbench/workbench_page_connection.cpp
     src/app/view/workbench/workbench_page_files.cpp
     src/app/view/workbench/workbench_page_internal.h

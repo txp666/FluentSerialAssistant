@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/core/checksum_utils.h"
 #include "app/serial/serial_controller.h"
 #include "app/view/app_page.h"
 
@@ -110,6 +111,8 @@ class WorkbenchPage : public AppPage
     QString selectedLineEndingKey() const;
     QString receiveEncodingKey() const;
     QString sendEncodingKey() const;
+    QString checksumAlgorithmKey() const;
+    AppChecksum::ByteOrder checksumByteOrder() const;
     QString terminalSearchText() const;
     QString terminalDirectionFilter() const;
     QString directionText(RecordDirection direction) const;
@@ -117,6 +120,9 @@ class WorkbenchPage : public AppPage
     QString exportSuffix(ExportFormat format) const;
     QString formatRecordLine(const SessionRecord &record) const;
     QColor selectedTxColor() const;
+    QByteArray payloadWithOptionalChecksum(const QByteArray &payload, bool *ok = nullptr);
+    void calculateChecksumForCurrentPayload();
+    void setChecksumResultText(const QString &text);
     bool recordMatchesTerminalFilter(const SessionRecord &record) const;
     void appendRecord(RecordDirection direction, const QByteArray &data);
     void trimRecords();
@@ -182,6 +188,8 @@ class WorkbenchPage : public AppPage
     FluentQt::ComboBox *m_receiveEncodingCombo = nullptr;
     FluentQt::ComboBox *m_lineEndingCombo = nullptr;
     FluentQt::ComboBox *m_sendEncodingCombo = nullptr;
+    FluentQt::ComboBox *m_checksumAlgorithmCombo = nullptr;
+    FluentQt::ComboBox *m_checksumByteOrderCombo = nullptr;
     FluentQt::ComboBox *m_historyCombo = nullptr;
     FluentQt::LineEdit *m_packetNameEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
@@ -205,6 +213,7 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_packetSaveButton = nullptr;
     FluentQt::PushButton *m_packetLoadButton = nullptr;
     FluentQt::PushButton *m_packetDeleteButton = nullptr;
+    FluentQt::PushButton *m_checksumCalcButton = nullptr;
     FluentQt::PushButton *m_fileBrowseButton = nullptr;
     FluentQt::PushButton *m_fileCancelButton = nullptr;
     FluentQt::CheckBox *m_saveReceiveCheck = nullptr;
@@ -215,6 +224,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_hexSendCheck = nullptr;
     FluentQt::CheckBox *m_showTxCheck = nullptr;
     FluentQt::CheckBox *m_loopCheck = nullptr;
+    FluentQt::CheckBox *m_checksumAppendCheck = nullptr;
     FluentQt::CheckBox *m_autoReconnectCheck = nullptr;
     FluentQt::CheckBox *m_autoOpenCheck = nullptr;
     FluentQt::CheckBox *m_rtsCheck = nullptr;
@@ -227,6 +237,7 @@ class WorkbenchPage : public AppPage
     FluentQt::LineEdit *m_filePathEdit = nullptr;
     FluentQt::ProgressBar *m_fileProgressBar = nullptr;
     FluentQt::CaptionLabel *m_receiveCaptureLabel = nullptr;
+    FluentQt::CaptionLabel *m_checksumResultLabel = nullptr;
     FluentQt::CaptionLabel *m_terminalSummaryLabel = nullptr;
     FluentQt::CaptionLabel *m_connectionTimeLabel = nullptr;
     FluentQt::CaptionLabel *m_fileStatusLabel = nullptr;

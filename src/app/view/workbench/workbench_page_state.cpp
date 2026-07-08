@@ -93,6 +93,12 @@ void WorkbenchPage::restoreSettings()
     const QString sendMode = settings.value(QStringLiteral("send/mode"), QStringLiteral("text")).toString();
     const QString sendEncoding =
         settings.value(QStringLiteral("send/encoding"), AppTextEncoding::defaultKey()).toString();
+    const QString checksumAlgorithm =
+        settings.value(QStringLiteral("checksum/algorithm"), AppChecksum::defaultAlgorithmKey()).toString();
+    const QString checksumByteOrder = settings
+                                          .value(QStringLiteral("checksum/byteOrder"),
+                                                 AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian))
+                                          .toString();
     const QString lineEnding = settings.value(QStringLiteral("send/lineEnding"), QStringLiteral("none")).toString();
     const int loopInterval = settings.value(QStringLiteral("send/loopIntervalMs"), 1000).toInt();
     const int frameBreakMs = settings.value(QStringLiteral("receive/frameBreakMs"), 20).toInt();
@@ -131,6 +137,13 @@ void WorkbenchPage::restoreSettings()
     selectEncodingOption(m_receiveEncodingCombo, receiveEncoding);
     m_hexSendCheck->setChecked(sendMode == QStringLiteral("hex"));
     selectEncodingOption(m_sendEncodingCombo, sendEncoding);
+    selectChecksumAlgorithm(m_checksumAlgorithmCombo, checksumAlgorithm);
+    const int checksumByteOrderIndex =
+        m_checksumByteOrderCombo->findData(AppChecksum::byteOrderKey(AppChecksum::byteOrderFromKey(checksumByteOrder)));
+    if (checksumByteOrderIndex >= 0) {
+        m_checksumByteOrderCombo->setCurrentIndex(checksumByteOrderIndex);
+    }
+    m_checksumAppendCheck->setChecked(settings.value(QStringLiteral("checksum/autoAppend"), false).toBool());
     const int eolIndex = m_lineEndingCombo->findData(lineEnding);
     if (eolIndex >= 0) {
         m_lineEndingCombo->setCurrentIndex(eolIndex);
@@ -196,6 +209,9 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("send/mode"),
                       m_hexSendCheck->isChecked() ? QStringLiteral("hex") : QStringLiteral("text"));
     settings.setValue(QStringLiteral("send/encoding"), sendEncodingKey());
+    settings.setValue(QStringLiteral("checksum/algorithm"), checksumAlgorithmKey());
+    settings.setValue(QStringLiteral("checksum/byteOrder"), AppChecksum::byteOrderKey(checksumByteOrder()));
+    settings.setValue(QStringLiteral("checksum/autoAppend"), m_checksumAppendCheck->isChecked());
     settings.setValue(QStringLiteral("send/lineEnding"), selectedLineEndingKey());
     settings.setValue(QStringLiteral("send/showTx"), m_showTxCheck->isChecked());
     settings.setValue(QStringLiteral("send/txColor"), selectedTxColor().name(QColor::HexRgb));

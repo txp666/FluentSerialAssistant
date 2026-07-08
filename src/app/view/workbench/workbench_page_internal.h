@@ -2,6 +2,7 @@
 
 #include "app/view/workbench_page.h"
 
+#include "app/core/checksum_utils.h"
 #include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
 #include "app/core/text_encoding.h"
@@ -323,6 +324,27 @@ inline void selectEncodingOption(ComboBox *combo, const QString &key)
 {
     const int index = combo->findData(AppTextEncoding::normalizedKey(key));
     combo->setCurrentIndex(index >= 0 ? index : combo->findData(AppTextEncoding::defaultKey()));
+}
+
+inline void addChecksumAlgorithmOptions(ComboBox *combo)
+{
+    for (const AppChecksum::AlgorithmOption &option : AppChecksum::options()) {
+        combo->addItem(option.label, QIcon(), option.key);
+    }
+}
+
+inline void selectChecksumAlgorithm(ComboBox *combo, const QString &key)
+{
+    const int index = combo->findData(AppChecksum::normalizedAlgorithmKey(key));
+    combo->setCurrentIndex(index >= 0 ? index : combo->findData(AppChecksum::defaultAlgorithmKey()));
+}
+
+inline void addChecksumByteOrderOptions(ComboBox *combo)
+{
+    combo->addItem(AppChecksum::byteOrderLabel(AppChecksum::ByteOrder::LittleEndian), QIcon(),
+                   AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian));
+    combo->addItem(AppChecksum::byteOrderLabel(AppChecksum::ByteOrder::BigEndian), QIcon(),
+                   AppChecksum::byteOrderKey(AppChecksum::ByteOrder::BigEndian));
 }
 
 inline QString qssString(QString value)

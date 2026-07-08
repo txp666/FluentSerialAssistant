@@ -246,6 +246,26 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     makeCompactControl(m_sendEncodingCombo);
     addFormRow(root, QStringLiteral("编码"), m_sendEncodingCombo);
 
+    m_checksumAlgorithmCombo = new ComboBox(section);
+    addChecksumAlgorithmOptions(m_checksumAlgorithmCombo);
+    makeCompactControl(m_checksumAlgorithmCombo);
+    m_checksumCalcButton = new PushButton(icon(FluentIcon::Asterisk), QStringLiteral("计算"), section);
+    m_checksumCalcButton->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("校验"), m_checksumAlgorithmCombo, m_checksumCalcButton);
+
+    m_checksumByteOrderCombo = new ComboBox(section);
+    addChecksumByteOrderOptions(m_checksumByteOrderCombo);
+    makeCompactControl(m_checksumByteOrderCombo);
+    m_checksumAppendCheck = new CheckBox(QStringLiteral("自动追加"), section);
+    m_checksumAppendCheck->setMinimumWidth(0);
+    m_checksumAppendCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    addFormRow(root, QStringLiteral("字节序"), m_checksumByteOrderCombo, m_checksumAppendCheck);
+
+    m_checksumResultLabel = new CaptionLabel(QStringLiteral("校验未计算"), section);
+    m_checksumResultLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_checksumResultLabel->setWordWrap(true);
+    root->addWidget(m_checksumResultLabel);
+
     auto *sendOptions = new QWidget(section);
     auto *sendOptionsGrid = new QGridLayout(sendOptions);
     sendOptionsGrid->setContentsMargins(0, 0, 0, 0);
@@ -286,6 +306,19 @@ QWidget *WorkbenchPage::createSendSettingsSection()
         QSettings settings;
         settings.setValue(QStringLiteral("send/encoding"), sendEncodingKey());
     });
+    connect(m_checksumAlgorithmCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("checksum/algorithm"), checksumAlgorithmKey());
+    });
+    connect(m_checksumByteOrderCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("checksum/byteOrder"), AppChecksum::byteOrderKey(checksumByteOrder()));
+    });
+    connect(m_checksumAppendCheck, &CheckBox::toggled, this, [](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("checksum/autoAppend"), checked);
+    });
+    connect(m_checksumCalcButton, &PushButton::clicked, this, &WorkbenchPage::calculateChecksumForCurrentPayload);
     connect(m_hexSendCheck, &CheckBox::toggled, this, [](bool checked) {
         QSettings settings;
         settings.setValue(QStringLiteral("send/mode"), checked ? QStringLiteral("hex") : QStringLiteral("text"));

@@ -175,9 +175,14 @@ void WorkbenchPage::sendPacket(int row)
         showWarning(QStringLiteral("无法发送"), QStringLiteral("常用包内容为空"));
         return;
     }
+    bool checksumOk = false;
+    const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
+    if (!checksumOk) {
+        return;
+    }
 
     QString error;
-    if (!m_serial.writeData(payload, &error)) {
+    if (!m_serial.writeData(output, &error)) {
         showError(QStringLiteral("发送失败"), error);
         return;
     }
@@ -187,7 +192,7 @@ void WorkbenchPage::sendPacket(int row)
     historyItem.payload = packet.payload;
     historyItem.lineEnding = packet.lineEnding;
     addSendHistory(historyItem);
-    appendRecord(RecordDirection::Tx, payload);
+    appendRecord(RecordDirection::Tx, output);
 }
 
 void WorkbenchPage::sendCurrentPayload()
@@ -209,9 +214,14 @@ void WorkbenchPage::sendCurrentPayload()
         showWarning(QStringLiteral("无法发送"), QStringLiteral("发送内容为空"));
         return;
     }
+    bool checksumOk = false;
+    const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
+    if (!checksumOk) {
+        return;
+    }
 
     QString error;
-    if (!m_serial.writeData(payload, &error)) {
+    if (!m_serial.writeData(output, &error)) {
         showError(QStringLiteral("发送失败"), error);
         return;
     }
@@ -221,7 +231,7 @@ void WorkbenchPage::sendCurrentPayload()
     historyItem.payload = m_sendEdit->toPlainText();
     historyItem.lineEnding = selectedLineEndingKey();
     addSendHistory(historyItem);
-    appendRecord(RecordDirection::Tx, payload);
+    appendRecord(RecordDirection::Tx, output);
 }
 
 void WorkbenchPage::addSendHistory(const SendHistoryItem &item)
