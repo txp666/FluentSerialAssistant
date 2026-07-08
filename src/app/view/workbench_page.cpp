@@ -8,6 +8,7 @@
 #include <FluentQtWidgets/StyleSheet.h>
 
 #include <QtCore/QDir>
+#include <QtCore/QFileInfo>
 #include <QtCore/QFile>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
@@ -21,9 +22,12 @@
 #include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextOption>
+#include <QtWidgets/QAbstractItemView>
+#include <QtWidgets/QFileDialog>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QListWidgetItem>
 #include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QTextEdit>
@@ -39,10 +43,13 @@ namespace {
 constexpr int FlushIntervalMs = 33;
 constexpr int DefaultMaxTerminalRecords = 20000;
 constexpr int MaxSendHistoryItems = 20;
+constexpr int MaxSendPacketItems = 100;
 constexpr int SidePanelWidth = 324;
 constexpr int TerminalPanelMinWidth = 560;
 constexpr int ReconnectIntervalMs = 2000;
 constexpr int CompactControlHeight = 32;
+constexpr int DefaultFileChunkSize = 256;
+constexpr int DefaultFileChunkIntervalMs = 10;
 
 void setFixedControlWidth(QWidget *widget, int width)
 {
@@ -174,6 +181,53 @@ QString lineEndingLabel(const QString &lineEnding)
     return QStringLiteral("None");
 }
 
+QByteArray lineEndingBytes(const QString &lineEnding)
+{
+    if(lineEnding == QStringLiteral("cr")) {
+        return QByteArray("\r", 1);
+    }
+    if(lineEnding == QStringLiteral("lf")) {
+        return QByteArray("\n", 1);
+    }
+    if(lineEnding == QStringLiteral("crlf")) {
+        return QByteArray("\r\n", 2);
+    }
+    return {};
+}
+
+QString formatBytes(qint64 bytes)
+{
+    const double value = static_cast<double>(bytes);
+    if(bytes < 1024) {
+        return QStringLiteral("%1 B").arg(bytes);
+    }
+    if(bytes < 1024 * 1024) {
+        return QStringLiteral("%1 KB").arg(value / 1024.0, 0, 'f', 1);
+    }
+    return QStringLiteral("%1 MB").arg(value / (1024.0 * 1024.0), 0, 'f', 1);
+}
+
+QString formatBytesPerSecond(qint64 bytes)
+{
+    return QStringLiteral("%1/s").arg(formatBytes(bytes));
+}
+
+QString formatDuration(qint64 seconds)
+{
+    const qint64 hours = seconds / 3600;
+    const qint64 minutes = (seconds % 3600) / 60;
+    const qint64 secs = seconds % 60;
+    if(hours > 0) {
+        return QStringLiteral("%1:%2:%3")
+            .arg(hours)
+            .arg(minutes, 2, 10, QLatin1Char('0'))
+            .arg(secs, 2, 10, QLatin1Char('0'));
+    }
+    return QStringLiteral("%1:%2")
+        .arg(minutes, 2, 10, QLatin1Char('0'))
+        .arg(secs, 2, 10, QLatin1Char('0'));
+}
+
 QStringList commonBaudRateTexts()
 {
     QList<qint32> rates = QSerialPortInfo::standardBaudRates();
@@ -257,17 +311,31 @@ WorkbenchPage::WorkbenchPage(QWidget *parent)
     connect(&m_loopTimer, &QTimer::timeout, this, &WorkbenchPage::sendCurrentPayload);
     m_reconnectTimer.setInterval(ReconnectIntervalMs);
     connect(&m_reconnectTimer, &QTimer::timeout, this, &WorkbenchPage::attemptReconnect);
+    m_statsTimer.setInterval(1000);
+    connect(&m_statsTimer, &QTimer::timeout, this, &WorkbenchPage::updateRateStats);
+    m_fileSendTimer.setSingleShot(true);
+    connect(&m_fileSendTimer, &QTimer::timeout, this, &WorkbenchPage::sendNextFileChunk);
 
     refreshPorts();
     loadSendHistory();
+    loadSendPackets();
     restoreSettings();
     updateConnectionUi(false);
     updateCounters();
+    updateRateStats();
     updateHistoryCombo();
+
+    if(m_autoOpenCheck && m_autoOpenCheck->isChecked() && !currentSerialConfig().portName.isEmpty()) {
+        QTimer::singleShot(250, this, &WorkbenchPage::onConnectClicked);
+    }
 }
 
 WorkbenchPage::~WorkbenchPage()
 {
+    m_fileSendTimer.stop();
+    if(m_fileSendFile.isOpen()) {
+        m_fileSendFile.close();
+    }
     m_reconnectTimer.stop();
     closeReceiveCapture();
     m_serial.closePort();
@@ -307,6 +375,8 @@ QWidget *WorkbenchPage::createWorkbench()
     sideLayout->addWidget(createConnectionSection());
     sideLayout->addWidget(createReceiveSettingsSection());
     sideLayout->addWidget(createSendSettingsSection());
+    sideLayout->addWidget(createPacketSection());
+    sideLayout->addWidget(createFileSendSection());
     sideLayout->addStretch(1);
     sideScroll->setWidget(sidePanel);
     sideScroll->setWidgetResizable(true);
@@ -397,8 +467,8 @@ QWidget *WorkbenchPage::createConnectionSection()
     m_flowControlCombo->setCurrentIndex(0);
     addFormRow(root, QStringLiteral("流控"), m_flowControlCombo);
 
-    root->addWidget(createCheckRow({QStringLiteral("RTS"), QStringLiteral("DTR")},
-                                   {&m_rtsCheck, &m_dtrCheck},
+    root->addWidget(createCheckRow({QStringLiteral("RTS"), QStringLiteral("DTR"), QStringLiteral("启动连接")},
+                                   {&m_rtsCheck, &m_dtrCheck, &m_autoOpenCheck},
                                    section));
 
     m_connectButton = new PrimaryPushButton(icon(FluentIcon::Connect), QStringLiteral("连接"), section);
@@ -415,6 +485,10 @@ QWidget *WorkbenchPage::createConnectionSection()
         if(m_serial.isOpen()) {
             m_serial.setDataTerminalReady(checked);
         }
+    });
+    connect(m_autoOpenCheck, &CheckBox::toggled, this, [](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("serial/autoOpen"), checked);
     });
 
     return section;
@@ -635,6 +709,150 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     return section;
 }
 
+QWidget *WorkbenchPage::createPacketSection()
+{
+    auto *section = new HeaderCardWidget(QStringLiteral("常用包"), this);
+    auto *root = cardBody(section);
+
+    m_packetNameEdit = new LineEdit(section);
+    m_packetNameEdit->setPlaceholderText(QStringLiteral("包名称"));
+    makeCompactControl(m_packetNameEdit);
+    addFormRow(root, QStringLiteral("名称"), m_packetNameEdit);
+
+    auto *modeRow = new QHBoxLayout;
+    modeRow->setSpacing(8);
+    m_packetModeCombo = new ComboBox(section);
+    m_packetModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_packetModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
+    m_packetModeCombo->setCurrentIndex(0);
+    makeCompactControl(m_packetModeCombo);
+    m_packetLineEndingCombo = new ComboBox(section);
+    m_packetLineEndingCombo->addItem(QStringLiteral("None"), QIcon(), QStringLiteral("none"));
+    m_packetLineEndingCombo->addItem(QStringLiteral("CR"), QIcon(), QStringLiteral("cr"));
+    m_packetLineEndingCombo->addItem(QStringLiteral("LF"), QIcon(), QStringLiteral("lf"));
+    m_packetLineEndingCombo->addItem(QStringLiteral("CRLF"), QIcon(), QStringLiteral("crlf"));
+    m_packetLineEndingCombo->setCurrentIndex(0);
+    makeCompactControl(m_packetLineEndingCombo);
+    modeRow->addWidget(m_packetModeCombo);
+    modeRow->addWidget(m_packetLineEndingCombo);
+    root->addLayout(modeRow);
+
+    m_packetPayloadEdit = new PlainTextEdit(section);
+    m_packetPayloadEdit->setPlaceholderText(QStringLiteral("发送内容"));
+    m_packetPayloadEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_packetPayloadEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    m_packetPayloadEdit->setFixedHeight(72);
+    m_packetPayloadEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    root->addWidget(m_packetPayloadEdit);
+
+    m_packetList = new ListWidget(section);
+    m_packetList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_packetList->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_packetList->setMinimumHeight(132);
+    m_packetList->setMaximumHeight(220);
+    m_packetList->setBorderRadius(8);
+    root->addWidget(m_packetList);
+
+    auto *moveRow = new QHBoxLayout;
+    moveRow->setSpacing(8);
+    m_packetUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
+    m_packetUpButton->setToolTip(QStringLiteral("上移"));
+    m_packetDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
+    m_packetDownButton->setToolTip(QStringLiteral("下移"));
+    for(ToolButton *button : {m_packetUpButton, m_packetDownButton}) {
+        button->setFixedSize(CompactControlHeight, CompactControlHeight);
+        button->setIconSize(QSize(16, 16));
+    }
+    m_packetSaveButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("保存"), section);
+    m_packetLoadButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入发送"), section);
+    setButtonRowControlPolicy(m_packetSaveButton);
+    setButtonRowControlPolicy(m_packetLoadButton);
+    moveRow->addWidget(m_packetUpButton);
+    moveRow->addWidget(m_packetDownButton);
+    moveRow->addWidget(m_packetSaveButton);
+    moveRow->addWidget(m_packetLoadButton);
+    root->addLayout(moveRow);
+
+    auto *actionRow = new QHBoxLayout;
+    actionRow->setSpacing(8);
+    m_packetSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送"), section);
+    m_packetDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
+    setButtonRowControlPolicy(m_packetSendButton);
+    setButtonRowControlPolicy(m_packetDeleteButton);
+    actionRow->addWidget(m_packetSendButton);
+    actionRow->addWidget(m_packetDeleteButton);
+    root->addLayout(actionRow);
+
+    connect(m_packetList, &ListWidget::currentRowChanged, this, [this](int row) {
+        applyPacket(row);
+    });
+    connect(m_packetSaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentPacket);
+    connect(m_packetLoadButton, &PushButton::clicked, this, [this]() {
+        applyPacket(m_packetList->currentRow());
+    });
+    connect(m_packetDeleteButton, &PushButton::clicked, this, &WorkbenchPage::removeSelectedPacket);
+    connect(m_packetSendButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::sendSelectedPacket);
+    connect(m_packetUpButton, &ToolButton::clicked, this, [this]() { moveSelectedPacket(-1); });
+    connect(m_packetDownButton, &ToolButton::clicked, this, [this]() { moveSelectedPacket(1); });
+
+    updatePacketTable();
+    return section;
+}
+
+QWidget *WorkbenchPage::createFileSendSection()
+{
+    auto *section = new HeaderCardWidget(QStringLiteral("文件发送"), this);
+    auto *root = cardBody(section);
+
+    m_filePathEdit = new LineEdit(section);
+    m_filePathEdit->setPlaceholderText(QStringLiteral("选择待发送文件"));
+    m_filePathEdit->setReadOnly(true);
+    makeCompactControl(m_filePathEdit);
+    m_fileBrowseButton = new PushButton(icon(FluentIcon::Folder), QStringLiteral("浏览"), section);
+    m_fileBrowseButton->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("文件"), m_filePathEdit, m_fileBrowseButton);
+
+    m_fileChunkSizeSpin = new SpinBox(section);
+    m_fileChunkSizeSpin->setRange(1, 65536);
+    m_fileChunkSizeSpin->setValue(DefaultFileChunkSize);
+    m_fileChunkSizeSpin->setSuffix(QStringLiteral(" B"));
+    addFormRow(root, QStringLiteral("块长"), m_fileChunkSizeSpin);
+
+    m_fileIntervalSpin = new SpinBox(section);
+    m_fileIntervalSpin->setRange(0, 60000);
+    m_fileIntervalSpin->setValue(DefaultFileChunkIntervalMs);
+    m_fileIntervalSpin->setSuffix(QStringLiteral(" ms"));
+    addFormRow(root, QStringLiteral("间隔"), m_fileIntervalSpin);
+
+    m_fileProgressBar = new ProgressBar(section);
+    m_fileProgressBar->setRange(0, 100);
+    m_fileProgressBar->setValue(0);
+    m_fileProgressBar->setFixedHeight(18);
+    root->addWidget(m_fileProgressBar);
+
+    auto *actionRow = new QHBoxLayout;
+    actionRow->setSpacing(8);
+    m_fileSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送文件"), section);
+    m_fileCancelButton = new PushButton(icon(FluentIcon::Cancel), QStringLiteral("取消"), section);
+    setButtonRowControlPolicy(m_fileSendButton);
+    setButtonRowControlPolicy(m_fileCancelButton);
+    actionRow->addWidget(m_fileSendButton);
+    actionRow->addWidget(m_fileCancelButton);
+    root->addLayout(actionRow);
+
+    m_fileStatusLabel = new CaptionLabel(QStringLiteral("未选择文件"), section);
+    m_fileStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_fileStatusLabel->setWordWrap(true);
+    root->addWidget(m_fileStatusLabel);
+
+    connect(m_fileBrowseButton, &PushButton::clicked, this, &WorkbenchPage::browseSendFile);
+    connect(m_fileSendButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::startFileSend);
+    connect(m_fileCancelButton, &PushButton::clicked, this, &WorkbenchPage::cancelFileSend);
+
+    updateFileSendUi(false);
+    return section;
+}
+
 QWidget *WorkbenchPage::createTerminalSection()
 {
     auto *section = new HeaderCardWidget(this);
@@ -655,6 +873,37 @@ QWidget *WorkbenchPage::createTerminalSection()
     section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX"), section));
     m_txCounterLabel = new StrongBodyLabel(QStringLiteral("0 B"), section);
     section->headerLayout()->addWidget(m_txCounterLabel);
+    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX/s"), section));
+    m_rxRateLabel = new StrongBodyLabel(QStringLiteral("0 B/s"), section);
+    section->headerLayout()->addWidget(m_rxRateLabel);
+    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX/s"), section));
+    m_txRateLabel = new StrongBodyLabel(QStringLiteral("0 B/s"), section);
+    section->headerLayout()->addWidget(m_txRateLabel);
+    m_connectionTimeLabel = new CaptionLabel(QStringLiteral("未连接"), section);
+    section->headerLayout()->addWidget(m_connectionTimeLabel);
+
+    auto *toolsRow = new QHBoxLayout;
+    toolsRow->setSpacing(8);
+    m_terminalSearchEdit = new SearchLineEdit(section);
+    m_terminalSearchEdit->setPlaceholderText(QStringLiteral("搜索终端内容"));
+    m_terminalSearchEdit->setClearButtonEnabled(true);
+    m_terminalSearchEdit->setFixedHeight(CompactControlHeight);
+    m_terminalSearchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_terminalFilterCombo = new ComboBox(section);
+    m_terminalFilterCombo->addItem(QStringLiteral("全部"), QIcon(), QStringLiteral("all"));
+    m_terminalFilterCombo->addItem(QStringLiteral("仅接收"), QIcon(), QStringLiteral("rx"));
+    m_terminalFilterCombo->addItem(QStringLiteral("仅发送"), QIcon(), QStringLiteral("tx"));
+    m_terminalFilterCombo->setFixedHeight(CompactControlHeight);
+    setFixedControlWidth(m_terminalFilterCombo, 104);
+    m_terminalSummaryLabel = new CaptionLabel(QStringLiteral("显示 0 条"), section);
+    m_terminalSummaryLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_terminalSummaryLabel->setFixedHeight(CompactControlHeight);
+    m_terminalSummaryLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    setFixedControlWidth(m_terminalSummaryLabel, 96);
+    toolsRow->addWidget(m_terminalSearchEdit, 1);
+    toolsRow->addWidget(m_terminalFilterCombo);
+    toolsRow->addWidget(m_terminalSummaryLabel);
+    root->addLayout(toolsRow);
 
     m_terminalView = new TextBrowser(section);
     m_terminalView->setReadOnly(true);
@@ -675,6 +924,18 @@ QWidget *WorkbenchPage::createTerminalSection()
         ThemeManager::instance()->setTheme(next);
     });
     connect(settingsButton, &TransparentToolButton::clicked, this, &WorkbenchPage::settingsRequested);
+    connect(m_terminalSearchEdit, &SearchLineEdit::textChanged, this, [this]() {
+        renderTerminal();
+    });
+    connect(m_terminalSearchEdit, &SearchLineEdit::searchSignal, this, [this](const QString &) {
+        renderTerminal();
+    });
+    connect(m_terminalSearchEdit, &SearchLineEdit::clearSignal, this, [this]() {
+        renderTerminal();
+    });
+    connect(m_terminalFilterCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        renderTerminal();
+    });
 
     return section;
 }
@@ -715,16 +976,29 @@ void WorkbenchPage::setupSerialSignals()
         m_reconnectTimer.stop();
         m_manualDisconnect = false;
         m_lastRxTimestamp = QDateTime();
+        m_connectionStartedAt = QDateTime::currentDateTime();
+        m_lastStatsRxCount = m_rxCount;
+        m_lastStatsTxCount = m_txCount;
+        m_statsTimer.start();
         updateConnectionUi(true);
+        updateRateStats();
         if(m_saveReceiveCheck->isChecked()) {
             updateReceiveCapture(true);
         }
         showSuccess(QStringLiteral("连接成功"), QStringLiteral("%1 已打开").arg(portName));
     });
     connect(&m_serial, &SerialController::closed, this, [this]() {
+        if(m_fileSendFile.isOpen()) {
+            m_fileSendTimer.stop();
+            m_fileSendFile.close();
+            updateFileSendUi(false);
+            updateFileProgress();
+        }
+        m_statsTimer.stop();
         closeReceiveCapture();
         m_lastRxTimestamp = QDateTime();
         updateConnectionUi(false);
+        updateRateStats();
         if(!m_manualDisconnect && m_autoReconnectCheck && m_autoReconnectCheck->isChecked()) {
             scheduleReconnect();
             return;
@@ -783,6 +1057,15 @@ void WorkbenchPage::restoreSettings()
     const QString lineEnding = settings.value(QStringLiteral("send/lineEnding"), QStringLiteral("none")).toString();
     const int loopInterval = settings.value(QStringLiteral("send/loopIntervalMs"), 1000).toInt();
     const int frameBreakMs = settings.value(QStringLiteral("receive/frameBreakMs"), 20).toInt();
+    const QString sendPayload = settings.value(QStringLiteral("send/currentPayload")).toString();
+    const QString packetName = settings.value(QStringLiteral("send/currentPacketName")).toString();
+    const QString packetPayload = settings.value(QStringLiteral("send/currentPacketPayload")).toString();
+    const QString packetMode = settings.value(QStringLiteral("send/currentPacketMode"), QStringLiteral("text")).toString();
+    const QString packetLineEnding =
+        settings.value(QStringLiteral("send/currentPacketLineEnding"), QStringLiteral("none")).toString();
+    const QString filePath = settings.value(QStringLiteral("fileSend/path")).toString();
+    const int fileChunkSize = settings.value(QStringLiteral("fileSend/chunkSize"), DefaultFileChunkSize).toInt();
+    const int fileInterval = settings.value(QStringLiteral("fileSend/intervalMs"), DefaultFileChunkIntervalMs).toInt();
 
     const int portIndex = m_portCombo->findData(portName);
     if(portIndex >= 0) {
@@ -813,6 +1096,7 @@ void WorkbenchPage::restoreSettings()
     m_loopIntervalSpin->setValue(qBound(10, loopInterval, 600000));
     m_rtsCheck->setChecked(settings.value(QStringLiteral("serial/rts"), false).toBool());
     m_dtrCheck->setChecked(settings.value(QStringLiteral("serial/dtr"), false).toBool());
+    m_autoOpenCheck->setChecked(settings.value(QStringLiteral("serial/autoOpen"), false).toBool());
     m_saveReceiveCheck->setChecked(settings.value(QStringLiteral("receive/saveToFile"), false).toBool());
     m_autoScrollCheck->setChecked(settings.value(QStringLiteral("receive/autoScroll"), true).toBool());
     m_timestampCheck->setChecked(settings.value(QStringLiteral("receive/timestamp"), false).toBool());
@@ -825,6 +1109,25 @@ void WorkbenchPage::restoreSettings()
     m_txColorButton->setColor(txColor.isValid() ? txColor : defaultTxColor());
     m_txColorButton->setEnabled(m_showTxCheck->isChecked());
     m_autoReconnectCheck->setChecked(settings.value(QStringLiteral("serial/autoReconnect"), true).toBool());
+    m_sendEdit->setPlainText(sendPayload);
+    m_packetNameEdit->setText(packetName);
+    m_packetPayloadEdit->setPlainText(packetPayload);
+    const int packetModeIndex = m_packetModeCombo->findData(packetMode);
+    if(packetModeIndex >= 0) {
+        m_packetModeCombo->setCurrentIndex(packetModeIndex);
+    }
+    const int packetEolIndex = m_packetLineEndingCombo->findData(packetLineEnding);
+    if(packetEolIndex >= 0) {
+        m_packetLineEndingCombo->setCurrentIndex(packetEolIndex);
+    }
+    m_filePathEdit->setText(filePath);
+    m_fileChunkSizeSpin->setValue(qBound(1, fileChunkSize, 65536));
+    m_fileIntervalSpin->setValue(qBound(0, fileInterval, 60000));
+    if(!filePath.isEmpty()) {
+        const QFileInfo info(filePath);
+        m_fileStatusLabel->setText(info.exists() ? QStringLiteral("%1 · %2").arg(info.fileName(), formatBytes(info.size()))
+                                                 : QStringLiteral("文件不存在：%1").arg(filePath));
+    }
     m_terminalView->document()->setMaximumBlockCount(maxRecordCount());
     applyTerminalFont();
 }
@@ -840,6 +1143,7 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("serial/flowControl"), m_flowControlCombo->currentData().toInt());
     settings.setValue(QStringLiteral("serial/rts"), m_rtsCheck->isChecked());
     settings.setValue(QStringLiteral("serial/dtr"), m_dtrCheck->isChecked());
+    settings.setValue(QStringLiteral("serial/autoOpen"), m_autoOpenCheck->isChecked());
     settings.setValue(QStringLiteral("receive/saveToFile"), m_saveReceiveCheck->isChecked());
     settings.setValue(QStringLiteral("receive/autoScroll"), m_autoScrollCheck->isChecked());
     settings.setValue(QStringLiteral("receive/timestamp"), m_timestampCheck->isChecked());
@@ -851,8 +1155,18 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("send/showTx"), m_showTxCheck->isChecked());
     settings.setValue(QStringLiteral("send/txColor"), selectedTxColor().name(QColor::HexRgb));
     settings.setValue(QStringLiteral("send/loopIntervalMs"), m_loopIntervalSpin->value());
+    settings.setValue(QStringLiteral("send/currentPayload"), m_sendEdit->toPlainText());
+    settings.setValue(QStringLiteral("send/currentPacketName"), m_packetNameEdit->text());
+    settings.setValue(QStringLiteral("send/currentPacketPayload"), m_packetPayloadEdit->toPlainText());
+    settings.setValue(QStringLiteral("send/currentPacketMode"), m_packetModeCombo->currentData().toString());
+    settings.setValue(QStringLiteral("send/currentPacketLineEnding"),
+                      m_packetLineEndingCombo->currentData().toString());
     settings.setValue(QStringLiteral("serial/autoReconnect"), m_autoReconnectCheck->isChecked());
+    settings.setValue(QStringLiteral("fileSend/path"), m_filePathEdit->text());
+    settings.setValue(QStringLiteral("fileSend/chunkSize"), m_fileChunkSizeSpin->value());
+    settings.setValue(QStringLiteral("fileSend/intervalMs"), m_fileIntervalSpin->value());
     saveSendHistory();
+    saveSendPackets();
 }
 
 void WorkbenchPage::setTerminalFontFamily(const QString &family)
@@ -885,8 +1199,42 @@ void WorkbenchPage::updateConnectionUi(bool connected)
 
 void WorkbenchPage::updateCounters()
 {
-    m_rxCounterLabel->setText(QStringLiteral("%1 B").arg(m_rxCount));
-    m_txCounterLabel->setText(QStringLiteral("%1 B").arg(m_txCount));
+    m_rxCounterLabel->setText(formatBytes(m_rxCount));
+    m_txCounterLabel->setText(formatBytes(m_txCount));
+    if(m_terminalSummaryLabel) {
+        int visibleRecords = 0;
+        for(const SessionRecord &record : m_records) {
+            if(record.direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
+                continue;
+            }
+            if(record.direction != RecordDirection::FrameBreak && recordMatchesTerminalFilter(record)) {
+                ++visibleRecords;
+            }
+        }
+        m_terminalSummaryLabel->setText(QStringLiteral("显示 %1 条").arg(visibleRecords));
+    }
+}
+
+void WorkbenchPage::updateRateStats()
+{
+    if(m_rxRateLabel) {
+        m_rxRateLabel->setText(formatBytesPerSecond(qMax<qint64>(0, m_rxCount - m_lastStatsRxCount)));
+    }
+    if(m_txRateLabel) {
+        m_txRateLabel->setText(formatBytesPerSecond(qMax<qint64>(0, m_txCount - m_lastStatsTxCount)));
+    }
+    m_lastStatsRxCount = m_rxCount;
+    m_lastStatsTxCount = m_txCount;
+
+    if(!m_connectionTimeLabel) {
+        return;
+    }
+    if(m_serial.isOpen() && m_connectionStartedAt.isValid()) {
+        const qint64 seconds = m_connectionStartedAt.secsTo(QDateTime::currentDateTime());
+        m_connectionTimeLabel->setText(QStringLiteral("已连接 %1").arg(formatDuration(seconds)));
+    } else {
+        m_connectionTimeLabel->setText(QStringLiteral("未连接"));
+    }
 }
 
 void WorkbenchPage::updateHistoryCombo()
@@ -920,6 +1268,197 @@ void WorkbenchPage::applyHistoryItem(int index)
         m_lineEndingCombo->setCurrentIndex(lineEndingIndex);
     }
     m_sendEdit->setPlainText(item.payload);
+}
+
+void WorkbenchPage::updatePacketTable(int selectedRow)
+{
+    if(!m_packetList) {
+        return;
+    }
+
+    const QSignalBlocker blocker(m_packetList);
+    m_packetList->clear();
+    for(int row = 0; row < m_sendPackets.size(); ++row) {
+        const SendPacket &packet = m_sendPackets.at(row);
+        QString payload = packet.payload.simplified();
+        if(payload.size() > 38) {
+            payload = payload.left(35) + QStringLiteral("...");
+        }
+
+        auto *item = new QListWidgetItem(icon(FluentIcon::CommandPrompt),
+                                         QStringLiteral("%1\n%2 · %3 · %4")
+                                             .arg(packet.name,
+                                                  modeLabel(packet.mode),
+                                                  lineEndingLabel(packet.lineEnding),
+                                                  payload));
+        item->setData(Qt::UserRole, row);
+        item->setToolTip(packet.payload);
+        item->setSizeHint(QSize(0, 52));
+        m_packetList->addItem(item);
+    }
+
+    if(!m_sendPackets.isEmpty()) {
+        const int row = qBound(0, selectedRow >= 0 ? selectedRow : m_packetList->currentRow(), m_sendPackets.size() - 1);
+        m_packetList->setCurrentRow(row);
+    }
+    const bool hasPacket = !m_sendPackets.isEmpty();
+    if(m_packetLoadButton) {
+        m_packetLoadButton->setEnabled(hasPacket);
+    }
+    if(m_packetDeleteButton) {
+        m_packetDeleteButton->setEnabled(hasPacket);
+    }
+    if(m_packetSendButton) {
+        m_packetSendButton->setEnabled(hasPacket && m_serial.isOpen());
+    }
+    if(m_packetUpButton) {
+        m_packetUpButton->setEnabled(hasPacket);
+    }
+    if(m_packetDownButton) {
+        m_packetDownButton->setEnabled(hasPacket);
+    }
+}
+
+void WorkbenchPage::applyPacket(int row)
+{
+    if(row < 0 || row >= m_sendPackets.size()) {
+        return;
+    }
+
+    const SendPacket packet = m_sendPackets.at(row);
+    m_packetNameEdit->setText(packet.name);
+    m_packetPayloadEdit->setPlainText(packet.payload);
+    const int packetModeIndex = m_packetModeCombo->findData(packet.mode);
+    if(packetModeIndex >= 0) {
+        m_packetModeCombo->setCurrentIndex(packetModeIndex);
+    }
+    const int packetLineEndingIndex = m_packetLineEndingCombo->findData(packet.lineEnding);
+    if(packetLineEndingIndex >= 0) {
+        m_packetLineEndingCombo->setCurrentIndex(packetLineEndingIndex);
+    }
+
+    m_hexSendCheck->setChecked(packet.mode == QStringLiteral("hex"));
+    const int lineEndingIndex = m_lineEndingCombo->findData(packet.lineEnding);
+    if(lineEndingIndex >= 0) {
+        m_lineEndingCombo->setCurrentIndex(lineEndingIndex);
+    }
+    m_sendEdit->setPlainText(packet.payload);
+}
+
+void WorkbenchPage::saveCurrentPacket()
+{
+    const QString payload = m_packetPayloadEdit->toPlainText();
+    if(payload.trimmed().isEmpty()) {
+        showWarning(QStringLiteral("无法保存"), QStringLiteral("发送内容为空"));
+        return;
+    }
+
+    QString name = m_packetNameEdit->text().trimmed();
+    if(name.isEmpty()) {
+        name = payload.simplified();
+        if(name.size() > 18) {
+            name = name.left(18) + QStringLiteral("...");
+        }
+        if(name.isEmpty()) {
+            name = QStringLiteral("未命名包");
+        }
+        m_packetNameEdit->setText(name);
+    }
+
+    SendPacket packet;
+    packet.name = name;
+    packet.mode = m_packetModeCombo->currentData().toString();
+    packet.payload = payload;
+    packet.lineEnding = m_packetLineEndingCombo->currentData().toString();
+    packet.enabled = true;
+
+    int targetRow = -1;
+    for(int i = 0; i < m_sendPackets.size(); ++i) {
+        if(m_sendPackets.at(i).name == packet.name) {
+            targetRow = i;
+            break;
+        }
+    }
+    if(targetRow >= 0) {
+        m_sendPackets[targetRow] = packet;
+    } else {
+        if(m_sendPackets.size() >= MaxSendPacketItems) {
+            m_sendPackets.removeLast();
+        }
+        m_sendPackets.append(packet);
+        targetRow = m_sendPackets.size() - 1;
+    }
+
+    updatePacketTable(targetRow);
+    applyPacket(targetRow);
+    saveSendPackets();
+    showSuccess(QStringLiteral("已保存常用包"), packet.name);
+}
+
+void WorkbenchPage::removeSelectedPacket()
+{
+    const int row = m_packetList ? m_packetList->currentRow() : -1;
+    if(row < 0 || row >= m_sendPackets.size()) {
+        return;
+    }
+    const QString name = m_sendPackets.at(row).name;
+    m_sendPackets.removeAt(row);
+    updatePacketTable(qMin(row, m_sendPackets.size() - 1));
+    saveSendPackets();
+    showInfo(QStringLiteral("已删除常用包"), name);
+}
+
+void WorkbenchPage::moveSelectedPacket(int direction)
+{
+    const int row = m_packetList ? m_packetList->currentRow() : -1;
+    const int target = row + direction;
+    if(row < 0 || row >= m_sendPackets.size() || target < 0 || target >= m_sendPackets.size()) {
+        return;
+    }
+
+    m_sendPackets.swapItemsAt(row, target);
+    updatePacketTable(target);
+    saveSendPackets();
+}
+
+void WorkbenchPage::sendSelectedPacket()
+{
+    sendPacket(m_packetList ? m_packetList->currentRow() : -1);
+}
+
+void WorkbenchPage::sendPacket(int row)
+{
+    if(row < 0 || row >= m_sendPackets.size()) {
+        return;
+    }
+    if(!m_serial.isOpen()) {
+        showWarning(QStringLiteral("无法发送"), QStringLiteral("请先连接串口"));
+        return;
+    }
+
+    const SendPacket packet = m_sendPackets.at(row);
+    bool ok = false;
+    const QByteArray payload = payloadFromText(packet.payload, packet.mode, packet.lineEnding, false, &ok);
+    if(!ok) {
+        return;
+    }
+    if(payload.isEmpty()) {
+        showWarning(QStringLiteral("无法发送"), QStringLiteral("常用包内容为空"));
+        return;
+    }
+
+    QString error;
+    if(!m_serial.writeData(payload, &error)) {
+        showError(QStringLiteral("发送失败"), error);
+        return;
+    }
+
+    SendHistoryItem historyItem;
+    historyItem.mode = packet.mode;
+    historyItem.payload = packet.payload;
+    historyItem.lineEnding = packet.lineEnding;
+    addSendHistory(historyItem);
+    appendRecord(RecordDirection::Tx, payload);
 }
 
 void WorkbenchPage::showInfo(const QString &title, const QString &message)
@@ -961,17 +1500,30 @@ SerialPortConfig WorkbenchPage::currentSerialConfig() const
 
 QByteArray WorkbenchPage::currentPayload(bool *ok)
 {
+    return payloadFromText(m_sendEdit->toPlainText(),
+                           m_hexSendCheck->isChecked() ? QStringLiteral("hex") : QStringLiteral("text"),
+                           selectedLineEndingKey(),
+                           true,
+                           ok);
+}
+
+QByteArray WorkbenchPage::payloadFromText(const QString &payloadText,
+                                          const QString &mode,
+                                          const QString &lineEndingKey,
+                                          bool focusEditorOnError,
+                                          bool *ok)
+{
     if(ok) {
         *ok = false;
     }
 
     QByteArray data;
-    const QString payloadText = m_sendEdit->toPlainText();
-    const QString mode = m_hexSendCheck->isChecked() ? QStringLiteral("hex") : QStringLiteral("text");
     if(mode == QStringLiteral("hex")) {
         const HexParseResult result = parseHexPayload(payloadText);
         if(!result.ok) {
-            m_sendEdit->setFocus();
+            if(focusEditorOnError) {
+                m_sendEdit->setFocus();
+            }
             showWarning(QStringLiteral("HEX 输入无效"),
                         result.errorOffset >= 0
                             ? QStringLiteral("%1，位置 %2").arg(result.errorMessage).arg(result.errorOffset + 1)
@@ -983,7 +1535,7 @@ QByteArray WorkbenchPage::currentPayload(bool *ok)
         data = payloadText.toUtf8();
     }
 
-    data.append(selectedLineEnding());
+    data.append(lineEndingForKey(lineEndingKey));
     if(ok) {
         *ok = true;
     }
@@ -992,17 +1544,12 @@ QByteArray WorkbenchPage::currentPayload(bool *ok)
 
 QByteArray WorkbenchPage::selectedLineEnding() const
 {
-    const QString eol = selectedLineEndingKey();
-    if(eol == QStringLiteral("cr")) {
-        return QByteArray("\r", 1);
-    }
-    if(eol == QStringLiteral("lf")) {
-        return QByteArray("\n", 1);
-    }
-    if(eol == QStringLiteral("crlf")) {
-        return QByteArray("\r\n", 2);
-    }
-    return {};
+    return lineEndingForKey(selectedLineEndingKey());
+}
+
+QByteArray WorkbenchPage::lineEndingForKey(const QString &key) const
+{
+    return lineEndingBytes(key);
 }
 
 QString WorkbenchPage::selectedLineEndingKey() const
@@ -1013,6 +1560,16 @@ QString WorkbenchPage::selectedLineEndingKey() const
 QString WorkbenchPage::currentDisplayMode() const
 {
     return m_displayModeSegment ? m_displayModeSegment->currentItem() : QStringLiteral("text");
+}
+
+QString WorkbenchPage::terminalSearchText() const
+{
+    return m_terminalSearchEdit ? m_terminalSearchEdit->text().trimmed() : QString();
+}
+
+QString WorkbenchPage::terminalDirectionFilter() const
+{
+    return m_terminalFilterCombo ? m_terminalFilterCombo->currentData().toString() : QStringLiteral("all");
 }
 
 QString WorkbenchPage::directionText(RecordDirection direction) const
@@ -1084,6 +1641,31 @@ QColor WorkbenchPage::selectedTxColor() const
     }
     color.setAlpha(255);
     return color;
+}
+
+bool WorkbenchPage::recordMatchesTerminalFilter(const SessionRecord &record) const
+{
+    if(record.direction == RecordDirection::FrameBreak) {
+        return terminalSearchText().isEmpty() && terminalDirectionFilter() == QStringLiteral("all");
+    }
+
+    const QString directionFilter = terminalDirectionFilter();
+    if(directionFilter == QStringLiteral("rx") && record.direction != RecordDirection::Rx) {
+        return false;
+    }
+    if(directionFilter == QStringLiteral("tx") && record.direction != RecordDirection::Tx) {
+        return false;
+    }
+
+    const QString searchText = terminalSearchText();
+    if(searchText.isEmpty()) {
+        return true;
+    }
+
+    const QString line = formatRecordLine(record);
+    return line.contains(searchText, Qt::CaseInsensitive) ||
+           bytesToHex(record.bytes).contains(searchText, Qt::CaseInsensitive) ||
+           record.displayText.contains(searchText, Qt::CaseInsensitive);
 }
 
 void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &data)
@@ -1165,6 +1747,9 @@ void WorkbenchPage::renderTerminal()
     cursor.beginEditBlock();
     bool hasOutput = false;
     for(int i = m_terminalStartRecord; i < m_records.size(); ++i) {
+        if(!recordMatchesTerminalFilter(m_records.at(i))) {
+            continue;
+        }
         if(m_records.at(i).direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
             continue;
         }
@@ -1179,6 +1764,7 @@ void WorkbenchPage::renderTerminal()
         cursor.movePosition(QTextCursor::End);
         m_terminalView->setTextCursor(cursor);
     }
+    updateCounters();
 }
 
 bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious)
@@ -1199,7 +1785,12 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
     if(record.direction == RecordDirection::Tx) {
         format.setForeground(selectedTxColor());
     }
-    cursor.insertText(formatRecordLine(record), format);
+    const QString line = formatRecordLine(record);
+    const QString searchText = terminalSearchText();
+    if(!searchText.isEmpty() && line.contains(searchText, Qt::CaseInsensitive)) {
+        format.setBackground(QColor(255, 214, 10, 72));
+    }
+    cursor.insertText(line, format);
     return true;
 }
 
@@ -1216,6 +1807,9 @@ void WorkbenchPage::flushPendingLines()
     bool wrote = false;
     for(int index : m_pendingRecordIndexes) {
         if(index >= m_terminalStartRecord && index >= 0 && index < m_records.size()) {
+            if(!recordMatchesTerminalFilter(m_records.at(index))) {
+                continue;
+            }
             if(m_records.at(index).direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
                 continue;
             }
@@ -1235,6 +1829,7 @@ void WorkbenchPage::flushPendingLines()
         cursor.movePosition(QTextCursor::End);
         m_terminalView->setTextCursor(cursor);
     }
+    updateCounters();
 }
 
 void WorkbenchPage::sendCurrentPayload()
@@ -1333,6 +1928,64 @@ void WorkbenchPage::saveSendHistory() const
 
     QSettings settings;
     settings.setValue(QStringLiteral("send/history"),
+                      QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact)));
+}
+
+void WorkbenchPage::loadSendPackets()
+{
+    m_sendPackets.clear();
+    QSettings settings;
+    const QByteArray json = settings.value(QStringLiteral("send/packets")).toString().toUtf8();
+    const QJsonDocument document = QJsonDocument::fromJson(json);
+    if(!document.isArray()) {
+        updatePacketTable();
+        return;
+    }
+
+    const QJsonArray array = document.array();
+    for(const QJsonValue &value : array) {
+        if(!value.isObject()) {
+            continue;
+        }
+        const QJsonObject object = value.toObject();
+        SendPacket packet;
+        packet.name = object.value(QStringLiteral("name")).toString().trimmed();
+        packet.mode = object.value(QStringLiteral("mode")).toString(QStringLiteral("text"));
+        packet.payload = object.value(QStringLiteral("payload")).toString();
+        packet.lineEnding = object.value(QStringLiteral("lineEnding")).toString(QStringLiteral("none"));
+        packet.enabled = object.value(QStringLiteral("enabled")).toBool(true);
+        if(packet.name.isEmpty() || packet.payload.isEmpty()) {
+            continue;
+        }
+        if(packet.mode != QStringLiteral("hex")) {
+            packet.mode = QStringLiteral("text");
+        }
+        if(packet.lineEnding.isEmpty()) {
+            packet.lineEnding = QStringLiteral("none");
+        }
+        m_sendPackets.append(packet);
+        if(m_sendPackets.size() >= MaxSendPacketItems) {
+            break;
+        }
+    }
+    updatePacketTable();
+}
+
+void WorkbenchPage::saveSendPackets() const
+{
+    QJsonArray array;
+    for(const SendPacket &packet : m_sendPackets) {
+        QJsonObject object;
+        object.insert(QStringLiteral("name"), packet.name);
+        object.insert(QStringLiteral("mode"), packet.mode);
+        object.insert(QStringLiteral("payload"), packet.payload);
+        object.insert(QStringLiteral("lineEnding"), packet.lineEnding);
+        object.insert(QStringLiteral("enabled"), packet.enabled);
+        array.append(object);
+    }
+
+    QSettings settings;
+    settings.setValue(QStringLiteral("send/packets"),
                       QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact)));
 }
 
@@ -1452,6 +2105,180 @@ void WorkbenchPage::closeReceiveCapture()
     }
 }
 
+void WorkbenchPage::browseSendFile()
+{
+    QSettings settings;
+    const QString initialPath = m_filePathEdit && !m_filePathEdit->text().isEmpty()
+                                    ? QFileInfo(m_filePathEdit->text()).absolutePath()
+                                    : settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
+    const QString path = QFileDialog::getOpenFileName(window(), QStringLiteral("选择发送文件"), initialPath);
+    if(path.isEmpty()) {
+        return;
+    }
+
+    const QFileInfo info(path);
+    settings.setValue(QStringLiteral("fileSend/path"), path);
+    settings.setValue(QStringLiteral("export/folder"), info.absolutePath());
+    m_filePathEdit->setText(path);
+    m_fileStatusLabel->setText(QStringLiteral("%1 · %2").arg(info.fileName(), formatBytes(info.size())));
+    updateFileProgress();
+}
+
+void WorkbenchPage::startFileSend()
+{
+    if(!m_serial.isOpen()) {
+        showWarning(QStringLiteral("无法发送文件"), QStringLiteral("请先连接串口"));
+        return;
+    }
+    if(m_fileSendFile.isOpen()) {
+        return;
+    }
+
+    const QString path = m_filePathEdit->text().trimmed();
+    if(path.isEmpty()) {
+        showWarning(QStringLiteral("未选择文件"), QStringLiteral("请先选择待发送文件"));
+        return;
+    }
+
+    QFileInfo info(path);
+    if(!info.exists() || !info.isFile()) {
+        showError(QStringLiteral("文件不可用"), QStringLiteral("无法读取：%1").arg(path));
+        return;
+    }
+    if(info.size() <= 0) {
+        showWarning(QStringLiteral("文件为空"), QStringLiteral("请选择包含数据的文件"));
+        return;
+    }
+
+    m_fileSendFile.setFileName(path);
+    if(!m_fileSendFile.open(QIODevice::ReadOnly)) {
+        showError(QStringLiteral("打开文件失败"), m_fileSendFile.errorString());
+        return;
+    }
+
+    QSettings settings;
+    settings.setValue(QStringLiteral("fileSend/path"), path);
+    settings.setValue(QStringLiteral("fileSend/chunkSize"), m_fileChunkSizeSpin->value());
+    settings.setValue(QStringLiteral("fileSend/intervalMs"), m_fileIntervalSpin->value());
+
+    m_fileSendTotal = m_fileSendFile.size();
+    m_fileSendSent = 0;
+    updateFileSendUi(true);
+    updateFileProgress();
+    sendNextFileChunk();
+}
+
+void WorkbenchPage::cancelFileSend()
+{
+    if(!m_fileSendFile.isOpen()) {
+        return;
+    }
+    m_fileSendTimer.stop();
+    m_fileSendFile.close();
+    updateFileSendUi(false);
+    updateFileProgress();
+    showInfo(QStringLiteral("文件发送已取消"), QStringLiteral("已停止发送当前文件"));
+}
+
+void WorkbenchPage::sendNextFileChunk()
+{
+    if(!m_fileSendFile.isOpen()) {
+        return;
+    }
+    if(!m_serial.isOpen()) {
+        cancelFileSend();
+        showWarning(QStringLiteral("文件发送中止"), QStringLiteral("串口已断开"));
+        return;
+    }
+
+    if(m_fileSendFile.atEnd()) {
+        const QString name = QFileInfo(m_fileSendFile.fileName()).fileName();
+        m_fileSendFile.close();
+        updateFileSendUi(false);
+        updateFileProgress();
+        showSuccess(QStringLiteral("文件发送完成"), name);
+        return;
+    }
+
+    const int chunkSize = qBound(1, m_fileChunkSizeSpin->value(), 65536);
+    const QByteArray data = m_fileSendFile.read(chunkSize);
+    if(data.isEmpty()) {
+        const QString error = m_fileSendFile.errorString();
+        m_fileSendFile.close();
+        updateFileSendUi(false);
+        updateFileProgress();
+        showError(QStringLiteral("读取文件失败"), error);
+        return;
+    }
+
+    QString error;
+    if(!m_serial.writeData(data, &error)) {
+        m_fileSendFile.close();
+        updateFileSendUi(false);
+        updateFileProgress();
+        showError(QStringLiteral("文件发送失败"), error);
+        return;
+    }
+
+    m_fileSendSent += data.size();
+    appendRecord(RecordDirection::Tx, data);
+    updateFileProgress();
+
+    if(m_fileSendFile.atEnd()) {
+        sendNextFileChunk();
+        return;
+    }
+    m_fileSendTimer.start(qBound(0, m_fileIntervalSpin->value(), 60000));
+}
+
+void WorkbenchPage::updateFileSendUi(bool sending)
+{
+    if(m_fileBrowseButton) {
+        m_fileBrowseButton->setEnabled(!sending);
+    }
+    if(m_filePathEdit) {
+        m_filePathEdit->setEnabled(!sending);
+    }
+    if(m_fileChunkSizeSpin) {
+        m_fileChunkSizeSpin->setEnabled(!sending);
+    }
+    if(m_fileIntervalSpin) {
+        m_fileIntervalSpin->setEnabled(!sending);
+    }
+    if(m_fileSendButton) {
+        m_fileSendButton->setEnabled(!sending && m_serial.isOpen());
+    }
+    if(m_fileCancelButton) {
+        m_fileCancelButton->setEnabled(sending);
+    }
+}
+
+void WorkbenchPage::updateFileProgress()
+{
+    const int percent = m_fileSendTotal > 0 ? static_cast<int>((m_fileSendSent * 100) / m_fileSendTotal) : 0;
+    if(m_fileProgressBar) {
+        m_fileProgressBar->setValue(qBound(0, percent, 100));
+    }
+    if(!m_fileStatusLabel) {
+        return;
+    }
+
+    if(m_fileSendFile.isOpen()) {
+        m_fileStatusLabel->setText(QStringLiteral("发送中：%1 / %2")
+                                       .arg(formatBytes(m_fileSendSent), formatBytes(m_fileSendTotal)));
+        return;
+    }
+
+    const QString path = m_filePathEdit ? m_filePathEdit->text().trimmed() : QString();
+    if(path.isEmpty()) {
+        m_fileStatusLabel->setText(QStringLiteral("未选择文件"));
+        return;
+    }
+    const QFileInfo info(path);
+    m_fileStatusLabel->setText(info.exists() ? QStringLiteral("%1 · %2").arg(info.fileName(), formatBytes(info.size()))
+                                             : QStringLiteral("文件不存在：%1").arg(path));
+}
+
 void WorkbenchPage::scheduleReconnect()
 {
     if(m_lastConfig.portName.isEmpty() || m_manualDisconnect || !m_autoReconnectCheck->isChecked()) {
@@ -1526,6 +2353,15 @@ void WorkbenchPage::setControlsEnabledForConnection(bool connected)
     m_sendEdit->setEnabled(connected);
     m_loopCheck->setEnabled(connected);
     m_loopIntervalSpin->setEnabled(connected && m_loopCheck->isChecked());
+    if(m_packetSendButton) {
+        m_packetSendButton->setEnabled(connected && !m_sendPackets.isEmpty());
+    }
+    if(m_fileSendButton) {
+        m_fileSendButton->setEnabled(connected && !m_fileSendFile.isOpen());
+    }
+    if(m_fileCancelButton) {
+        m_fileCancelButton->setEnabled(m_fileSendFile.isOpen());
+    }
     m_rtsCheck->setEnabled(connected);
     m_dtrCheck->setEnabled(connected);
 
