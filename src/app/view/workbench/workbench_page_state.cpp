@@ -114,6 +114,12 @@ void WorkbenchPage::restoreSettings()
         settings.value(QStringLiteral("send/currentPacketMode"), QStringLiteral("text")).toString();
     const QString packetLineEnding =
         settings.value(QStringLiteral("send/currentPacketLineEnding"), QStringLiteral("none")).toString();
+    const QString modbusFunction =
+        settings.value(QStringLiteral("modbus/function"), AppModbus::defaultFunctionKey()).toString();
+    const int modbusSlave = settings.value(QStringLiteral("modbus/slave"), 1).toInt();
+    const int modbusAddress = settings.value(QStringLiteral("modbus/address"), 0).toInt();
+    const int modbusQuantity = settings.value(QStringLiteral("modbus/quantity"), 1).toInt();
+    const QString modbusValues = settings.value(QStringLiteral("modbus/values")).toString();
     const QString filePath = settings.value(QStringLiteral("fileSend/path")).toString();
     const int fileChunkSize = settings.value(QStringLiteral("fileSend/chunkSize"), DefaultFileChunkSize).toInt();
     const int fileInterval = settings.value(QStringLiteral("fileSend/intervalMs"), DefaultFileChunkIntervalMs).toInt();
@@ -185,6 +191,15 @@ void WorkbenchPage::restoreSettings()
     if (packetEolIndex >= 0) {
         m_packetLineEndingCombo->setCurrentIndex(packetEolIndex);
     }
+    const int modbusFunctionIndex = m_modbusFunctionCombo->findData(AppModbus::normalizedFunctionKey(modbusFunction));
+    if (modbusFunctionIndex >= 0) {
+        m_modbusFunctionCombo->setCurrentIndex(modbusFunctionIndex);
+    }
+    m_modbusSlaveSpin->setValue(qBound(1, modbusSlave, 247));
+    m_modbusAddressSpin->setValue(qBound(0, modbusAddress, 65535));
+    m_modbusQuantitySpin->setValue(qBound(1, modbusQuantity, 2000));
+    m_modbusValuesEdit->setPlainText(modbusValues);
+    updateModbusUi();
     m_filePathEdit->setText(filePath);
     m_fileChunkSizeSpin->setValue(qBound(1, fileChunkSize, 65536));
     m_fileIntervalSpin->setValue(qBound(0, fileInterval, 60000));
@@ -236,6 +251,11 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("send/currentPacketMode"), m_packetModeCombo->currentData().toString());
     settings.setValue(QStringLiteral("send/currentPacketLineEnding"),
                       m_packetLineEndingCombo->currentData().toString());
+    settings.setValue(QStringLiteral("modbus/function"), m_modbusFunctionCombo->currentData().toString());
+    settings.setValue(QStringLiteral("modbus/slave"), m_modbusSlaveSpin->value());
+    settings.setValue(QStringLiteral("modbus/address"), m_modbusAddressSpin->value());
+    settings.setValue(QStringLiteral("modbus/quantity"), m_modbusQuantitySpin->value());
+    settings.setValue(QStringLiteral("modbus/values"), m_modbusValuesEdit->toPlainText());
     settings.setValue(QStringLiteral("serial/autoReconnect"), m_autoReconnectCheck->isChecked());
     settings.setValue(QStringLiteral("fileSend/path"), m_filePathEdit->text());
     settings.setValue(QStringLiteral("fileSend/chunkSize"), m_fileChunkSizeSpin->value());

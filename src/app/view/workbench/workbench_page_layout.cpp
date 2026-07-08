@@ -24,6 +24,7 @@ QWidget *WorkbenchPage::createWorkbench()
     sideLayout->addWidget(createConnectionSection());
     sideLayout->addWidget(createReceiveSettingsSection());
     sideLayout->addWidget(createSendSettingsSection());
+    sideLayout->addWidget(createModbusSection());
     sideLayout->addWidget(createPacketSection());
     sideLayout->addWidget(createFileSendSection());
     sideLayout->addStretch(1);

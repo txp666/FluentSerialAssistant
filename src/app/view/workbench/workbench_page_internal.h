@@ -5,6 +5,7 @@
 #include "app/core/checksum_utils.h"
 #include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
+#include "app/core/modbus_utils.h"
 #include "app/core/text_encoding.h"
 
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
@@ -354,6 +355,13 @@ inline void addChecksumByteOrderOptions(ComboBox *combo)
                    AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian));
     combo->addItem(AppChecksum::byteOrderLabel(AppChecksum::ByteOrder::BigEndian), QIcon(),
                    AppChecksum::byteOrderKey(AppChecksum::ByteOrder::BigEndian));
+}
+
+inline void addModbusFunctionOptions(ComboBox *combo)
+{
+    for (const AppModbus::FunctionOption &option : AppModbus::functionOptions()) {
+        combo->addItem(option.label, QIcon(), option.key);
+    }
 }
 
 inline QString qssString(QString value)

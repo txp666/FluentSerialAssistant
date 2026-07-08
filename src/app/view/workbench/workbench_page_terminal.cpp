@@ -381,6 +381,9 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     record.displayText = AppTextEncoding::toSingleLineText(decoded);
     m_records.append(record);
     m_pendingRecordIndexes.append(m_records.size() - 1);
+    if (direction == RecordDirection::Rx) {
+        updateModbusResponseStatus(data);
+    }
 
     if (direction == RecordDirection::Rx && updateStats) {
         m_lastRxTimestamp = now;

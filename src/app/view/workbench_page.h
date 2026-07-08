@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/core/checksum_utils.h"
+#include "app/core/modbus_utils.h"
 #include "app/serial/serial_controller.h"
 #include "app/view/app_page.h"
 
@@ -35,6 +36,7 @@ class WorkbenchPage : public AppPage
     QWidget *createConnectionSection();
     QWidget *createReceiveSettingsSection();
     QWidget *createSendSettingsSection();
+    QWidget *createModbusSection();
     QWidget *createPacketSection();
     QWidget *createFileSendSection();
     QWidget *createTerminalSection();
@@ -125,6 +127,13 @@ class WorkbenchPage : public AppPage
     QByteArray payloadWithOptionalChecksum(const QByteArray &payload, bool *ok = nullptr);
     void calculateChecksumForCurrentPayload();
     void setChecksumResultText(const QString &text);
+    AppModbus::RequestConfig currentModbusConfig() const;
+    QByteArray currentModbusFrame(bool *ok = nullptr);
+    void fillModbusRequest();
+    void sendModbusRequest();
+    void updateModbusUi();
+    void updateModbusResponseStatus(const QByteArray &data);
+    void setModbusStatusText(const QString &text);
     bool recordMatchesTerminalFilter(const SessionRecord &record) const;
     void handleReceivedData(const QByteArray &data);
     void recordReceivedBytes(const QByteArray &data);
@@ -199,9 +208,11 @@ class WorkbenchPage : public AppPage
     FluentQt::ComboBox *m_sendEncodingCombo = nullptr;
     FluentQt::ComboBox *m_checksumAlgorithmCombo = nullptr;
     FluentQt::ComboBox *m_checksumByteOrderCombo = nullptr;
+    FluentQt::ComboBox *m_modbusFunctionCombo = nullptr;
     FluentQt::ComboBox *m_historyCombo = nullptr;
     FluentQt::LineEdit *m_packetNameEdit = nullptr;
     FluentQt::LineEdit *m_framePatternEdit = nullptr;
+    FluentQt::PlainTextEdit *m_modbusValuesEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
     FluentQt::ComboBox *m_packetModeCombo = nullptr;
     FluentQt::ComboBox *m_packetLineEndingCombo = nullptr;
@@ -224,6 +235,8 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_packetLoadButton = nullptr;
     FluentQt::PushButton *m_packetDeleteButton = nullptr;
     FluentQt::PushButton *m_checksumCalcButton = nullptr;
+    FluentQt::PushButton *m_modbusFillButton = nullptr;
+    FluentQt::PushButton *m_modbusSendButton = nullptr;
     FluentQt::PushButton *m_fileBrowseButton = nullptr;
     FluentQt::PushButton *m_fileCancelButton = nullptr;
     FluentQt::CheckBox *m_saveReceiveCheck = nullptr;
@@ -241,6 +254,9 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_dtrCheck = nullptr;
     FluentQt::SpinBox *m_frameBreakIntervalSpin = nullptr;
     FluentQt::SpinBox *m_frameFixedLengthSpin = nullptr;
+    FluentQt::SpinBox *m_modbusSlaveSpin = nullptr;
+    FluentQt::SpinBox *m_modbusAddressSpin = nullptr;
+    FluentQt::SpinBox *m_modbusQuantitySpin = nullptr;
     FluentQt::SpinBox *m_loopIntervalSpin = nullptr;
     FluentQt::SpinBox *m_fileChunkSizeSpin = nullptr;
     FluentQt::SpinBox *m_fileIntervalSpin = nullptr;
@@ -249,6 +265,7 @@ class WorkbenchPage : public AppPage
     FluentQt::ProgressBar *m_fileProgressBar = nullptr;
     FluentQt::CaptionLabel *m_receiveCaptureLabel = nullptr;
     FluentQt::CaptionLabel *m_checksumResultLabel = nullptr;
+    FluentQt::CaptionLabel *m_modbusStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_terminalSummaryLabel = nullptr;
     FluentQt::CaptionLabel *m_connectionTimeLabel = nullptr;
     FluentQt::CaptionLabel *m_fileStatusLabel = nullptr;

@@ -63,6 +63,8 @@ add_executable(FluentSerialAssistant
     src/app/core/checksum_utils.h
     src/app/core/hex_utils.cpp
     src/app/core/hex_utils.h
+    src/app/core/modbus_utils.cpp
+    src/app/core/modbus_utils.h
     src/app/core/text_encoding.cpp
     src/app/core/text_encoding.h
     src/app/core/update_checker.cpp
@@ -82,6 +84,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench/workbench_page_files.cpp
     src/app/view/workbench/workbench_page_internal.h
     src/app/view/workbench/workbench_page_layout.cpp
+    src/app/view/workbench/workbench_page_modbus.cpp
     src/app/view/workbench/workbench_page_packets.cpp
     src/app/view/workbench/workbench_page_side_sections.cpp
     src/app/view/workbench/workbench_page_state.cpp
