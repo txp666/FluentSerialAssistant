@@ -132,6 +132,68 @@ QString WorkbenchPage::terminalDirectionFilter() const
     return m_terminalFilterCombo ? m_terminalFilterCombo->currentData().toString() : QStringLiteral("all");
 }
 
+bool WorkbenchPage::terminalSearchCaseSensitive() const
+{
+    return m_terminalSearchCaseCheck && m_terminalSearchCaseCheck->isChecked();
+}
+
+bool WorkbenchPage::terminalSearchRegexEnabled() const
+{
+    return m_terminalSearchRegexCheck && m_terminalSearchRegexCheck->isChecked();
+}
+
+WorkbenchPage::TerminalSearchQuery WorkbenchPage::terminalSearchQuery() const
+{
+    TerminalSearchQuery query;
+    query.text = terminalSearchText();
+    query.caseSensitivity = terminalSearchCaseSensitive() ? Qt::CaseSensitive : Qt::CaseInsensitive;
+    query.regexEnabled = terminalSearchRegexEnabled();
+    if (query.text.isEmpty() || !query.regexEnabled) {
+        return query;
+    }
+
+    QRegularExpression::PatternOptions options = QRegularExpression::NoPatternOption;
+    if (query.caseSensitivity == Qt::CaseInsensitive) {
+        options |= QRegularExpression::CaseInsensitiveOption;
+    }
+    query.regex = QRegularExpression(query.text, options);
+    query.valid = query.regex.isValid();
+    if (!query.valid) {
+        query.errorMessage = query.regex.errorString();
+    }
+    return query;
+}
+
+QList<WorkbenchPage::SearchMatchRange> WorkbenchPage::terminalSearchRanges(const QString &text,
+                                                                           const TerminalSearchQuery &query) const
+{
+    QList<SearchMatchRange> ranges;
+    if (query.text.isEmpty() || !query.valid || text.isEmpty()) {
+        return ranges;
+    }
+
+    if (query.regexEnabled) {
+        QRegularExpressionMatchIterator iterator = query.regex.globalMatch(text);
+        while (iterator.hasNext()) {
+            const QRegularExpressionMatch match = iterator.next();
+            const int start = match.capturedStart();
+            const int length = match.capturedLength();
+            if (start >= 0 && length > 0) {
+                ranges.append({start, length});
+            }
+        }
+        return ranges;
+    }
+
+    int index = 0;
+    const int queryLength = static_cast<int>(query.text.size());
+    while ((index = text.indexOf(query.text, index, query.caseSensitivity)) >= 0) {
+        ranges.append({index, queryLength});
+        index += qMax(1, queryLength);
+    }
+    return ranges;
+}
+
 QString WorkbenchPage::directionText(RecordDirection direction) const
 {
     if (direction == RecordDirection::Rx) {
@@ -205,7 +267,7 @@ QColor WorkbenchPage::selectedTxColor() const
 bool WorkbenchPage::recordMatchesTerminalFilter(const SessionRecord &record) const
 {
     if (record.direction == RecordDirection::FrameBreak) {
-        return terminalSearchText().isEmpty() && terminalDirectionFilter() == QStringLiteral("all");
+        return terminalDirectionFilter() == QStringLiteral("all");
     }
 
     const QString directionFilter = terminalDirectionFilter();
@@ -216,15 +278,7 @@ bool WorkbenchPage::recordMatchesTerminalFilter(const SessionRecord &record) con
         return false;
     }
 
-    const QString searchText = terminalSearchText();
-    if (searchText.isEmpty()) {
-        return true;
-    }
-
-    const QString line = formatRecordLine(record);
-    return line.contains(searchText, Qt::CaseInsensitive) ||
-           bytesToHex(record.bytes).contains(searchText, Qt::CaseInsensitive) ||
-           record.displayText.contains(searchText, Qt::CaseInsensitive);
+    return true;
 }
 
 void WorkbenchPage::handleReceivedData(const QByteArray &data)
@@ -430,6 +484,9 @@ void WorkbenchPage::renderTerminal()
         return;
     }
 
+    const TerminalSearchQuery query = terminalSearchQuery();
+    const int previousSearchMatch = m_terminalCurrentSearchMatch;
+    m_terminalSearchMatches.clear();
     m_terminalView->document()->setMaximumBlockCount(maxRecordCount());
     m_terminalView->clear();
 
@@ -443,13 +500,21 @@ void WorkbenchPage::renderTerminal()
         if (m_records.at(i).direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
             continue;
         }
-        if (appendRecordToTerminal(cursor, m_records.at(i), hasOutput)) {
+        if (appendRecordToTerminal(cursor, m_records.at(i), hasOutput, query)) {
             hasOutput = true;
         }
     }
     cursor.endEditBlock();
 
     m_pendingRecordIndexes.clear();
+    if (!query.text.isEmpty() && query.valid && !m_terminalSearchMatches.isEmpty()) {
+        m_terminalCurrentSearchMatch =
+            previousSearchMatch >= 0 ? qBound(0, previousSearchMatch, m_terminalSearchMatches.size() - 1) : 0;
+        selectTerminalSearchMatch();
+        return;
+    }
+
+    m_terminalCurrentSearchMatch = -1;
     if (!m_autoScrollCheck || m_autoScrollCheck->isChecked()) {
         cursor.movePosition(QTextCursor::End);
         m_terminalView->setTextCursor(cursor);
@@ -457,7 +522,38 @@ void WorkbenchPage::renderTerminal()
     updateCounters();
 }
 
-bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious)
+void WorkbenchPage::insertTextWithSearchHighlights(QTextCursor &cursor, const QString &line, int start, int length,
+                                                   const QTextCharFormat &format, const QList<SearchMatchRange> &ranges)
+{
+    if (length <= 0) {
+        return;
+    }
+
+    const int end = start + length;
+    int position = start;
+    for (const SearchMatchRange &range : ranges) {
+        const int rangeStart = qMax(start, range.start);
+        const int rangeEnd = qMin(end, range.start + range.length);
+        if (rangeEnd <= position || rangeEnd <= rangeStart) {
+            continue;
+        }
+        if (position < rangeStart) {
+            cursor.insertText(line.mid(position, rangeStart - position), format);
+        }
+
+        QTextCharFormat highlightFormat = format;
+        highlightFormat.setBackground(QColor(255, 214, 10, 96));
+        cursor.insertText(line.mid(rangeStart, rangeEnd - rangeStart), highlightFormat);
+        position = rangeEnd;
+    }
+
+    if (position < end) {
+        cursor.insertText(line.mid(position, end - position), format);
+    }
+}
+
+bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious,
+                                           const TerminalSearchQuery &query)
 {
     if (record.direction == RecordDirection::FrameBreak) {
         if (hasPrevious) {
@@ -476,9 +572,10 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
         format.setForeground(selectedTxColor());
     }
     const QString line = formatRecordLine(record);
-    const QString searchText = terminalSearchText();
-    if (!searchText.isEmpty() && line.contains(searchText, Qt::CaseInsensitive)) {
-        format.setBackground(QColor(255, 214, 10, 72));
+    const int lineDocumentStart = cursor.position();
+    const QList<SearchMatchRange> searchRanges = terminalSearchRanges(line, query);
+    for (const SearchMatchRange &range : searchRanges) {
+        m_terminalSearchMatches.append({lineDocumentStart + range.start, range.length});
     }
 
     const bool showTimestamp = m_timestampCheck && m_timestampCheck->isChecked();
@@ -488,7 +585,7 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
     if (showTimestamp && line.startsWith(timestamp)) {
         QTextCharFormat timestampFormat = format;
         timestampFormat.setForeground(terminalTimestampColor());
-        cursor.insertText(timestamp, timestampFormat);
+        insertTextWithSearchHighlights(cursor, line, 0, timestamp.size(), timestampFormat, searchRanges);
         position = timestamp.size();
     }
 
@@ -496,8 +593,8 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
     if (markerIndex >= position) {
         QTextCharFormat markerFormat = format;
         markerFormat.setForeground(terminalDirectionMarkerColor(record.direction == RecordDirection::Tx));
-        cursor.insertText(line.mid(position, markerIndex - position), format);
-        cursor.insertText(marker, markerFormat);
+        insertTextWithSearchHighlights(cursor, line, position, markerIndex - position, format, searchRanges);
+        insertTextWithSearchHighlights(cursor, line, markerIndex, marker.size(), markerFormat, searchRanges);
 
         const int afterMarker = markerIndex + marker.size();
         int prefixStart = afterMarker;
@@ -509,22 +606,64 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
         if (prefixEnd > prefixStart) {
             QTextCharFormat levelFormat = format;
             levelFormat.setForeground(terminalEspIdfLogLevelColor(line.at(prefixStart)));
-            cursor.insertText(line.mid(afterMarker, prefixStart - afterMarker), format);
-            cursor.insertText(line.mid(prefixStart, prefixEnd - prefixStart), levelFormat);
-            cursor.insertText(line.mid(prefixEnd), format);
+            insertTextWithSearchHighlights(cursor, line, afterMarker, prefixStart - afterMarker, format, searchRanges);
+            insertTextWithSearchHighlights(cursor, line, prefixStart, prefixEnd - prefixStart, levelFormat,
+                                           searchRanges);
+            insertTextWithSearchHighlights(cursor, line, prefixEnd, line.size() - prefixEnd, format, searchRanges);
         } else {
-            cursor.insertText(line.mid(afterMarker), format);
+            insertTextWithSearchHighlights(cursor, line, afterMarker, line.size() - afterMarker, format, searchRanges);
         }
         return true;
     }
 
     if (position > 0) {
-        cursor.insertText(line.mid(position), format);
+        insertTextWithSearchHighlights(cursor, line, position, line.size() - position, format, searchRanges);
         return true;
     }
 
-    cursor.insertText(line, format);
+    insertTextWithSearchHighlights(cursor, line, 0, line.size(), format, searchRanges);
     return true;
+}
+
+void WorkbenchPage::resetTerminalSearchNavigation() { m_terminalCurrentSearchMatch = -1; }
+
+void WorkbenchPage::moveTerminalSearchMatch(int direction)
+{
+    if (terminalSearchText().isEmpty()) {
+        return;
+    }
+    if (m_terminalSearchMatches.isEmpty()) {
+        renderTerminal();
+    }
+    if (m_terminalSearchMatches.isEmpty()) {
+        return;
+    }
+
+    if (m_terminalCurrentSearchMatch < 0) {
+        m_terminalCurrentSearchMatch = direction < 0 ? m_terminalSearchMatches.size() - 1 : 0;
+    } else {
+        m_terminalCurrentSearchMatch = (m_terminalCurrentSearchMatch + direction + m_terminalSearchMatches.size()) %
+                                       m_terminalSearchMatches.size();
+    }
+    selectTerminalSearchMatch();
+}
+
+void WorkbenchPage::selectTerminalSearchMatch()
+{
+    if (!m_terminalView || m_terminalSearchMatches.isEmpty()) {
+        m_terminalCurrentSearchMatch = -1;
+        updateCounters();
+        return;
+    }
+
+    m_terminalCurrentSearchMatch = qBound(0, m_terminalCurrentSearchMatch, m_terminalSearchMatches.size() - 1);
+    const TerminalSearchMatch match = m_terminalSearchMatches.at(m_terminalCurrentSearchMatch);
+    QTextCursor cursor(m_terminalView->document());
+    cursor.setPosition(match.position);
+    cursor.setPosition(match.position + match.length, QTextCursor::KeepAnchor);
+    m_terminalView->setTextCursor(cursor);
+    m_terminalView->ensureCursorVisible();
+    updateCounters();
 }
 
 void WorkbenchPage::flushPendingLines()
@@ -532,7 +671,12 @@ void WorkbenchPage::flushPendingLines()
     if (m_pauseCheck->isChecked() || m_pendingRecordIndexes.isEmpty()) {
         return;
     }
+    if (!terminalSearchText().isEmpty()) {
+        renderTerminal();
+        return;
+    }
 
+    const TerminalSearchQuery query = terminalSearchQuery();
     QTextCursor cursor = m_terminalView->textCursor();
     cursor.movePosition(QTextCursor::End);
     cursor.beginEditBlock();
@@ -546,7 +690,7 @@ void WorkbenchPage::flushPendingLines()
             if (m_records.at(index).direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
                 continue;
             }
-            if (appendRecordToTerminal(cursor, m_records.at(index), hasOutput)) {
+            if (appendRecordToTerminal(cursor, m_records.at(index), hasOutput, query)) {
                 hasOutput = true;
                 wrote = true;
             }

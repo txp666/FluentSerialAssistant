@@ -39,6 +39,23 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_terminalSearchEdit->setClearButtonEnabled(true);
     m_terminalSearchEdit->setFixedHeight(CompactControlHeight);
     m_terminalSearchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_terminalSearchPrevButton = new TransparentToolButton(icon(FluentIcon::Up), section);
+    m_terminalSearchPrevButton->setToolTip(QStringLiteral("上一个匹配"));
+    m_terminalSearchNextButton = new TransparentToolButton(icon(FluentIcon::Down), section);
+    m_terminalSearchNextButton->setToolTip(QStringLiteral("下一个匹配"));
+    for (ToolButton *button : {m_terminalSearchPrevButton, m_terminalSearchNextButton}) {
+        button->setEnabled(false);
+        button->setFixedSize(CompactControlHeight, CompactControlHeight);
+        button->setIconSize(QSize(16, 16));
+    }
+    m_terminalSearchCaseCheck = new CheckBox(QStringLiteral("Aa"), section);
+    m_terminalSearchCaseCheck->setToolTip(QStringLiteral("大小写敏感"));
+    m_terminalSearchCaseCheck->setFixedHeight(CompactControlHeight);
+    setFixedControlWidth(m_terminalSearchCaseCheck, 54);
+    m_terminalSearchRegexCheck = new CheckBox(QStringLiteral(".*"), section);
+    m_terminalSearchRegexCheck->setToolTip(QStringLiteral("正则搜索"));
+    m_terminalSearchRegexCheck->setFixedHeight(CompactControlHeight);
+    setFixedControlWidth(m_terminalSearchRegexCheck, 54);
     m_terminalFilterCombo = new ComboBox(section);
     m_terminalFilterCombo->addItem(QStringLiteral("全部"), QIcon(), QStringLiteral("all"));
     m_terminalFilterCombo->addItem(QStringLiteral("仅接收"), QIcon(), QStringLiteral("rx"));
@@ -49,8 +66,12 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_terminalSummaryLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_terminalSummaryLabel->setFixedHeight(CompactControlHeight);
     m_terminalSummaryLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    setFixedControlWidth(m_terminalSummaryLabel, 96);
+    setFixedControlWidth(m_terminalSummaryLabel, 148);
     toolsRow->addWidget(m_terminalSearchEdit, 1);
+    toolsRow->addWidget(m_terminalSearchPrevButton);
+    toolsRow->addWidget(m_terminalSearchNextButton);
+    toolsRow->addWidget(m_terminalSearchCaseCheck);
+    toolsRow->addWidget(m_terminalSearchRegexCheck);
     toolsRow->addWidget(m_terminalFilterCombo);
     toolsRow->addWidget(m_terminalSummaryLabel);
     root->addLayout(toolsRow);
@@ -74,9 +95,26 @@ QWidget *WorkbenchPage::createTerminalSection()
         ThemeManager::instance()->setTheme(next);
     });
     connect(settingsButton, &TransparentToolButton::clicked, this, &WorkbenchPage::settingsRequested);
-    connect(m_terminalSearchEdit, &SearchLineEdit::textChanged, this, [this]() { renderTerminal(); });
-    connect(m_terminalSearchEdit, &SearchLineEdit::searchSignal, this, [this](const QString &) { renderTerminal(); });
-    connect(m_terminalSearchEdit, &SearchLineEdit::clearSignal, this, [this]() { renderTerminal(); });
+    connect(m_terminalSearchEdit, &SearchLineEdit::textChanged, this, [this]() {
+        resetTerminalSearchNavigation();
+        renderTerminal();
+    });
+    connect(m_terminalSearchEdit, &SearchLineEdit::searchSignal, this,
+            [this](const QString &) { moveTerminalSearchMatch(1); });
+    connect(m_terminalSearchEdit, &SearchLineEdit::clearSignal, this, [this]() {
+        resetTerminalSearchNavigation();
+        renderTerminal();
+    });
+    connect(m_terminalSearchPrevButton, &ToolButton::clicked, this, [this]() { moveTerminalSearchMatch(-1); });
+    connect(m_terminalSearchNextButton, &ToolButton::clicked, this, [this]() { moveTerminalSearchMatch(1); });
+    connect(m_terminalSearchCaseCheck, &CheckBox::toggled, this, [this](bool) {
+        resetTerminalSearchNavigation();
+        renderTerminal();
+    });
+    connect(m_terminalSearchRegexCheck, &CheckBox::toggled, this, [this](bool) {
+        resetTerminalSearchNavigation();
+        renderTerminal();
+    });
     connect(m_terminalFilterCombo, &ComboBox::currentIndexChanged, this, [this](int) { renderTerminal(); });
 
     return section;

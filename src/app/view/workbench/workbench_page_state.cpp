@@ -303,7 +303,31 @@ void WorkbenchPage::updateCounters()
                 ++visibleRecords;
             }
         }
-        m_terminalSummaryLabel->setText(QStringLiteral("显示 %1 条").arg(visibleRecords));
+
+        const TerminalSearchQuery query = terminalSearchQuery();
+        const bool canNavigate = !query.text.isEmpty() && query.valid && !m_terminalSearchMatches.isEmpty();
+        if (m_terminalSearchPrevButton) {
+            m_terminalSearchPrevButton->setEnabled(canNavigate);
+        }
+        if (m_terminalSearchNextButton) {
+            m_terminalSearchNextButton->setEnabled(canNavigate);
+        }
+
+        if (query.text.isEmpty()) {
+            m_terminalSummaryLabel->setText(QStringLiteral("显示 %1 条").arg(visibleRecords));
+            m_terminalSummaryLabel->setToolTip(QString());
+        } else if (!query.valid) {
+            m_terminalSummaryLabel->setText(QStringLiteral("正则无效"));
+            m_terminalSummaryLabel->setToolTip(query.errorMessage);
+        } else if (m_terminalSearchMatches.isEmpty()) {
+            m_terminalSummaryLabel->setText(QStringLiteral("匹配 0 · %1 条").arg(visibleRecords));
+            m_terminalSummaryLabel->setToolTip(QString());
+        } else {
+            const int current = qBound(0, m_terminalCurrentSearchMatch, m_terminalSearchMatches.size() - 1) + 1;
+            m_terminalSummaryLabel->setText(
+                QStringLiteral("匹配 %1/%2").arg(current).arg(m_terminalSearchMatches.size()));
+            m_terminalSummaryLabel->setToolTip(QStringLiteral("显示 %1 条").arg(visibleRecords));
+        }
     }
 }
 

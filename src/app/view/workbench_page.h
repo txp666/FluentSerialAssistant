@@ -7,10 +7,12 @@
 
 #include <QtCore/QDateTime>
 #include <QtCore/QFile>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QTimer>
 #include <QtGui/QColor>
 
 class QEvent;
+class QTextCharFormat;
 class QTextCursor;
 
 class WorkbenchPage : public AppPage
@@ -82,6 +84,28 @@ class WorkbenchPage : public AppPage
         bool enabled = true;
     };
 
+    struct SearchMatchRange
+    {
+        int start = 0;
+        int length = 0;
+    };
+
+    struct TerminalSearchQuery
+    {
+        QString text;
+        Qt::CaseSensitivity caseSensitivity = Qt::CaseInsensitive;
+        bool regexEnabled = false;
+        bool valid = true;
+        QString errorMessage;
+        QRegularExpression regex;
+    };
+
+    struct TerminalSearchMatch
+    {
+        int position = 0;
+        int length = 0;
+    };
+
     void setupSerialSignals();
     void refreshPorts();
     void restoreSettings();
@@ -119,6 +143,10 @@ class WorkbenchPage : public AppPage
     AppChecksum::ByteOrder checksumByteOrder() const;
     QString terminalSearchText() const;
     QString terminalDirectionFilter() const;
+    bool terminalSearchCaseSensitive() const;
+    bool terminalSearchRegexEnabled() const;
+    TerminalSearchQuery terminalSearchQuery() const;
+    QList<SearchMatchRange> terminalSearchRanges(const QString &text, const TerminalSearchQuery &query) const;
     QString directionText(RecordDirection direction) const;
     QString historyLabel(const SendHistoryItem &item) const;
     QString exportSuffix(ExportFormat format) const;
@@ -143,7 +171,13 @@ class WorkbenchPage : public AppPage
     void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true);
     void trimRecords();
     void renderTerminal();
-    bool appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious);
+    void insertTextWithSearchHighlights(QTextCursor &cursor, const QString &line, int start, int length,
+                                        const QTextCharFormat &format, const QList<SearchMatchRange> &ranges);
+    bool appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious,
+                                const TerminalSearchQuery &query);
+    void resetTerminalSearchNavigation();
+    void moveTerminalSearchMatch(int direction);
+    void selectTerminalSearchMatch();
     void flushPendingLines();
     void sendCurrentPayload();
     void addSendHistory(const SendHistoryItem &item);
@@ -173,6 +207,7 @@ class WorkbenchPage : public AppPage
     QList<int> m_pendingRecordIndexes;
     QList<SendHistoryItem> m_sendHistory;
     QList<SendPacket> m_sendPackets;
+    QList<TerminalSearchMatch> m_terminalSearchMatches;
     SerialPortConfig m_lastConfig;
     QByteArray m_rxFrameBuffer;
     qint64 m_rxCount = 0;
@@ -182,6 +217,7 @@ class WorkbenchPage : public AppPage
     qint64 m_fileSendTotal = 0;
     qint64 m_fileSendSent = 0;
     int m_terminalStartRecord = 0;
+    int m_terminalCurrentSearchMatch = -1;
     QDateTime m_lastRxTimestamp;
     QDateTime m_connectionStartedAt;
     QTimer m_flushTimer;
@@ -239,6 +275,8 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_modbusSendButton = nullptr;
     FluentQt::PushButton *m_fileBrowseButton = nullptr;
     FluentQt::PushButton *m_fileCancelButton = nullptr;
+    FluentQt::ToolButton *m_terminalSearchPrevButton = nullptr;
+    FluentQt::ToolButton *m_terminalSearchNextButton = nullptr;
     FluentQt::CheckBox *m_saveReceiveCheck = nullptr;
     FluentQt::CheckBox *m_autoScrollCheck = nullptr;
     FluentQt::CheckBox *m_timestampCheck = nullptr;
@@ -249,6 +287,8 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_loopCheck = nullptr;
     FluentQt::CheckBox *m_checksumAppendCheck = nullptr;
     FluentQt::CheckBox *m_autoReconnectCheck = nullptr;
+    FluentQt::CheckBox *m_terminalSearchCaseCheck = nullptr;
+    FluentQt::CheckBox *m_terminalSearchRegexCheck = nullptr;
     FluentQt::CheckBox *m_autoOpenCheck = nullptr;
     FluentQt::CheckBox *m_rtsCheck = nullptr;
     FluentQt::CheckBox *m_dtrCheck = nullptr;
