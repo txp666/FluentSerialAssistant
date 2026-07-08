@@ -287,6 +287,8 @@ void WorkbenchPage::handleReceivedData(const QByteArray &data)
         return;
     }
 
+    handleMacroReceivedData(data);
+
     if (!m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked() ||
         frameBreakModeKey() == QStringLiteral("timeout")) {
         appendRecord(RecordDirection::Rx, data);

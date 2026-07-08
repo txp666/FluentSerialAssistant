@@ -493,6 +493,144 @@ QWidget *WorkbenchPage::createPacketSection()
     return section;
 }
 
+QWidget *WorkbenchPage::createMacroSection()
+{
+    auto *section = new ExpandSettingCard(FluentIcon::Play, QStringLiteral("宏命令"), QString(), this);
+    auto *root = cardBody(section);
+
+    m_macroNameEdit = new LineEdit(section);
+    m_macroNameEdit->setPlaceholderText(QStringLiteral("步骤名称"));
+    makeCompactControl(m_macroNameEdit);
+    addFormRow(root, QStringLiteral("步骤"), m_macroNameEdit);
+
+    auto *modeRow = new QHBoxLayout;
+    modeRow->setSpacing(8);
+    m_macroModeCombo = new ComboBox(section);
+    m_macroModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_macroModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
+    makeCompactControl(m_macroModeCombo);
+    m_macroLineEndingCombo = new ComboBox(section);
+    m_macroLineEndingCombo->addItem(QStringLiteral("None"), QIcon(), QStringLiteral("none"));
+    m_macroLineEndingCombo->addItem(QStringLiteral("CR"), QIcon(), QStringLiteral("cr"));
+    m_macroLineEndingCombo->addItem(QStringLiteral("LF"), QIcon(), QStringLiteral("lf"));
+    m_macroLineEndingCombo->addItem(QStringLiteral("CRLF"), QIcon(), QStringLiteral("crlf"));
+    makeCompactControl(m_macroLineEndingCombo);
+    modeRow->addWidget(m_macroModeCombo);
+    modeRow->addWidget(m_macroLineEndingCombo);
+    root->addLayout(modeRow);
+
+    m_macroPayloadEdit = new PlainTextEdit(section);
+    m_macroPayloadEdit->setPlaceholderText(QStringLiteral("发送内容"));
+    m_macroPayloadEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_macroPayloadEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    m_macroPayloadEdit->setFixedHeight(64);
+    m_macroPayloadEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    root->addWidget(m_macroPayloadEdit);
+
+    m_macroExpectedEdit = new LineEdit(section);
+    m_macroExpectedEdit->setPlaceholderText(QStringLiteral("响应包含，留空不等待"));
+    makeCompactControl(m_macroExpectedEdit);
+    m_macroResponseModeCombo = new ComboBox(section);
+    m_macroResponseModeCombo->addItem(QStringLiteral("文"), QIcon(), QStringLiteral("text"));
+    m_macroResponseModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
+    m_macroResponseModeCombo->setFixedHeight(CompactControlHeight);
+    m_macroResponseModeCombo->setFixedWidth(78);
+    addFormRow(root, QStringLiteral("响应"), m_macroExpectedEdit, m_macroResponseModeCombo);
+
+    m_macroTimeoutSpin = new SpinBox(section);
+    m_macroTimeoutSpin->setRange(1, 600000);
+    m_macroTimeoutSpin->setValue(1000);
+    m_macroTimeoutSpin->setSuffix(QStringLiteral(" ms"));
+    m_macroTimeoutSpin->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("超时"), m_macroTimeoutSpin);
+
+    m_macroDelaySpin = new SpinBox(section);
+    m_macroDelaySpin->setRange(0, 600000);
+    m_macroDelaySpin->setValue(0);
+    m_macroDelaySpin->setSuffix(QStringLiteral(" ms"));
+    m_macroDelaySpin->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("延时"), m_macroDelaySpin);
+
+    m_macroList = new ListWidget(section);
+    m_macroList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_macroList->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_macroList->setMinimumHeight(132);
+    m_macroList->setMaximumHeight(220);
+    m_macroList->setBorderRadius(8);
+    root->addWidget(m_macroList);
+
+    auto *stepRow = new QHBoxLayout;
+    stepRow->setSpacing(8);
+    m_macroUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
+    m_macroUpButton->setToolTip(QStringLiteral("上移"));
+    m_macroDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
+    m_macroDownButton->setToolTip(QStringLiteral("下移"));
+    for (ToolButton *button : {m_macroUpButton, m_macroDownButton}) {
+        button->setFixedSize(CompactControlHeight, CompactControlHeight);
+        button->setIconSize(QSize(16, 16));
+    }
+    m_macroSaveButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("保存"), section);
+    m_macroLoadButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入"), section);
+    m_macroDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
+    setButtonRowControlPolicy(m_macroSaveButton);
+    stepRow->addWidget(m_macroUpButton);
+    stepRow->addWidget(m_macroDownButton);
+    stepRow->addWidget(m_macroSaveButton);
+    root->addLayout(stepRow);
+
+    auto *editRow = new QHBoxLayout;
+    editRow->setSpacing(8);
+    setButtonRowControlPolicy(m_macroLoadButton);
+    setButtonRowControlPolicy(m_macroDeleteButton);
+    editRow->addWidget(m_macroLoadButton);
+    editRow->addWidget(m_macroDeleteButton);
+    root->addLayout(editRow);
+
+    m_macroLoopCountSpin = new SpinBox(section);
+    m_macroLoopCountSpin->setRange(1, 100000);
+    m_macroLoopCountSpin->setValue(1);
+    m_macroLoopCountSpin->setFixedHeight(CompactControlHeight);
+    m_macroAbortOnFailureCheck = new CheckBox(QStringLiteral("失败中止"), section);
+    m_macroAbortOnFailureCheck->setChecked(true);
+    m_macroAbortOnFailureCheck->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("循环"), m_macroLoopCountSpin, m_macroAbortOnFailureCheck);
+
+    auto *actionRow = new QHBoxLayout;
+    actionRow->setSpacing(8);
+    m_macroRunButton = new PrimaryPushButton(icon(FluentIcon::Play), QStringLiteral("运行"), section);
+    m_macroStopButton = new PushButton(icon(FluentIcon::Cancel), QStringLiteral("停止"), section);
+    m_macroExportButton = new PushButton(icon(FluentIcon::SaveAs), QStringLiteral("导出结果"), section);
+    setButtonRowControlPolicy(m_macroRunButton);
+    setButtonRowControlPolicy(m_macroStopButton);
+    setButtonRowControlPolicy(m_macroExportButton);
+    actionRow->addWidget(m_macroRunButton);
+    actionRow->addWidget(m_macroStopButton);
+    actionRow->addWidget(m_macroExportButton);
+    root->addLayout(actionRow);
+
+    m_macroStatusLabel = new CaptionLabel(QStringLiteral("未运行"), section);
+    m_macroStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_macroStatusLabel->setWordWrap(true);
+    root->addWidget(m_macroStatusLabel);
+
+    connect(m_macroList, &ListWidget::currentRowChanged, this, [this](int row) {
+        applyMacroStep(row);
+        updateMacroActionState();
+    });
+    connect(m_macroSaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentMacroStep);
+    connect(m_macroLoadButton, &PushButton::clicked, this, [this]() { applyMacroStep(m_macroList->currentRow()); });
+    connect(m_macroDeleteButton, &PushButton::clicked, this, &WorkbenchPage::removeSelectedMacroStep);
+    connect(m_macroUpButton, &ToolButton::clicked, this, [this]() { moveSelectedMacroStep(-1); });
+    connect(m_macroDownButton, &ToolButton::clicked, this, [this]() { moveSelectedMacroStep(1); });
+    connect(m_macroRunButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::startMacroSequence);
+    connect(m_macroStopButton, &PushButton::clicked, this, [this]() { stopMacroSequence(QStringLiteral("用户停止")); });
+    connect(m_macroExportButton, &PushButton::clicked, this, &WorkbenchPage::exportMacroResults);
+
+    updateMacroTable();
+    makeCollapsibleCard(section, QStringLiteral("macros"));
+    return section;
+}
+
 QWidget *WorkbenchPage::createFileSendSection()
 {
     auto *section = new ExpandSettingCard(FluentIcon::Folder, QStringLiteral("文件发送"), QString(), this);

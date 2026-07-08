@@ -123,6 +123,8 @@ void WorkbenchPage::restoreSettings()
     const int modbusAddress = settings.value(QStringLiteral("modbus/address"), 0).toInt();
     const int modbusQuantity = settings.value(QStringLiteral("modbus/quantity"), 1).toInt();
     const QString modbusValues = settings.value(QStringLiteral("modbus/values")).toString();
+    const int macroLoopCount = settings.value(QStringLiteral("macro/loopCount"), 1).toInt();
+    const bool macroAbortOnFailure = settings.value(QStringLiteral("macro/abortOnFailure"), true).toBool();
     const QString filePath = settings.value(QStringLiteral("fileSend/path")).toString();
     const int fileChunkSize = settings.value(QStringLiteral("fileSend/chunkSize"), DefaultFileChunkSize).toInt();
     const int fileInterval = settings.value(QStringLiteral("fileSend/intervalMs"), DefaultFileChunkIntervalMs).toInt();
@@ -206,6 +208,9 @@ void WorkbenchPage::restoreSettings()
     m_modbusQuantitySpin->setValue(qBound(1, modbusQuantity, 2000));
     m_modbusValuesEdit->setPlainText(modbusValues);
     updateModbusUi();
+    m_macroLoopCountSpin->setValue(qBound(1, macroLoopCount, 100000));
+    m_macroAbortOnFailureCheck->setChecked(macroAbortOnFailure);
+    updateMacroActionState();
     m_filePathEdit->setText(filePath);
     m_fileChunkSizeSpin->setValue(qBound(1, fileChunkSize, 65536));
     m_fileIntervalSpin->setValue(qBound(0, fileInterval, 60000));
@@ -265,12 +270,15 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("modbus/address"), m_modbusAddressSpin->value());
     settings.setValue(QStringLiteral("modbus/quantity"), m_modbusQuantitySpin->value());
     settings.setValue(QStringLiteral("modbus/values"), m_modbusValuesEdit->toPlainText());
+    settings.setValue(QStringLiteral("macro/loopCount"), m_macroLoopCountSpin->value());
+    settings.setValue(QStringLiteral("macro/abortOnFailure"), m_macroAbortOnFailureCheck->isChecked());
     settings.setValue(QStringLiteral("serial/autoReconnect"), m_autoReconnectCheck->isChecked());
     settings.setValue(QStringLiteral("fileSend/path"), m_filePathEdit->text());
     settings.setValue(QStringLiteral("fileSend/chunkSize"), m_fileChunkSizeSpin->value());
     settings.setValue(QStringLiteral("fileSend/intervalMs"), m_fileIntervalSpin->value());
     saveSendHistory();
     saveSendPackets();
+    saveMacroSteps();
 }
 
 void WorkbenchPage::setTerminalFontFamily(const QString &family) { applyTerminalFont(family); }

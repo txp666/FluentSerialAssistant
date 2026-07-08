@@ -26,6 +26,7 @@ QWidget *WorkbenchPage::createWorkbench()
     sideLayout->addWidget(createSendSettingsSection());
     sideLayout->addWidget(createModbusSection());
     sideLayout->addWidget(createPacketSection());
+    sideLayout->addWidget(createMacroSection());
     sideLayout->addWidget(createFileSendSection());
     sideLayout->addStretch(1);
     sideScroll->setWidget(sidePanel);

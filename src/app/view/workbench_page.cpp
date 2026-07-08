@@ -21,11 +21,14 @@ WorkbenchPage::WorkbenchPage(QWidget *parent)
     connect(&m_statsTimer, &QTimer::timeout, this, &WorkbenchPage::updateRateStats);
     m_fileSendTimer.setSingleShot(true);
     connect(&m_fileSendTimer, &QTimer::timeout, this, &WorkbenchPage::sendNextFileChunk);
+    m_macroTimer.setSingleShot(true);
+    connect(&m_macroTimer, &QTimer::timeout, this, &WorkbenchPage::handleMacroTimer);
     connect(ThemeManager::instance(), &ThemeManager::effectiveThemeChanged, this, [this]() { renderTerminal(); });
 
     refreshPorts();
     loadSendHistory();
     loadSendPackets();
+    loadMacroSteps();
     restoreSettings();
     updateConnectionUi(false);
     updateCounters();
@@ -43,6 +46,7 @@ WorkbenchPage::~WorkbenchPage()
         m_fileSendFile.close();
     }
     m_reconnectTimer.stop();
+    m_macroTimer.stop();
     closeReceiveCapture();
     m_serial.closePort();
 }

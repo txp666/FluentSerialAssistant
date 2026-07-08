@@ -73,6 +73,10 @@ void WorkbenchPage::onLoopChanged(bool checked)
 
 void WorkbenchPage::setControlsEnabledForConnection(bool connected)
 {
+    if (!connected && m_macroRunning) {
+        stopMacroSequence(QStringLiteral("串口已断开"), false);
+    }
+
     m_sendButton->setEnabled(connected);
     m_sendEdit->setEnabled(connected);
     m_loopCheck->setEnabled(connected);
@@ -84,6 +88,7 @@ void WorkbenchPage::setControlsEnabledForConnection(bool connected)
     if (m_fileCancelButton) {
         m_fileCancelButton->setEnabled(m_fileSendFile.isOpen());
     }
+    updateMacroActionState();
     m_rtsCheck->setEnabled(connected);
     m_dtrCheck->setEnabled(connected);
 

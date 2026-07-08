@@ -6,6 +6,7 @@
 #include "app/view/app_page.h"
 
 #include <QtCore/QDateTime>
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QFile>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QTimer>
@@ -40,6 +41,7 @@ class WorkbenchPage : public AppPage
     QWidget *createSendSettingsSection();
     QWidget *createModbusSection();
     QWidget *createPacketSection();
+    QWidget *createMacroSection();
     QWidget *createFileSendSection();
     QWidget *createTerminalSection();
     QWidget *createSendSection();
@@ -84,6 +86,31 @@ class WorkbenchPage : public AppPage
         QString payload;
         QString lineEnding;
         bool enabled = true;
+    };
+
+    struct MacroStep
+    {
+        QString name;
+        QString mode;
+        QString payload;
+        QString lineEnding;
+        QString responseMode;
+        QString expectedResponse;
+        int timeoutMs = 1000;
+        int delayMs = 0;
+    };
+
+    struct MacroRunResult
+    {
+        QDateTime timestamp;
+        int loop = 0;
+        int step = 0;
+        QString stepName;
+        QString status;
+        QString message;
+        QByteArray txBytes;
+        QByteArray rxBytes;
+        int elapsedMs = 0;
     };
 
     struct SearchMatchRange
@@ -193,6 +220,24 @@ class WorkbenchPage : public AppPage
     void saveSendHistory() const;
     void loadSendPackets();
     void saveSendPackets() const;
+    void updateMacroTable(int selectedRow = -1);
+    void updateMacroActionState();
+    void applyMacroStep(int row);
+    void saveCurrentMacroStep();
+    void removeSelectedMacroStep();
+    void moveSelectedMacroStep(int direction);
+    void startMacroSequence();
+    void stopMacroSequence(const QString &message = QString(), bool userRequested = true);
+    void runMacroCurrentStep();
+    void handleMacroTimer();
+    void handleMacroReceivedData(const QByteArray &data);
+    void completeMacroStep(bool passed, const QString &message, const QByteArray &rxBytes = QByteArray());
+    void finishMacroSequence(const QString &message, bool passed);
+    QByteArray expectedMacroResponseBytes(const MacroStep &step, bool *ok = nullptr, QString *error = nullptr) const;
+    bool macroResponseMatches(const MacroStep &step, const QByteArray &buffer) const;
+    void loadMacroSteps();
+    void saveMacroSteps() const;
+    void exportMacroResults();
     void exportRecords(ExportFormat format);
     void updateReceiveCapture(bool enabled);
     void closeReceiveCapture();
@@ -215,6 +260,8 @@ class WorkbenchPage : public AppPage
     QList<int> m_pendingRecordIndexes;
     QList<SendHistoryItem> m_sendHistory;
     QList<SendPacket> m_sendPackets;
+    QList<MacroStep> m_macroSteps;
+    QList<MacroRunResult> m_macroResults;
     QList<TerminalSearchMatch> m_terminalSearchMatches;
     SerialPortConfig m_lastConfig;
     QByteArray m_rxFrameBuffer;
@@ -233,9 +280,18 @@ class WorkbenchPage : public AppPage
     QTimer m_reconnectTimer;
     QTimer m_statsTimer;
     QTimer m_fileSendTimer;
+    QTimer m_macroTimer;
     QFile m_receiveCaptureFile;
     QFile m_fileSendFile;
+    QByteArray m_macroWaitBuffer;
+    QElapsedTimer m_macroStepClock;
+    int m_macroLoopTotal = 1;
+    int m_macroCurrentLoop = 0;
+    int m_macroCurrentStep = 0;
+    int m_macroActiveResult = -1;
     bool m_manualDisconnect = false;
+    bool m_macroRunning = false;
+    bool m_macroWaitingForResponse = false;
 
     FluentQt::ComboBox *m_portCombo = nullptr;
     FluentQt::EditableComboBox *m_baudCombo = nullptr;
@@ -257,21 +313,31 @@ class WorkbenchPage : public AppPage
     FluentQt::LineEdit *m_packetNameEdit = nullptr;
     FluentQt::LineEdit *m_packetGroupEdit = nullptr;
     FluentQt::LineEdit *m_packetNoteEdit = nullptr;
+    FluentQt::LineEdit *m_macroNameEdit = nullptr;
+    FluentQt::LineEdit *m_macroExpectedEdit = nullptr;
     FluentQt::LineEdit *m_framePatternEdit = nullptr;
     FluentQt::PlainTextEdit *m_modbusValuesEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
+    FluentQt::PlainTextEdit *m_macroPayloadEdit = nullptr;
     FluentQt::ComboBox *m_packetModeCombo = nullptr;
     FluentQt::ComboBox *m_packetLineEndingCombo = nullptr;
+    FluentQt::ComboBox *m_macroModeCombo = nullptr;
+    FluentQt::ComboBox *m_macroLineEndingCombo = nullptr;
+    FluentQt::ComboBox *m_macroResponseModeCombo = nullptr;
     FluentQt::ListWidget *m_packetList = nullptr;
+    FluentQt::ListWidget *m_macroList = nullptr;
     FluentQt::PlainTextEdit *m_sendEdit = nullptr;
     FluentQt::TextBrowser *m_terminalView = nullptr;
     FluentQt::PrimaryPushButton *m_connectButton = nullptr;
     FluentQt::PrimaryPushButton *m_sendButton = nullptr;
     FluentQt::PrimaryPushButton *m_packetSendButton = nullptr;
+    FluentQt::PrimaryPushButton *m_macroRunButton = nullptr;
     FluentQt::PrimaryPushButton *m_fileSendButton = nullptr;
     FluentQt::ToolButton *m_refreshButton = nullptr;
     FluentQt::ToolButton *m_packetUpButton = nullptr;
     FluentQt::ToolButton *m_packetDownButton = nullptr;
+    FluentQt::ToolButton *m_macroUpButton = nullptr;
+    FluentQt::ToolButton *m_macroDownButton = nullptr;
     FluentQt::PushButton *m_clearButton = nullptr;
     FluentQt::PushButton *m_resetCountersButton = nullptr;
     FluentQt::PushButton *m_exportTxtButton = nullptr;
@@ -283,6 +349,11 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_packetBatchSendButton = nullptr;
     FluentQt::PushButton *m_packetImportButton = nullptr;
     FluentQt::PushButton *m_packetExportButton = nullptr;
+    FluentQt::PushButton *m_macroSaveButton = nullptr;
+    FluentQt::PushButton *m_macroLoadButton = nullptr;
+    FluentQt::PushButton *m_macroDeleteButton = nullptr;
+    FluentQt::PushButton *m_macroStopButton = nullptr;
+    FluentQt::PushButton *m_macroExportButton = nullptr;
     FluentQt::PushButton *m_checksumCalcButton = nullptr;
     FluentQt::PushButton *m_modbusFillButton = nullptr;
     FluentQt::PushButton *m_modbusSendButton = nullptr;
@@ -299,6 +370,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_showTxCheck = nullptr;
     FluentQt::CheckBox *m_loopCheck = nullptr;
     FluentQt::CheckBox *m_packetEnabledCheck = nullptr;
+    FluentQt::CheckBox *m_macroAbortOnFailureCheck = nullptr;
     FluentQt::CheckBox *m_checksumAppendCheck = nullptr;
     FluentQt::CheckBox *m_autoReconnectCheck = nullptr;
     FluentQt::CheckBox *m_terminalSearchCaseCheck = nullptr;
@@ -312,6 +384,9 @@ class WorkbenchPage : public AppPage
     FluentQt::SpinBox *m_modbusAddressSpin = nullptr;
     FluentQt::SpinBox *m_modbusQuantitySpin = nullptr;
     FluentQt::SpinBox *m_loopIntervalSpin = nullptr;
+    FluentQt::SpinBox *m_macroTimeoutSpin = nullptr;
+    FluentQt::SpinBox *m_macroDelaySpin = nullptr;
+    FluentQt::SpinBox *m_macroLoopCountSpin = nullptr;
     FluentQt::SpinBox *m_fileChunkSizeSpin = nullptr;
     FluentQt::SpinBox *m_fileIntervalSpin = nullptr;
     FluentQt::ColorPickerButton *m_txColorButton = nullptr;
@@ -320,6 +395,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CaptionLabel *m_receiveCaptureLabel = nullptr;
     FluentQt::CaptionLabel *m_checksumResultLabel = nullptr;
     FluentQt::CaptionLabel *m_modbusStatusLabel = nullptr;
+    FluentQt::CaptionLabel *m_macroStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_terminalSummaryLabel = nullptr;
     FluentQt::CaptionLabel *m_connectionTimeLabel = nullptr;
     FluentQt::CaptionLabel *m_fileStatusLabel = nullptr;

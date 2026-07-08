@@ -84,6 +84,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench/workbench_page_files.cpp
     src/app/view/workbench/workbench_page_internal.h
     src/app/view/workbench/workbench_page_layout.cpp
+    src/app/view/workbench/workbench_page_macros.cpp
     src/app/view/workbench/workbench_page_modbus.cpp
     src/app/view/workbench/workbench_page_packets.cpp
     src/app/view/workbench/workbench_page_side_sections.cpp
