@@ -22,12 +22,8 @@ class SettingsPage : public AppPage
   private slots:
     void checkForUpdates();
     void handleUpdateCheckStarted();
-    void handleUpdateCheckFinished(bool ok,
-                                   bool updateAvailable,
-                                   const QString &currentVersion,
-                                   const QString &latestVersion,
-                                   const QUrl &releaseUrl,
-                                   const QString &message);
+    void handleUpdateCheckFinished(bool ok, bool updateAvailable, const QString &currentVersion,
+                                   const QString &latestVersion, const QUrl &releaseUrl, const QString &message);
 
   private:
     AppUpdate::UpdateChecker *m_updateChecker = nullptr;

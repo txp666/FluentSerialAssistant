@@ -1,0 +1,438 @@
+#include "app/view/workbench/workbench_page_internal.h"
+
+using namespace FluentQt;
+using namespace WorkbenchPagePrivate;
+
+QWidget *WorkbenchPage::createConnectionSection()
+{
+    auto *section = new HeaderCardWidget(this);
+    hideCardHeader(section);
+    auto *root = cardBody(section);
+
+    m_portCombo = new ComboBox(section);
+    makeCompactControl(m_portCombo);
+    m_portCombo->setPlaceholderText(QStringLiteral("选择端口"));
+    m_refreshButton = new TransparentToolButton(icon(FluentIcon::Sync), section);
+    m_refreshButton->setToolTip(QStringLiteral("刷新端口"));
+    m_refreshButton->setIconSize(QSize(16, 16));
+    m_refreshButton->setFixedSize(CompactControlHeight, CompactControlHeight);
+    addFormRow(root, QStringLiteral("端口"), m_portCombo, m_refreshButton);
+
+    m_baudCombo = new EditableComboBox(section);
+    makeCompactControl(m_baudCombo);
+    m_baudCombo->addItems(commonBaudRateTexts());
+    m_baudCombo->setCurrentText(QStringLiteral("115200"));
+    addFormRow(root, QStringLiteral("波特率"), m_baudCombo);
+
+    m_dataBitsCombo = new ComboBox(section);
+    makeCompactControl(m_dataBitsCombo);
+    m_dataBitsCombo->addItems({QStringLiteral("5"), QStringLiteral("6"), QStringLiteral("7"), QStringLiteral("8")});
+    m_dataBitsCombo->setCurrentText(QStringLiteral("8"));
+    addFormRow(root, QStringLiteral("数据位"), m_dataBitsCombo);
+
+    m_parityCombo = new ComboBox(section);
+    makeCompactControl(m_parityCombo);
+    m_parityCombo->addItem(QStringLiteral("无校验"), QIcon(), static_cast<int>(QSerialPort::NoParity));
+    m_parityCombo->addItem(QStringLiteral("偶校验"), QIcon(), static_cast<int>(QSerialPort::EvenParity));
+    m_parityCombo->addItem(QStringLiteral("奇校验"), QIcon(), static_cast<int>(QSerialPort::OddParity));
+    m_parityCombo->addItem(QStringLiteral("空格"), QIcon(), static_cast<int>(QSerialPort::SpaceParity));
+    m_parityCombo->addItem(QStringLiteral("标记"), QIcon(), static_cast<int>(QSerialPort::MarkParity));
+    m_parityCombo->setCurrentIndex(0);
+    addFormRow(root, QStringLiteral("校验位"), m_parityCombo);
+
+    m_stopBitsCombo = new ComboBox(section);
+    makeCompactControl(m_stopBitsCombo);
+    m_stopBitsCombo->addItem(QStringLiteral("1 停止位"), QIcon(), static_cast<int>(QSerialPort::OneStop));
+    m_stopBitsCombo->addItem(QStringLiteral("1.5 停止位"), QIcon(), static_cast<int>(QSerialPort::OneAndHalfStop));
+    m_stopBitsCombo->addItem(QStringLiteral("2 停止位"), QIcon(), static_cast<int>(QSerialPort::TwoStop));
+    m_stopBitsCombo->setCurrentIndex(0);
+    addFormRow(root, QStringLiteral("停止位"), m_stopBitsCombo);
+
+    m_flowControlCombo = new ComboBox(section);
+    makeCompactControl(m_flowControlCombo);
+    m_flowControlCombo->addItem(QStringLiteral("无流控"), QIcon(), static_cast<int>(QSerialPort::NoFlowControl));
+    m_flowControlCombo->addItem(QStringLiteral("硬件流控"), QIcon(), static_cast<int>(QSerialPort::HardwareControl));
+    m_flowControlCombo->addItem(QStringLiteral("软件流控"), QIcon(), static_cast<int>(QSerialPort::SoftwareControl));
+    m_flowControlCombo->setCurrentIndex(0);
+    addFormRow(root, QStringLiteral("流控"), m_flowControlCombo);
+
+    root->addWidget(createCheckRow({QStringLiteral("RTS"), QStringLiteral("DTR"), QStringLiteral("启动连接")},
+                                   {&m_rtsCheck, &m_dtrCheck, &m_autoOpenCheck}, section));
+
+    m_connectButton = new PrimaryPushButton(icon(FluentIcon::Connect), QStringLiteral("连接"), section);
+    root->addWidget(m_connectButton);
+
+    connect(m_refreshButton, &ToolButton::clicked, this, &WorkbenchPage::refreshPorts);
+    connect(m_connectButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::onConnectClicked);
+    connect(m_rtsCheck, &CheckBox::toggled, this, [this](bool checked) {
+        if (m_serial.isOpen()) {
+            m_serial.setRequestToSend(checked);
+        }
+    });
+    connect(m_dtrCheck, &CheckBox::toggled, this, [this](bool checked) {
+        if (m_serial.isOpen()) {
+            m_serial.setDataTerminalReady(checked);
+        }
+    });
+    connect(m_autoOpenCheck, &CheckBox::toggled, this, [](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("serial/autoOpen"), checked);
+    });
+
+    return section;
+}
+
+QWidget *WorkbenchPage::createReceiveSettingsSection()
+{
+    auto *section = new HeaderCardWidget(this);
+    hideCardHeader(section);
+    auto *root = cardBody(section);
+
+    m_displayModeSegment = new SegmentedWidget(section);
+    m_displayModeSegment->addItem(QStringLiteral("text"), QStringLiteral("文本"));
+    m_displayModeSegment->addItem(QStringLiteral("hex"), QStringLiteral("HEX"));
+    m_displayModeSegment->addItem(QStringLiteral("mixed"), QStringLiteral("混合"));
+    m_displayModeSegment->setCurrentItem(QStringLiteral("text"));
+    root->addWidget(m_displayModeSegment);
+
+    auto *receiveOptions = new QWidget(section);
+    auto *receiveOptionsGrid = new QGridLayout(receiveOptions);
+    receiveOptionsGrid->setContentsMargins(0, 0, 0, 0);
+    receiveOptionsGrid->setHorizontalSpacing(12);
+    receiveOptionsGrid->setVerticalSpacing(6);
+    receiveOptionsGrid->setColumnStretch(0, 1);
+    receiveOptionsGrid->setColumnStretch(1, 1);
+    m_saveReceiveCheck = new CheckBox(QStringLiteral("保存接收"), receiveOptions);
+    m_autoScrollCheck = new CheckBox(QStringLiteral("自动滚动"), receiveOptions);
+    m_timestampCheck = new CheckBox(QStringLiteral("时间戳"), receiveOptions);
+    m_pauseCheck = new CheckBox(QStringLiteral("暂停显示"), receiveOptions);
+    for (CheckBox *check : {m_saveReceiveCheck, m_autoScrollCheck, m_timestampCheck, m_pauseCheck}) {
+        check->setMinimumWidth(0);
+        check->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+    receiveOptionsGrid->addWidget(m_saveReceiveCheck, 0, 0);
+    receiveOptionsGrid->addWidget(m_autoScrollCheck, 0, 1);
+    receiveOptionsGrid->addWidget(m_timestampCheck, 1, 0);
+    receiveOptionsGrid->addWidget(m_pauseCheck, 1, 1);
+    root->addWidget(receiveOptions);
+
+    auto *frameRowWidget = new QWidget(section);
+    auto *frameRow = new QHBoxLayout(frameRowWidget);
+    frameRow->setContentsMargins(0, 0, 0, 0);
+    frameRow->setSpacing(6);
+    m_autoFrameBreakCheck = new CheckBox(QStringLiteral("自动断帧"), frameRowWidget);
+    m_autoFrameBreakCheck->setMinimumWidth(0);
+    m_autoFrameBreakCheck->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_frameBreakIntervalSpin = new SpinBox(frameRowWidget);
+    m_frameBreakIntervalSpin->setRange(1, 60000);
+    m_frameBreakIntervalSpin->setValue(20);
+    m_frameBreakIntervalSpin->setSymbolVisible(false);
+    m_frameBreakIntervalSpin->setFixedHeight(CompactControlHeight);
+    setFixedControlWidth(m_frameBreakIntervalSpin, 92);
+    auto *frameBreakUnitLabel = new CaptionLabel(QStringLiteral("ms"), frameRowWidget);
+    frameBreakUnitLabel->setFixedHeight(CompactControlHeight);
+    frameBreakUnitLabel->setFixedWidth(22);
+    frameBreakUnitLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    frameRow->addWidget(m_autoFrameBreakCheck);
+    frameRow->addWidget(m_frameBreakIntervalSpin);
+    frameRow->addWidget(frameBreakUnitLabel);
+    root->addWidget(frameRowWidget);
+
+    auto *actionRow = new QHBoxLayout;
+    actionRow->setSpacing(8);
+    m_clearButton = new PushButton(icon(FluentIcon::Broom), QStringLiteral("清空"), section);
+    m_resetCountersButton = new PushButton(icon(FluentIcon::Cancel), QStringLiteral("计数"), section);
+    setButtonRowControlPolicy(m_clearButton);
+    setButtonRowControlPolicy(m_resetCountersButton);
+    actionRow->addWidget(m_clearButton);
+    actionRow->addWidget(m_resetCountersButton);
+    root->addLayout(actionRow);
+
+    auto *exportRow = new QHBoxLayout;
+    exportRow->setSpacing(8);
+    m_exportTxtButton = new PushButton(icon(FluentIcon::Document), QStringLiteral("TXT"), section);
+    m_exportCsvButton = new PushButton(icon(FluentIcon::SaveAs), QStringLiteral("CSV"), section);
+    m_exportBinButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("BIN"), section);
+    setButtonRowControlPolicy(m_exportTxtButton);
+    setButtonRowControlPolicy(m_exportCsvButton);
+    setButtonRowControlPolicy(m_exportBinButton);
+    exportRow->addWidget(m_exportTxtButton);
+    exportRow->addWidget(m_exportCsvButton);
+    exportRow->addWidget(m_exportBinButton);
+    root->addLayout(exportRow);
+
+    m_receiveCaptureLabel = new CaptionLabel(QStringLiteral("接收保存未启用"), section);
+    m_receiveCaptureLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_receiveCaptureLabel->setWordWrap(true);
+    root->addWidget(m_receiveCaptureLabel);
+
+    connect(m_displayModeSegment, &SegmentedWidget::currentItemChanged, this, [this](const QString &routeKey) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("terminal/displayMode"), routeKey);
+        renderTerminal();
+    });
+    connect(m_saveReceiveCheck, &CheckBox::toggled, this, &WorkbenchPage::updateReceiveCapture);
+    connect(m_autoScrollCheck, &CheckBox::toggled, this, [this](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/autoScroll"), checked);
+        if (checked) {
+            renderTerminal();
+        }
+    });
+    connect(m_timestampCheck, &CheckBox::toggled, this, [this](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/timestamp"), checked);
+        renderTerminal();
+    });
+    connect(m_pauseCheck, &CheckBox::toggled, this, [this](bool checked) {
+        if (!checked) {
+            flushPendingLines();
+        }
+    });
+    connect(m_autoFrameBreakCheck, &CheckBox::toggled, this, [this](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/autoFrameBreak"), checked);
+        if (!checked) {
+            m_lastRxTimestamp = QDateTime();
+        }
+    });
+    connect(m_frameBreakIntervalSpin, &SpinBox::valueChanged, this, [](int value) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/frameBreakMs"), value);
+    });
+    connect(m_clearButton, &PushButton::clicked, this, [this]() {
+        m_terminalStartRecord = m_records.size();
+        m_pendingRecordIndexes.clear();
+        m_terminalView->clear();
+    });
+    connect(m_resetCountersButton, &PushButton::clicked, this, [this]() {
+        m_rxCount = 0;
+        m_txCount = 0;
+        updateCounters();
+    });
+    connect(m_exportTxtButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Txt); });
+    connect(m_exportCsvButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Csv); });
+    connect(m_exportBinButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Bin); });
+
+    return section;
+}
+
+QWidget *WorkbenchPage::createSendSettingsSection()
+{
+    auto *section = new HeaderCardWidget(this);
+    hideCardHeader(section);
+    auto *root = cardBody(section);
+
+    m_lineEndingCombo = new ComboBox(section);
+    makeCompactControl(m_lineEndingCombo);
+    m_lineEndingCombo->addItem(QStringLiteral("None"), QIcon(), QStringLiteral("none"));
+    m_lineEndingCombo->addItem(QStringLiteral("CR"), QIcon(), QStringLiteral("cr"));
+    m_lineEndingCombo->addItem(QStringLiteral("LF"), QIcon(), QStringLiteral("lf"));
+    m_lineEndingCombo->addItem(QStringLiteral("CRLF"), QIcon(), QStringLiteral("crlf"));
+    m_lineEndingCombo->setCurrentIndex(0);
+    addFormRow(root, QStringLiteral("换行"), m_lineEndingCombo);
+
+    auto *sendOptions = new QWidget(section);
+    auto *sendOptionsGrid = new QGridLayout(sendOptions);
+    sendOptionsGrid->setContentsMargins(0, 0, 0, 0);
+    sendOptionsGrid->setHorizontalSpacing(12);
+    sendOptionsGrid->setVerticalSpacing(6);
+    sendOptionsGrid->setColumnStretch(0, 1);
+    sendOptionsGrid->setColumnStretch(1, 1);
+    m_hexSendCheck = new CheckBox(QStringLiteral("HEX 发送"), sendOptions);
+    m_showTxCheck = new CheckBox(QStringLiteral("显示发送字符串"), sendOptions);
+    m_loopCheck = new CheckBox(QStringLiteral("定时发送"), sendOptions);
+    m_autoReconnectCheck = new CheckBox(QStringLiteral("自动重连"), sendOptions);
+    for (CheckBox *check : {m_hexSendCheck, m_showTxCheck, m_loopCheck, m_autoReconnectCheck}) {
+        check->setMinimumWidth(0);
+        check->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+    m_txColorButton = new ColorPickerButton(defaultTxColor(), QStringLiteral("TX 颜色"), sendOptions);
+    m_txColorButton->setFixedSize(32, CompactControlHeight);
+    sendOptionsGrid->addWidget(m_hexSendCheck, 0, 0);
+    sendOptionsGrid->addWidget(m_showTxCheck, 0, 1);
+    sendOptionsGrid->addWidget(m_txColorButton, 0, 2);
+    sendOptionsGrid->addWidget(m_loopCheck, 1, 0);
+    sendOptionsGrid->addWidget(m_autoReconnectCheck, 1, 1);
+    root->addWidget(sendOptions);
+
+    m_historyCombo = new ComboBox(section);
+    makeCompactControl(m_historyCombo);
+    addFormRow(root, QStringLiteral("历史"), m_historyCombo);
+
+    m_loopIntervalSpin = new SpinBox(section);
+    m_loopIntervalSpin->setRange(10, 600000);
+    m_loopIntervalSpin->setValue(1000);
+    m_loopIntervalSpin->setSuffix(QStringLiteral(" ms"));
+    m_loopIntervalSpin->setEnabled(false);
+    addFormRow(root, QStringLiteral("间隔"), m_loopIntervalSpin);
+
+    connect(m_historyCombo, &ComboBox::currentIndexChanged, this, &WorkbenchPage::applyHistoryItem);
+    connect(m_hexSendCheck, &CheckBox::toggled, this, [](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("send/mode"), checked ? QStringLiteral("hex") : QStringLiteral("text"));
+    });
+    connect(m_showTxCheck, &CheckBox::toggled, this, [this](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("send/showTx"), checked);
+        m_txColorButton->setEnabled(checked);
+        renderTerminal();
+    });
+    connect(m_txColorButton, &ColorPickerButton::colorChanged, this, [this](const QColor &color) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("send/txColor"), color.name(QColor::HexRgb));
+        renderTerminal();
+    });
+    connect(m_loopCheck, &CheckBox::toggled, this, &WorkbenchPage::onLoopChanged);
+    connect(m_autoReconnectCheck, &CheckBox::toggled, this, [](bool checked) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("serial/autoReconnect"), checked);
+    });
+    connect(m_loopIntervalSpin, &SpinBox::valueChanged, this, [this](int value) {
+        if (m_loopTimer.isActive()) {
+            m_loopTimer.start(value);
+        }
+    });
+
+    return section;
+}
+
+QWidget *WorkbenchPage::createPacketSection()
+{
+    auto *section = new HeaderCardWidget(QStringLiteral("常用包"), this);
+    auto *root = cardBody(section);
+
+    m_packetNameEdit = new LineEdit(section);
+    m_packetNameEdit->setPlaceholderText(QStringLiteral("包名称"));
+    makeCompactControl(m_packetNameEdit);
+    addFormRow(root, QStringLiteral("名称"), m_packetNameEdit);
+
+    auto *modeRow = new QHBoxLayout;
+    modeRow->setSpacing(8);
+    m_packetModeCombo = new ComboBox(section);
+    m_packetModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_packetModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
+    m_packetModeCombo->setCurrentIndex(0);
+    makeCompactControl(m_packetModeCombo);
+    m_packetLineEndingCombo = new ComboBox(section);
+    m_packetLineEndingCombo->addItem(QStringLiteral("None"), QIcon(), QStringLiteral("none"));
+    m_packetLineEndingCombo->addItem(QStringLiteral("CR"), QIcon(), QStringLiteral("cr"));
+    m_packetLineEndingCombo->addItem(QStringLiteral("LF"), QIcon(), QStringLiteral("lf"));
+    m_packetLineEndingCombo->addItem(QStringLiteral("CRLF"), QIcon(), QStringLiteral("crlf"));
+    m_packetLineEndingCombo->setCurrentIndex(0);
+    makeCompactControl(m_packetLineEndingCombo);
+    modeRow->addWidget(m_packetModeCombo);
+    modeRow->addWidget(m_packetLineEndingCombo);
+    root->addLayout(modeRow);
+
+    m_packetPayloadEdit = new PlainTextEdit(section);
+    m_packetPayloadEdit->setPlaceholderText(QStringLiteral("发送内容"));
+    m_packetPayloadEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_packetPayloadEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    m_packetPayloadEdit->setFixedHeight(72);
+    m_packetPayloadEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    root->addWidget(m_packetPayloadEdit);
+
+    m_packetList = new ListWidget(section);
+    m_packetList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_packetList->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_packetList->setMinimumHeight(132);
+    m_packetList->setMaximumHeight(220);
+    m_packetList->setBorderRadius(8);
+    root->addWidget(m_packetList);
+
+    auto *moveRow = new QHBoxLayout;
+    moveRow->setSpacing(8);
+    m_packetUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
+    m_packetUpButton->setToolTip(QStringLiteral("上移"));
+    m_packetDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
+    m_packetDownButton->setToolTip(QStringLiteral("下移"));
+    for (ToolButton *button : {m_packetUpButton, m_packetDownButton}) {
+        button->setFixedSize(CompactControlHeight, CompactControlHeight);
+        button->setIconSize(QSize(16, 16));
+    }
+    m_packetSaveButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("保存"), section);
+    m_packetLoadButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入发送"), section);
+    setButtonRowControlPolicy(m_packetSaveButton);
+    setButtonRowControlPolicy(m_packetLoadButton);
+    moveRow->addWidget(m_packetUpButton);
+    moveRow->addWidget(m_packetDownButton);
+    moveRow->addWidget(m_packetSaveButton);
+    moveRow->addWidget(m_packetLoadButton);
+    root->addLayout(moveRow);
+
+    auto *actionRow = new QHBoxLayout;
+    actionRow->setSpacing(8);
+    m_packetSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送"), section);
+    m_packetDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
+    setButtonRowControlPolicy(m_packetSendButton);
+    setButtonRowControlPolicy(m_packetDeleteButton);
+    actionRow->addWidget(m_packetSendButton);
+    actionRow->addWidget(m_packetDeleteButton);
+    root->addLayout(actionRow);
+
+    connect(m_packetList, &ListWidget::currentRowChanged, this, [this](int row) { applyPacket(row); });
+    connect(m_packetSaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentPacket);
+    connect(m_packetLoadButton, &PushButton::clicked, this, [this]() { applyPacket(m_packetList->currentRow()); });
+    connect(m_packetDeleteButton, &PushButton::clicked, this, &WorkbenchPage::removeSelectedPacket);
+    connect(m_packetSendButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::sendSelectedPacket);
+    connect(m_packetUpButton, &ToolButton::clicked, this, [this]() { moveSelectedPacket(-1); });
+    connect(m_packetDownButton, &ToolButton::clicked, this, [this]() { moveSelectedPacket(1); });
+
+    updatePacketTable();
+    return section;
+}
+
+QWidget *WorkbenchPage::createFileSendSection()
+{
+    auto *section = new HeaderCardWidget(QStringLiteral("文件发送"), this);
+    auto *root = cardBody(section);
+
+    m_filePathEdit = new LineEdit(section);
+    m_filePathEdit->setPlaceholderText(QStringLiteral("选择待发送文件"));
+    m_filePathEdit->setReadOnly(true);
+    makeCompactControl(m_filePathEdit);
+    m_fileBrowseButton = new PushButton(icon(FluentIcon::Folder), QStringLiteral("浏览"), section);
+    m_fileBrowseButton->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("文件"), m_filePathEdit, m_fileBrowseButton);
+
+    m_fileChunkSizeSpin = new SpinBox(section);
+    m_fileChunkSizeSpin->setRange(1, 65536);
+    m_fileChunkSizeSpin->setValue(DefaultFileChunkSize);
+    m_fileChunkSizeSpin->setSuffix(QStringLiteral(" B"));
+    addFormRow(root, QStringLiteral("块长"), m_fileChunkSizeSpin);
+
+    m_fileIntervalSpin = new SpinBox(section);
+    m_fileIntervalSpin->setRange(0, 60000);
+    m_fileIntervalSpin->setValue(DefaultFileChunkIntervalMs);
+    m_fileIntervalSpin->setSuffix(QStringLiteral(" ms"));
+    addFormRow(root, QStringLiteral("间隔"), m_fileIntervalSpin);
+
+    m_fileProgressBar = new ProgressBar(section);
+    m_fileProgressBar->setRange(0, 100);
+    m_fileProgressBar->setValue(0);
+    m_fileProgressBar->setFixedHeight(18);
+    root->addWidget(m_fileProgressBar);
+
+    auto *actionRow = new QHBoxLayout;
+    actionRow->setSpacing(8);
+    m_fileSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送文件"), section);
+    m_fileCancelButton = new PushButton(icon(FluentIcon::Cancel), QStringLiteral("取消"), section);
+    setButtonRowControlPolicy(m_fileSendButton);
+    setButtonRowControlPolicy(m_fileCancelButton);
+    actionRow->addWidget(m_fileSendButton);
+    actionRow->addWidget(m_fileCancelButton);
+    root->addLayout(actionRow);
+
+    m_fileStatusLabel = new CaptionLabel(QStringLiteral("未选择文件"), section);
+    m_fileStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_fileStatusLabel->setWordWrap(true);
+    root->addWidget(m_fileStatusLabel);
+
+    connect(m_fileBrowseButton, &PushButton::clicked, this, &WorkbenchPage::browseSendFile);
+    connect(m_fileSendButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::startFileSend);
+    connect(m_fileCancelButton, &PushButton::clicked, this, &WorkbenchPage::cancelFileSend);
+
+    updateFileSendUi(false);
+    return section;
+}

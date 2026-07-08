@@ -41,6 +41,17 @@ cmake --build --preset mingw-debug --parallel
 - 可见业务 UI 尽量使用 FluentQtWidgets 组件。
 - 不引入与当前目标无关的大型依赖。
 - 注释应解释必要的业务意图，避免重复代码字面含义。
+- 提交前建议运行格式化检查：
+
+```powershell
+cmake --build build/codex-release --target format-check
+```
+
+如需自动格式化：
+
+```powershell
+cmake --build build/codex-release --target format
+```
 
 ## Issue 建议
 

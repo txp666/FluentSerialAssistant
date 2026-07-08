@@ -17,10 +17,10 @@ MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
     setMinimumSize(1040, 700);
     resize(1120, 900);
     QScreen *targetScreen = screen();
-    if(!targetScreen) {
+    if (!targetScreen) {
         targetScreen = QGuiApplication::primaryScreen();
     }
-    if(targetScreen) {
+    if (targetScreen) {
         const QRect available = targetScreen->availableGeometry();
         move(available.center() - rect().center());
     }
@@ -35,7 +35,7 @@ MainWindow::~MainWindow() = default;
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if(m_workbenchPage) {
+    if (m_workbenchPage) {
         m_workbenchPage->saveSettings();
     }
     MSFluentWindow::closeEvent(event);
@@ -46,19 +46,13 @@ void MainWindow::populateInterfaces()
     m_workbenchPage = new WorkbenchPage(this);
     m_workbenchPage->setObjectName(QStringLiteral("workbench"));
     addSubInterface(m_workbenchPage, icon(FluentIcon::CommandPrompt), QStringLiteral("终端"));
-    connect(m_workbenchPage, &WorkbenchPage::settingsRequested, this, [this]() {
-        switchTo(QStringLiteral("settings"));
-    });
+    connect(m_workbenchPage, &WorkbenchPage::settingsRequested, this,
+            [this]() { switchTo(QStringLiteral("settings")); });
 
     auto *settingsPage = new SettingsPage(this);
     settingsPage->setObjectName(QStringLiteral("settings"));
-    addSubInterface(settingsPage,
-                    icon(FluentIcon::Setting),
-                    QStringLiteral("设置"),
-                    QIcon(),
+    addSubInterface(settingsPage, icon(FluentIcon::Setting), QStringLiteral("设置"), QIcon(),
                     NavigationItemPosition::Bottom);
-    connect(settingsPage, &SettingsPage::terminalRequested, this, [this]() {
-        switchTo(QStringLiteral("workbench"));
-    });
+    connect(settingsPage, &SettingsPage::terminalRequested, this, [this]() { switchTo(QStringLiteral("workbench")); });
     connect(settingsPage, &SettingsPage::terminalFontChanged, m_workbenchPage, &WorkbenchPage::setTerminalFontFamily);
 }

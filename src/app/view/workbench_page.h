@@ -38,9 +38,7 @@ class WorkbenchPage : public AppPage
     QWidget *createFileSendSection();
     QWidget *createTerminalSection();
     QWidget *createSendSection();
-    QWidget *createCheckRow(const QStringList &labels,
-                            const QList<FluentQt::CheckBox **> &targets,
-                            QWidget *parent);
+    QWidget *createCheckRow(const QStringList &labels, const QList<FluentQt::CheckBox **> &targets, QWidget *parent);
 
     enum class RecordDirection
     {
@@ -103,11 +101,8 @@ class WorkbenchPage : public AppPage
 
     SerialPortConfig currentSerialConfig() const;
     QByteArray currentPayload(bool *ok = nullptr);
-    QByteArray payloadFromText(const QString &payloadText,
-                               const QString &mode,
-                               const QString &lineEndingKey,
-                               bool focusEditorOnError,
-                               bool *ok = nullptr);
+    QByteArray payloadFromText(const QString &payloadText, const QString &mode, const QString &lineEndingKey,
+                               bool focusEditorOnError, bool *ok = nullptr);
     QByteArray selectedLineEnding() const;
     QByteArray lineEndingForKey(const QString &key) const;
     QString currentDisplayMode() const;

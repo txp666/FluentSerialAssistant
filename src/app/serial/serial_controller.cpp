@@ -4,7 +4,7 @@
 
 QString SerialPortDescriptor::displayName() const
 {
-    if(description.isEmpty()) {
+    if (description.isEmpty()) {
         return portName;
     }
     return QStringLiteral("%1  %2").arg(portName, description);
@@ -13,20 +13,22 @@ QString SerialPortDescriptor::displayName() const
 QString SerialPortDescriptor::detailText() const
 {
     QStringList parts;
-    if(!description.isEmpty()) {
+    if (!description.isEmpty()) {
         parts.append(description);
     }
-    if(!manufacturer.isEmpty()) {
+    if (!manufacturer.isEmpty()) {
         parts.append(manufacturer);
     }
-    if(hasVendorIdentifier || hasProductIdentifier) {
+    if (hasVendorIdentifier || hasProductIdentifier) {
         parts.append(QStringLiteral("VID:PID %1:%2")
-                         .arg(hasVendorIdentifier ? QStringLiteral("%1").arg(vendorIdentifier, 4, 16, QLatin1Char('0')).toUpper()
-                                                  : QStringLiteral("----"))
-                         .arg(hasProductIdentifier ? QStringLiteral("%1").arg(productIdentifier, 4, 16, QLatin1Char('0')).toUpper()
-                                                   : QStringLiteral("----")));
+                         .arg(hasVendorIdentifier
+                                  ? QStringLiteral("%1").arg(vendorIdentifier, 4, 16, QLatin1Char('0')).toUpper()
+                                  : QStringLiteral("----"))
+                         .arg(hasProductIdentifier
+                                  ? QStringLiteral("%1").arg(productIdentifier, 4, 16, QLatin1Char('0')).toUpper()
+                                  : QStringLiteral("----")));
     }
-    if(!serialNumber.isEmpty()) {
+    if (!serialNumber.isEmpty()) {
         parts.append(QStringLiteral("SN %1").arg(serialNumber));
     }
     return parts.join(QStringLiteral(" | "));
@@ -36,18 +38,18 @@ SerialController::SerialController(QObject *parent) : QObject(parent)
 {
     connect(&m_port, &QSerialPort::readyRead, this, [this]() {
         const QByteArray data = m_port.readAll();
-        if(!data.isEmpty()) {
+        if (!data.isEmpty()) {
             emit dataReceived(data);
         }
     });
 
     connect(&m_port, &QSerialPort::bytesWritten, this, &SerialController::writeQueued);
     connect(&m_port, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError error) {
-        if(error == QSerialPort::NoError) {
+        if (error == QSerialPort::NoError) {
             return;
         }
         emit errorOccurred(m_port.errorString());
-        if(error == QSerialPort::ResourceError) {
+        if (error == QSerialPort::ResourceError) {
             closePort();
         }
     });
@@ -58,7 +60,7 @@ QList<SerialPortDescriptor> SerialController::availablePorts()
     QList<SerialPortDescriptor> descriptors;
     const auto ports = QSerialPortInfo::availablePorts();
     descriptors.reserve(ports.size());
-    for(const QSerialPortInfo &info : ports) {
+    for (const QSerialPortInfo &info : ports) {
         SerialPortDescriptor descriptor;
         descriptor.portName = info.portName();
         descriptor.description = info.description();
@@ -73,24 +75,15 @@ QList<SerialPortDescriptor> SerialController::availablePorts()
     return descriptors;
 }
 
-bool SerialController::isOpen() const
-{
-    return m_port.isOpen();
-}
+bool SerialController::isOpen() const { return m_port.isOpen(); }
 
-QString SerialController::portName() const
-{
-    return m_port.portName();
-}
+QString SerialController::portName() const { return m_port.portName(); }
 
-QString SerialController::errorString() const
-{
-    return m_port.errorString();
-}
+QString SerialController::errorString() const { return m_port.errorString(); }
 
 bool SerialController::openPort(const SerialPortConfig &config)
 {
-    if(m_port.isOpen()) {
+    if (m_port.isOpen()) {
         closePort();
     }
 
@@ -101,7 +94,7 @@ bool SerialController::openPort(const SerialPortConfig &config)
     m_port.setStopBits(config.stopBits);
     m_port.setFlowControl(config.flowControl);
 
-    if(!m_port.open(QIODevice::ReadWrite)) {
+    if (!m_port.open(QIODevice::ReadWrite)) {
         emit errorOccurred(m_port.errorString());
         return false;
     }
@@ -114,7 +107,7 @@ bool SerialController::openPort(const SerialPortConfig &config)
 
 void SerialController::closePort()
 {
-    if(!m_port.isOpen()) {
+    if (!m_port.isOpen()) {
         return;
     }
     m_port.close();
@@ -123,15 +116,15 @@ void SerialController::closePort()
 
 bool SerialController::writeData(const QByteArray &data, QString *error)
 {
-    if(!m_port.isOpen()) {
-        if(error) {
+    if (!m_port.isOpen()) {
+        if (error) {
             *error = QStringLiteral("串口未连接");
         }
         return false;
     }
     const qint64 written = m_port.write(data);
-    if(written < 0) {
-        if(error) {
+    if (written < 0) {
+        if (error) {
             *error = m_port.errorString();
         }
         emit errorOccurred(m_port.errorString());
@@ -142,11 +135,11 @@ bool SerialController::writeData(const QByteArray &data, QString *error)
 
 bool SerialController::setRequestToSend(bool enabled)
 {
-    if(!m_port.isOpen()) {
+    if (!m_port.isOpen()) {
         return false;
     }
     const bool ok = m_port.setRequestToSend(enabled);
-    if(!ok) {
+    if (!ok) {
         emit errorOccurred(m_port.errorString());
     }
     return ok;
@@ -154,11 +147,11 @@ bool SerialController::setRequestToSend(bool enabled)
 
 bool SerialController::setDataTerminalReady(bool enabled)
 {
-    if(!m_port.isOpen()) {
+    if (!m_port.isOpen()) {
         return false;
     }
     const bool ok = m_port.setDataTerminalReady(enabled);
-    if(!ok) {
+    if (!ok) {
         emit errorOccurred(m_port.errorString());
     }
     return ok;

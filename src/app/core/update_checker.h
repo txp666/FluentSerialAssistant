@@ -21,12 +21,8 @@ class UpdateChecker : public QObject
 
   signals:
     void checkStarted();
-    void checkFinished(bool ok,
-                       bool updateAvailable,
-                       const QString &currentVersion,
-                       const QString &latestVersion,
-                       const QUrl &releaseUrl,
-                       const QString &message);
+    void checkFinished(bool ok, bool updateAvailable, const QString &currentVersion, const QString &latestVersion,
+                       const QUrl &releaseUrl, const QString &message);
 
   private:
     void handleReply(QNetworkReply *reply);

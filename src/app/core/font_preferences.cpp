@@ -29,14 +29,14 @@ QStringList &customFontFamilies()
 
 void appendUnique(QStringList *items, const QString &value)
 {
-    if(!value.isEmpty() && !items->contains(value)) {
+    if (!value.isEmpty() && !items->contains(value)) {
         items->append(value);
     }
 }
 
 void prependUnique(QStringList *items, const QString &value)
 {
-    if(!value.isEmpty() && !items->contains(value)) {
+    if (!value.isEmpty() && !items->contains(value)) {
         items->prepend(value);
     }
 }
@@ -59,8 +59,8 @@ bool hasFontFamily(const QStringList &installed, const QString &family)
 
 QString canonicalFontFamily(const QStringList &installed, const QString &family)
 {
-    for(const QString &installedFamily : installed) {
-        if(installedFamily.compare(family, Qt::CaseInsensitive) == 0) {
+    for (const QString &installedFamily : installed) {
+        if (installedFamily.compare(family, Qt::CaseInsensitive) == 0) {
             return installedFamily;
         }
     }
@@ -73,62 +73,38 @@ void appendAvailableFont(QStringList *fonts, const QStringList &installed, const
     appendUnique(fonts, canonical);
 }
 
-void appendCurrentFont(QStringList *fonts, const QString &family)
-{
-    prependUnique(fonts, family);
-}
+void appendCurrentFont(QStringList *fonts, const QString &family) { prependUnique(fonts, family); }
 
-QString appDefaultFontFamily()
-{
-    return qApp ? qApp->font().family() : QString();
-}
+QString appDefaultFontFamily() { return qApp ? qApp->font().family() : QString(); }
 
 QStringList preferredUiFonts()
 {
-    return {
-        QStringLiteral("Segoe UI"),
-        QStringLiteral("Microsoft YaHei UI"),
-        QStringLiteral("Microsoft YaHei"),
-        QStringLiteral("PingFang SC"),
-        QStringLiteral(".AppleSystemUIFont"),
-        QStringLiteral("Noto Sans CJK SC"),
-        QStringLiteral("Noto Sans SC"),
-        QStringLiteral("Noto Sans"),
-        QStringLiteral("Arial")
-    };
+    return {QStringLiteral("Segoe UI"),     QStringLiteral("Microsoft YaHei UI"), QStringLiteral("Microsoft YaHei"),
+            QStringLiteral("PingFang SC"),  QStringLiteral(".AppleSystemUIFont"), QStringLiteral("Noto Sans CJK SC"),
+            QStringLiteral("Noto Sans SC"), QStringLiteral("Noto Sans"),          QStringLiteral("Arial")};
 }
 
 QStringList preferredTerminalFonts()
 {
     return {
-        QStringLiteral("Cascadia Mono"),
-        QStringLiteral("Consolas"),
-        QStringLiteral("Menlo"),
-        QStringLiteral("SF Mono"),
-        QStringLiteral("Monaco"),
-        QStringLiteral("Noto Sans Mono CJK SC"),
-        QStringLiteral("Noto Sans Mono"),
-        QStringLiteral("DejaVu Sans Mono"),
-        QStringLiteral("Monospace")
-    };
+        QStringLiteral("Cascadia Mono"),  QStringLiteral("Consolas"),         QStringLiteral("Menlo"),
+        QStringLiteral("SF Mono"),        QStringLiteral("Monaco"),           QStringLiteral("Noto Sans Mono CJK SC"),
+        QStringLiteral("Noto Sans Mono"), QStringLiteral("DejaVu Sans Mono"), QStringLiteral("Monospace")};
 }
 
 QString firstAvailableFont(const QStringList &candidates, const QString &fallback)
 {
     const QStringList installed = installedFontFamilies();
-    for(const QString &candidate : candidates) {
+    for (const QString &candidate : candidates) {
         const QString canonical = canonicalFontFamily(installed, candidate);
-        if(!canonical.isEmpty()) {
+        if (!canonical.isEmpty()) {
             return canonical;
         }
     }
     return fallback;
 }
 
-QString defaultUiFontFamily()
-{
-    return firstAvailableFont(preferredUiFonts(), appDefaultFontFamily());
-}
+QString defaultUiFontFamily() { return firstAvailableFont(preferredUiFonts(), appDefaultFontFamily()); }
 
 QString defaultTerminalFontFamily()
 {
@@ -139,17 +115,17 @@ QString defaultTerminalFontFamily()
 QString resolvedFontFamily(const QString &family, const QString &fallback)
 {
     const QString trimmed = family.trimmed();
-    if(trimmed.isEmpty()) {
+    if (trimmed.isEmpty()) {
         return fallback;
     }
 
     const QStringList installed = installedFontFamilies();
-    if(hasFontFamily(installed, trimmed)) {
+    if (hasFontFamily(installed, trimmed)) {
         return canonicalFontFamily(installed, trimmed);
     }
 
     const QString custom = canonicalFontFamily(customFontFamilies(), trimmed);
-    if(!custom.isEmpty()) {
+    if (!custom.isEmpty()) {
         return custom;
     }
     return fallback;
@@ -161,7 +137,7 @@ QStringList uiFallbackFamilies(const QString &primary)
     appendCurrentFont(&families, primary);
 
     const QStringList installed = installedFontFamilies();
-    for(const QString &family : preferredUiFonts()) {
+    for (const QString &family : preferredUiFonts()) {
         appendAvailableFont(&families, installed, family);
     }
 
@@ -177,18 +153,18 @@ QString customFontDirectory()
 QString fontFileHash(const QString &filePath, QString *errorMessage)
 {
     QFile file(filePath);
-    if(!file.open(QIODevice::ReadOnly)) {
-        if(errorMessage) {
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (errorMessage) {
             *errorMessage = QStringLiteral("无法读取字体文件。");
         }
         return QString();
     }
 
     QCryptographicHash hash(QCryptographicHash::Sha256);
-    while(!file.atEnd()) {
+    while (!file.atEnd()) {
         const QByteArray chunk = file.read(1024 * 1024);
-        if(chunk.isEmpty() && file.error() != QFile::NoError) {
-            if(errorMessage) {
+        if (chunk.isEmpty() && file.error() != QFile::NoError) {
+            if (errorMessage) {
                 *errorMessage = QStringLiteral("读取字体文件失败。");
             }
             return QString();
@@ -201,12 +177,12 @@ QString fontFileHash(const QString &filePath, QString *errorMessage)
 QStringList loadFontFile(const QString &filePath)
 {
     const int fontId = QFontDatabase::addApplicationFont(filePath);
-    if(fontId < 0) {
+    if (fontId < 0) {
         return {};
     }
 
     const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-    for(const QString &family : families) {
+    for (const QString &family : families) {
         appendUnique(&customFontFamilies(), family);
     }
     return families;
@@ -226,10 +202,10 @@ QStringList uiFontFamilies()
 {
     QStringList families;
     const QStringList installed = installedFontFamilies();
-    for(const QString &family : preferredUiFonts()) {
+    for (const QString &family : preferredUiFonts()) {
         appendAvailableFont(&families, installed, family);
     }
-    for(const QString &family : customFontFamilies()) {
+    for (const QString &family : customFontFamilies()) {
         appendUnique(&families, family);
     }
     appendCurrentFont(&families, currentUiFontFamily());
@@ -240,10 +216,10 @@ QStringList terminalFontFamilies()
 {
     QStringList families;
     const QStringList installed = installedFontFamilies();
-    for(const QString &family : preferredTerminalFonts()) {
+    for (const QString &family : preferredTerminalFonts()) {
         appendAvailableFont(&families, installed, family);
     }
-    for(const QString &family : customFontFamilies()) {
+    for (const QString &family : customFontFamilies()) {
         appendUnique(&families, family);
     }
     appendCurrentFont(&families, currentTerminalFontFamily());
@@ -253,13 +229,13 @@ QStringList terminalFontFamilies()
 QString currentUiFontFamily()
 {
     const QStringList installed = installedFontFamilies();
-    for(const QString &family : FluentQt::FluentConfig::instance()->fontFamilies()) {
+    for (const QString &family : FluentQt::FluentConfig::instance()->fontFamilies()) {
         const QString canonical = canonicalFontFamily(installed, family);
-        if(!canonical.isEmpty()) {
+        if (!canonical.isEmpty()) {
             return canonical;
         }
         const QString custom = canonicalFontFamily(customFontFamilies(), family);
-        if(!custom.isEmpty()) {
+        if (!custom.isEmpty()) {
             return custom;
         }
     }
@@ -284,16 +260,14 @@ int currentTerminalFontPointSize()
 void loadCustomFonts()
 {
     QDir dir(customFontDirectory());
-    if(!dir.exists()) {
+    if (!dir.exists()) {
         return;
     }
 
-    const QFileInfoList files = dir.entryInfoList({QStringLiteral("*.ttf"),
-                                                   QStringLiteral("*.otf"),
-                                                   QStringLiteral("*.ttc")},
-                                                  QDir::Files | QDir::Readable,
-                                                  QDir::Name);
-    for(const QFileInfo &file : files) {
+    const QFileInfoList files =
+        dir.entryInfoList({QStringLiteral("*.ttf"), QStringLiteral("*.otf"), QStringLiteral("*.ttc")},
+                          QDir::Files | QDir::Readable, QDir::Name);
+    for (const QFileInfo &file : files) {
         loadFontFile(file.absoluteFilePath());
     }
 }
@@ -302,24 +276,24 @@ FontImportResult importFontFile(const QString &filePath)
 {
     FontImportResult result;
     const QFileInfo sourceInfo(filePath);
-    if(!sourceInfo.exists() || !sourceInfo.isFile()) {
+    if (!sourceInfo.exists() || !sourceInfo.isFile()) {
         result.errorMessage = QStringLiteral("字体文件不存在。");
         return result;
     }
-    if(!isSupportedFontFile(sourceInfo)) {
+    if (!isSupportedFontFile(sourceInfo)) {
         result.errorMessage = QStringLiteral("请选择 TTF、OTF 或 TTC 字体文件。");
         return result;
     }
 
     QString hashError;
     const QString digest = fontFileHash(sourceInfo.absoluteFilePath(), &hashError);
-    if(digest.isEmpty()) {
+    if (digest.isEmpty()) {
         result.errorMessage = hashError.isEmpty() ? QStringLiteral("无法识别字体文件。") : hashError;
         return result;
     }
 
     QDir fontDir(customFontDirectory());
-    if(!fontDir.exists() && !fontDir.mkpath(QStringLiteral("."))) {
+    if (!fontDir.exists() && !fontDir.mkpath(QStringLiteral("."))) {
         result.errorMessage = QStringLiteral("无法创建字体保存目录。");
         return result;
     }
@@ -328,8 +302,8 @@ FontImportResult importFontFile(const QString &filePath)
     const QString storedName = QStringLiteral("%1.%2").arg(digest.left(16), suffix);
     const QString storedPath = fontDir.filePath(storedName);
     bool copied = false;
-    if(!QFileInfo::exists(storedPath)) {
-        if(!QFile::copy(sourceInfo.absoluteFilePath(), storedPath)) {
+    if (!QFileInfo::exists(storedPath)) {
+        if (!QFile::copy(sourceInfo.absoluteFilePath(), storedPath)) {
             result.errorMessage = QStringLiteral("复制字体文件失败。");
             return result;
         }
@@ -337,8 +311,8 @@ FontImportResult importFontFile(const QString &filePath)
     }
 
     const QStringList families = loadFontFile(storedPath);
-    if(families.isEmpty()) {
-        if(copied) {
+    if (families.isEmpty()) {
+        if (copied) {
             QFile::remove(storedPath);
         }
         result.errorMessage = QStringLiteral("无法加载该字体文件。");
@@ -362,8 +336,7 @@ void setUiFontFamily(const QString &family)
 void setTerminalFontFamily(const QString &family)
 {
     QSettings settings;
-    settings.setValue(QStringLiteral("terminal/fontFamily"),
-                      resolvedFontFamily(family, defaultTerminalFontFamily()));
+    settings.setValue(QStringLiteral("terminal/fontFamily"), resolvedFontFamily(family, defaultTerminalFontFamily()));
 }
 
 void setTerminalFontPointSize(int pointSize)
@@ -385,9 +358,9 @@ QFont terminalFont(const QString &family)
     font.setFixedPitch(true);
     font.setPointSize(currentTerminalFontPointSize());
 
-    const QString resolved = resolvedFontFamily(family.isEmpty() ? currentTerminalFontFamily() : family,
-                                                defaultTerminalFontFamily());
-    if(!resolved.isEmpty()) {
+    const QString resolved =
+        resolvedFontFamily(family.isEmpty() ? currentTerminalFontFamily() : family, defaultTerminalFontFamily());
+    if (!resolved.isEmpty()) {
         font.setFamily(resolved);
     }
     return font;

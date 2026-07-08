@@ -11,7 +11,7 @@ AppPage::AppPage(const QString &title, const QString &subtitle, QWidget *parent,
 {
     setObjectName(QStringLiteral("appPage"));
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    if(horizontalFluentScrollBar()) {
+    if (horizontalFluentScrollBar()) {
         horizontalFluentScrollBar()->setForceHidden(true);
     }
 
@@ -23,7 +23,7 @@ AppPage::AppPage(const QString &title, const QString &subtitle, QWidget *parent,
     m_viewLayout->setSpacing(showHeader ? 16 : 10);
     m_viewLayout->setAlignment(Qt::AlignTop);
 
-    if(showHeader) {
+    if (showHeader) {
         m_headerCard = new HeaderCardWidget(title, m_view);
         m_headerCard->setBorderRadius(8);
         m_headerCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
@@ -52,17 +52,14 @@ AppPage::AppPage(const QString &title, const QString &subtitle, QWidget *parent,
     setWidgetResizable(true);
 }
 
-QVBoxLayout *AppPage::contentLayout() const
-{
-    return m_viewLayout;
-}
+QVBoxLayout *AppPage::contentLayout() const { return m_viewLayout; }
 
 QWidget *AppPage::addSection(const QString &title, QWidget *content, int stretch)
 {
     auto *card = new HeaderCardWidget(title, m_view);
     card->setBorderRadius(8);
     card->setSizePolicy(QSizePolicy::Expanding, stretch > 0 ? QSizePolicy::Expanding : QSizePolicy::Maximum);
-    if(title.isEmpty()) {
+    if (title.isEmpty()) {
         card->titleLabel()->hide();
         card->headerView()->hide();
         card->separator()->hide();
@@ -80,7 +77,7 @@ QWidget *AppPage::addSection(const QString &title, QWidget *content, int stretch
 
 void AppPage::addHeaderAction(QWidget *action)
 {
-    if(!m_headerCard || !action) {
+    if (!m_headerCard || !action) {
         return;
     }
     action->setParent(m_headerCard);

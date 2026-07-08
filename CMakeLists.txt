@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.4
+    VERSION 0.1.5
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -13,6 +13,25 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
+
+find_package(Python3 COMPONENTS Interpreter)
+find_program(CLANG_FORMAT_EXECUTABLE clang-format)
+if(CLANG_FORMAT_EXECUTABLE AND Python3_EXECUTABLE)
+    add_custom_target(format
+        COMMAND "${CMAKE_COMMAND}" -E env "CLANG_FORMAT=${CLANG_FORMAT_EXECUTABLE}"
+                "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/format_code.py" .
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Format C/C++ sources"
+        VERBATIM
+    )
+    add_custom_target(format-check
+        COMMAND "${CMAKE_COMMAND}" -E env "CLANG_FORMAT=${CLANG_FORMAT_EXECUTABLE}"
+                "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/format_code.py" --check .
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Check C/C++ source formatting"
+        VERBATIM
+    )
+endif()
 
 if(MINGW)
     string(APPEND CMAKE_CXX_FLAGS_MINSIZEREL " -ffunction-sections -fdata-sections")
@@ -54,6 +73,15 @@ add_executable(FluentSerialAssistant
     src/app/view/settings_page.h
     src/app/view/workbench_page.cpp
     src/app/view/workbench_page.h
+    src/app/view/workbench/workbench_page_connection.cpp
+    src/app/view/workbench/workbench_page_files.cpp
+    src/app/view/workbench/workbench_page_internal.h
+    src/app/view/workbench/workbench_page_layout.cpp
+    src/app/view/workbench/workbench_page_packets.cpp
+    src/app/view/workbench/workbench_page_side_sections.cpp
+    src/app/view/workbench/workbench_page_state.cpp
+    src/app/view/workbench/workbench_page_terminal.cpp
+    src/app/view/workbench/workbench_page_terminal_sections.cpp
     src/app/resources/app.qrc
     src/main.cpp
 )
