@@ -180,9 +180,15 @@ CI 会在以下平台执行 Release 构建：
 
 - Windows：`windows-latest`，MSVC 2022
 - Linux：`ubuntu-latest`，GCC
-- macOS：`macos-13`，Clang
+- macOS：`macos-15`，Clang
 
 CI 不使用本机 `CMakePresets.json` 中的固定 Qt 路径，而是在工作流中安装 Qt 并通过 CMake 直接配置。
+
+推送 `v*` 标签会触发 Release 打包：
+
+- Windows：使用 `windeployqt` 生成部署目录。
+- macOS：使用 `.app` bundle，包含应用 `.icns` 图标。
+- Linux：生成携带 Qt 运行库、Qt 插件、启动脚本和桌面图标元数据的 `.tar.gz`。
 
 ## 使用说明
 

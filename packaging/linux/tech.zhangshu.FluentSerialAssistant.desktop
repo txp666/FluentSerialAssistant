@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Fluent Serial Assistant
+Name[zh_CN]=Fluent 串口助手
+Comment=Serial terminal assistant
+Comment[zh_CN]=Fluent 风格串口调试助手
+Exec=FluentSerialAssistant
+Icon=tech.zhangshu.FluentSerialAssistant
+Categories=Development;Utility;
+Terminal=false

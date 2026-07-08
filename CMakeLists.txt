@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.3
+    VERSION 0.1.4
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -68,6 +68,12 @@ if(WIN32)
     target_sources(FluentSerialAssistant PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
 endif()
 
+if(APPLE)
+    set(APP_ICON_PATH_MACOS "${CMAKE_CURRENT_SOURCE_DIR}/src/app/resources/app_icon.icns")
+    target_sources(FluentSerialAssistant PRIVATE "${APP_ICON_PATH_MACOS}")
+    set_source_files_properties("${APP_ICON_PATH_MACOS}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+endif()
+
 target_include_directories(FluentSerialAssistant PRIVATE src src/app)
 
 target_link_libraries(FluentSerialAssistant
@@ -96,6 +102,7 @@ set_target_properties(FluentSerialAssistant PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_BUNDLE_NAME "Fluent Serial Assistant"
     MACOSX_BUNDLE_GUI_IDENTIFIER "tech.zhangshu.FluentSerialAssistant"
+    MACOSX_BUNDLE_ICON_FILE "app_icon.icns"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
 )

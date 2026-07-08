@@ -36,7 +36,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgl1-mesa-dev
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libxcb-cursor0 libxkbcommon-x11-0
 
       - name: Install macOS packages
         if: runner.os == 'macOS'
@@ -103,8 +103,81 @@ jobs:
               find build/release -maxdepth 6 -print
               exit 1
             fi
-            cp "$binary_target" "$package_root/"
+
+            mkdir -p "$package_root/bin" "$package_root/lib" "$package_root/plugins"
+            cp "$binary_target" "$package_root/bin/FluentSerialAssistant"
+            chmod +x "$package_root/bin/FluentSerialAssistant"
+
+            qt_prefix="${QT_ROOT_DIR:-}"
+            if [ -z "$qt_prefix" ]; then
+              qt_prefix="$(qtpaths6 --install-prefix 2>/dev/null || qtpaths --install-prefix)"
+            fi
+            qt_plugins_dir="$(qtpaths6 --plugin-dir 2>/dev/null || qtpaths --plugin-dir)"
+
+            copy_qt_dependencies() {
+              local source_file="$1"
+              while IFS= read -r dep; do
+                if [ -z "$dep" ] || [ ! -f "$dep" ]; then
+                  continue
+                fi
+                case "$dep" in
+                  "$qt_prefix"/*)
+                    copy_qt_library "$dep"
+                    ;;
+                esac
+              done < <(ldd "$source_file" | awk '{ if ($2 == "=>") print $3; else if ($1 ~ /^\//) print $1; }')
+            }
+
+            copy_qt_library() {
+              local dep="$1"
+              local base
+              base="$(basename "$dep")"
+              if [ -f "$package_root/lib/$base" ]; then
+                return
+              fi
+              cp -Lf "$dep" "$package_root/lib/$base"
+              copy_qt_dependencies "$dep"
+            }
+
+            copy_qt_plugin_group() {
+              local group="$1"
+              shift
+              local destination="$package_root/plugins/$group"
+              mkdir -p "$destination"
+              local pattern plugin
+              for pattern in "$@"; do
+                for plugin in "$qt_plugins_dir/$group"/$pattern; do
+                  if [ ! -e "$plugin" ]; then
+                    continue
+                  fi
+                  cp -Lf "$plugin" "$destination/"
+                  copy_qt_dependencies "$plugin"
+                done
+              done
+            }
+
+            copy_qt_dependencies "$package_root/bin/FluentSerialAssistant"
+            copy_qt_plugin_group platforms 'libqxcb.so'
+            copy_qt_plugin_group imageformats '*.so'
+            copy_qt_plugin_group iconengines '*.so'
+            copy_qt_plugin_group tls '*.so'
+            copy_qt_plugin_group platforminputcontexts '*.so'
+
+            printf '%s\n' '[Paths]' 'Prefix = ..' 'Plugins = ../plugins' > "$package_root/bin/qt.conf"
+            printf '%s\n' \
+              '#!/usr/bin/env bash' \
+              'set -e' \
+              'app_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' \
+              'export LD_LIBRARY_PATH="$app_dir/lib:${LD_LIBRARY_PATH:-}"' \
+              'export QT_PLUGIN_PATH="$app_dir/plugins"' \
+              'exec "$app_dir/bin/FluentSerialAssistant" "$@"' \
+              > "$package_root/FluentSerialAssistant"
             chmod +x "$package_root/FluentSerialAssistant"
+
+            mkdir -p "$package_root/share/applications" "$package_root/share/icons/hicolor/1024x1024/apps"
+            cp packaging/linux/tech.zhangshu.FluentSerialAssistant.desktop "$package_root/share/applications/"
+            cp logo.png "$package_root/share/icons/hicolor/1024x1024/apps/tech.zhangshu.FluentSerialAssistant.png"
+            du -sh "$package_root"
           fi
 
           cp README.md CHANGELOG.md LICENSE "$package_root/"
