@@ -6,6 +6,7 @@
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
 #include <FluentQtWidgets/StyleSheet.h>
+#include <FluentQtWidgets/Theme.h>
 
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
@@ -50,6 +51,64 @@ constexpr int ReconnectIntervalMs = 2000;
 constexpr int CompactControlHeight = 32;
 constexpr int DefaultFileChunkSize = 256;
 constexpr int DefaultFileChunkIntervalMs = 10;
+
+QColor terminalTimestampColor()
+{
+    return ThemeManager::instance()->effectiveTheme() == Theme::Dark ? QColor(132, 192, 214) : QColor(75, 103, 128);
+}
+
+QColor terminalDirectionMarkerColor(bool tx)
+{
+    const bool dark = ThemeManager::instance()->effectiveTheme() == Theme::Dark;
+    if(tx) {
+        return dark ? QColor(255, 185, 115) : QColor(177, 86, 15);
+    }
+    return dark ? QColor(79, 214, 191) : QColor(0, 121, 107);
+}
+
+QColor terminalEspIdfLogLevelColor(QChar level)
+{
+    const bool dark = ThemeManager::instance()->effectiveTheme() == Theme::Dark;
+    switch(level.toUpper().toLatin1()) {
+    case 'V':
+        return dark ? QColor(187, 154, 255) : QColor(108, 84, 190);
+    case 'D':
+        return dark ? QColor(117, 190, 255) : QColor(33, 118, 188);
+    case 'I':
+        return dark ? QColor(103, 219, 123) : QColor(0, 126, 67);
+    case 'W':
+        return dark ? QColor(255, 209, 102) : QColor(171, 103, 0);
+    case 'E':
+        return dark ? QColor(255, 132, 132) : QColor(190, 35, 35);
+    default:
+        return QColor();
+    }
+}
+
+int espIdfLogPrefixEnd(const QString &line, int prefixStart)
+{
+    if(prefixStart + 4 >= line.size()) {
+        return -1;
+    }
+
+    const QColor levelColor = terminalEspIdfLogLevelColor(line.at(prefixStart));
+    if(!levelColor.isValid() || line.at(prefixStart + 1) != QLatin1Char(' ') ||
+       line.at(prefixStart + 2) != QLatin1Char('(')) {
+        return -1;
+    }
+
+    int cursor = prefixStart + 3;
+    const int digitStart = cursor;
+    while(cursor < line.size() && line.at(cursor).isDigit()) {
+        ++cursor;
+    }
+
+    if(cursor == digitStart || cursor >= line.size() || line.at(cursor) != QLatin1Char(')')) {
+        return -1;
+    }
+
+    return cursor + 1;
+}
 
 void setFixedControlWidth(QWidget *widget, int width)
 {
@@ -315,6 +374,9 @@ WorkbenchPage::WorkbenchPage(QWidget *parent)
     connect(&m_statsTimer, &QTimer::timeout, this, &WorkbenchPage::updateRateStats);
     m_fileSendTimer.setSingleShot(true);
     connect(&m_fileSendTimer, &QTimer::timeout, this, &WorkbenchPage::sendNextFileChunk);
+    connect(ThemeManager::instance(), &ThemeManager::effectiveThemeChanged, this, [this]() {
+        renderTerminal();
+    });
 
     refreshPorts();
     loadSendHistory();
@@ -1790,6 +1852,49 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
     if(!searchText.isEmpty() && line.contains(searchText, Qt::CaseInsensitive)) {
         format.setBackground(QColor(255, 214, 10, 72));
     }
+
+    const bool showTimestamp = m_timestampCheck && m_timestampCheck->isChecked();
+    const QString timestamp = record.timestamp.toString(QStringLiteral("HH:mm:ss.zzz"));
+    const QString marker = record.direction == RecordDirection::Tx ? QStringLiteral("»") : QStringLiteral("«");
+    int position = 0;
+    if(showTimestamp && line.startsWith(timestamp)) {
+        QTextCharFormat timestampFormat = format;
+        timestampFormat.setForeground(terminalTimestampColor());
+        cursor.insertText(timestamp, timestampFormat);
+        position = timestamp.size();
+    }
+
+    const int markerIndex = line.indexOf(marker, position);
+    if(markerIndex >= position) {
+        QTextCharFormat markerFormat = format;
+        markerFormat.setForeground(terminalDirectionMarkerColor(record.direction == RecordDirection::Tx));
+        cursor.insertText(line.mid(position, markerIndex - position), format);
+        cursor.insertText(marker, markerFormat);
+
+        const int afterMarker = markerIndex + marker.size();
+        int prefixStart = afterMarker;
+        while(prefixStart < line.size() && line.at(prefixStart).isSpace()) {
+            ++prefixStart;
+        }
+
+        const int prefixEnd = espIdfLogPrefixEnd(line, prefixStart);
+        if(prefixEnd > prefixStart) {
+            QTextCharFormat levelFormat = format;
+            levelFormat.setForeground(terminalEspIdfLogLevelColor(line.at(prefixStart)));
+            cursor.insertText(line.mid(afterMarker, prefixStart - afterMarker), format);
+            cursor.insertText(line.mid(prefixStart, prefixEnd - prefixStart), levelFormat);
+            cursor.insertText(line.mid(prefixEnd), format);
+        } else {
+            cursor.insertText(line.mid(afterMarker), format);
+        }
+        return true;
+    }
+
+    if(position > 0) {
+        cursor.insertText(line.mid(position), format);
+        return true;
+    }
+
     cursor.insertText(line, format);
     return true;
 }
