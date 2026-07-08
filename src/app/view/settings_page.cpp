@@ -326,7 +326,7 @@ void SettingsPage::handleUpdateCheckFinished(bool ok, bool updateAvailable, cons
         if (m_updateCard) {
             m_updateCard->setContent(QStringLiteral("检查失败：%1").arg(message));
         }
-        InfoBar::error(QStringLiteral("检查更新失败"), message, Qt::Horizontal, true, 3500, InfoBarPosition::TopRight,
+        InfoBar::error(QStringLiteral("检查更新失败"), message, Qt::Horizontal, true, 3500, InfoBarPosition::Top,
                        window());
         return;
     }
@@ -336,7 +336,7 @@ void SettingsPage::handleUpdateCheckFinished(bool ok, bool updateAvailable, cons
             m_updateCard->setContent(QStringLiteral("当前已是最新版本 %1").arg(currentVersion));
         }
         InfoBar::success(QStringLiteral("当前已是最新版本"), QStringLiteral("版本 %1").arg(currentVersion),
-                         Qt::Horizontal, true, 2200, InfoBarPosition::TopRight, window());
+                         Qt::Horizontal, true, 2200, InfoBarPosition::Top, window());
         return;
     }
 
@@ -346,7 +346,7 @@ void SettingsPage::handleUpdateCheckFinished(bool ok, bool updateAvailable, cons
 
     auto *bar = InfoBar::info(QStringLiteral("发现新版本"),
                               QStringLiteral("当前 %1，最新 %2").arg(currentVersion, latestVersion), Qt::Horizontal,
-                              true, 10000, InfoBarPosition::TopRight, window());
+                              true, 10000, InfoBarPosition::Top, window());
     auto *openButton = new PushButton(icon(FluentIcon::Link), QStringLiteral("打开发布页"), bar);
     openButton->setEnabled(releaseUrl.isValid());
     bar->addWidget(openButton);
