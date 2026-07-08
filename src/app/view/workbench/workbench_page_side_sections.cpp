@@ -386,6 +386,19 @@ QWidget *WorkbenchPage::createPacketSection()
     makeCompactControl(m_packetNameEdit);
     addFormRow(root, QStringLiteral("名称"), m_packetNameEdit);
 
+    m_packetGroupEdit = new LineEdit(section);
+    m_packetGroupEdit->setPlaceholderText(QStringLiteral("分组"));
+    makeCompactControl(m_packetGroupEdit);
+    m_packetEnabledCheck = new CheckBox(QStringLiteral("启用"), section);
+    m_packetEnabledCheck->setChecked(true);
+    m_packetEnabledCheck->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("分组"), m_packetGroupEdit, m_packetEnabledCheck);
+
+    m_packetNoteEdit = new LineEdit(section);
+    m_packetNoteEdit->setPlaceholderText(QStringLiteral("备注"));
+    makeCompactControl(m_packetNoteEdit);
+    addFormRow(root, QStringLiteral("备注"), m_packetNoteEdit);
+
     auto *modeRow = new QHBoxLayout;
     modeRow->setSpacing(8);
     m_packetModeCombo = new ComboBox(section);
@@ -413,7 +426,7 @@ QWidget *WorkbenchPage::createPacketSection()
     root->addWidget(m_packetPayloadEdit);
 
     m_packetList = new ListWidget(section);
-    m_packetList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_packetList->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_packetList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_packetList->setMinimumHeight(132);
     m_packetList->setMaximumHeight(220);
@@ -440,21 +453,38 @@ QWidget *WorkbenchPage::createPacketSection()
     moveRow->addWidget(m_packetLoadButton);
     root->addLayout(moveRow);
 
+    auto *ioRow = new QHBoxLayout;
+    ioRow->setSpacing(8);
+    m_packetImportButton = new PushButton(icon(FluentIcon::Download), QStringLiteral("导入 JSON"), section);
+    m_packetExportButton = new PushButton(icon(FluentIcon::SaveAs), QStringLiteral("导出 JSON"), section);
+    setButtonRowControlPolicy(m_packetImportButton);
+    setButtonRowControlPolicy(m_packetExportButton);
+    ioRow->addWidget(m_packetImportButton);
+    ioRow->addWidget(m_packetExportButton);
+    root->addLayout(ioRow);
+
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
     m_packetSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送"), section);
+    m_packetBatchSendButton = new PushButton(icon(FluentIcon::SendFill), QStringLiteral("批量发送"), section);
     m_packetDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
     setButtonRowControlPolicy(m_packetSendButton);
+    setButtonRowControlPolicy(m_packetBatchSendButton);
     setButtonRowControlPolicy(m_packetDeleteButton);
     actionRow->addWidget(m_packetSendButton);
+    actionRow->addWidget(m_packetBatchSendButton);
     actionRow->addWidget(m_packetDeleteButton);
     root->addLayout(actionRow);
 
     connect(m_packetList, &ListWidget::currentRowChanged, this, [this](int row) { applyPacket(row); });
+    connect(m_packetList, &ListWidget::itemSelectionChanged, this, &WorkbenchPage::updatePacketActionState);
     connect(m_packetSaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentPacket);
     connect(m_packetLoadButton, &PushButton::clicked, this, [this]() { applyPacket(m_packetList->currentRow()); });
     connect(m_packetDeleteButton, &PushButton::clicked, this, &WorkbenchPage::removeSelectedPacket);
     connect(m_packetSendButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::sendSelectedPacket);
+    connect(m_packetBatchSendButton, &PushButton::clicked, this, &WorkbenchPage::sendSelectedPackets);
+    connect(m_packetImportButton, &PushButton::clicked, this, &WorkbenchPage::importSendPackets);
+    connect(m_packetExportButton, &PushButton::clicked, this, &WorkbenchPage::exportSendPackets);
     connect(m_packetUpButton, &ToolButton::clicked, this, [this]() { moveSelectedPacket(-1); });
     connect(m_packetDownButton, &ToolButton::clicked, this, [this]() { moveSelectedPacket(1); });
 

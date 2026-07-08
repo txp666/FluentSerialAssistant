@@ -77,9 +77,7 @@ void WorkbenchPage::setControlsEnabledForConnection(bool connected)
     m_sendEdit->setEnabled(connected);
     m_loopCheck->setEnabled(connected);
     m_loopIntervalSpin->setEnabled(connected && m_loopCheck->isChecked());
-    if (m_packetSendButton) {
-        m_packetSendButton->setEnabled(connected && !m_sendPackets.isEmpty());
-    }
+    updatePacketActionState();
     if (m_fileSendButton) {
         m_fileSendButton->setEnabled(connected && !m_fileSendFile.isOpen());
     }

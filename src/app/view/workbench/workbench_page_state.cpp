@@ -108,12 +108,15 @@ void WorkbenchPage::restoreSettings()
     const int frameFixedLength = settings.value(QStringLiteral("receive/frameFixedLength"), 8).toInt();
     const int frameBreakMs = settings.value(QStringLiteral("receive/frameBreakMs"), 20).toInt();
     const QString sendPayload = settings.value(QStringLiteral("send/currentPayload")).toString();
+    const QString packetGroup = settings.value(QStringLiteral("send/currentPacketGroup")).toString();
     const QString packetName = settings.value(QStringLiteral("send/currentPacketName")).toString();
+    const QString packetNote = settings.value(QStringLiteral("send/currentPacketNote")).toString();
     const QString packetPayload = settings.value(QStringLiteral("send/currentPacketPayload")).toString();
     const QString packetMode =
         settings.value(QStringLiteral("send/currentPacketMode"), QStringLiteral("text")).toString();
     const QString packetLineEnding =
         settings.value(QStringLiteral("send/currentPacketLineEnding"), QStringLiteral("none")).toString();
+    const bool packetEnabled = settings.value(QStringLiteral("send/currentPacketEnabled"), true).toBool();
     const QString modbusFunction =
         settings.value(QStringLiteral("modbus/function"), AppModbus::defaultFunctionKey()).toString();
     const int modbusSlave = settings.value(QStringLiteral("modbus/slave"), 1).toInt();
@@ -181,7 +184,10 @@ void WorkbenchPage::restoreSettings()
     m_txColorButton->setEnabled(m_showTxCheck->isChecked());
     m_autoReconnectCheck->setChecked(settings.value(QStringLiteral("serial/autoReconnect"), true).toBool());
     m_sendEdit->setPlainText(sendPayload);
+    m_packetGroupEdit->setText(packetGroup);
     m_packetNameEdit->setText(packetName);
+    m_packetNoteEdit->setText(packetNote);
+    m_packetEnabledCheck->setChecked(packetEnabled);
     m_packetPayloadEdit->setPlainText(packetPayload);
     const int packetModeIndex = m_packetModeCombo->findData(packetMode);
     if (packetModeIndex >= 0) {
@@ -246,7 +252,10 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("send/txColor"), selectedTxColor().name(QColor::HexRgb));
     settings.setValue(QStringLiteral("send/loopIntervalMs"), m_loopIntervalSpin->value());
     settings.setValue(QStringLiteral("send/currentPayload"), m_sendEdit->toPlainText());
+    settings.setValue(QStringLiteral("send/currentPacketGroup"), m_packetGroupEdit->text());
     settings.setValue(QStringLiteral("send/currentPacketName"), m_packetNameEdit->text());
+    settings.setValue(QStringLiteral("send/currentPacketNote"), m_packetNoteEdit->text());
+    settings.setValue(QStringLiteral("send/currentPacketEnabled"), m_packetEnabledCheck->isChecked());
     settings.setValue(QStringLiteral("send/currentPacketPayload"), m_packetPayloadEdit->toPlainText());
     settings.setValue(QStringLiteral("send/currentPacketMode"), m_packetModeCombo->currentData().toString());
     settings.setValue(QStringLiteral("send/currentPacketLineEnding"),

@@ -3,6 +3,11 @@
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
+namespace {
+constexpr int SendPacketSchemaVersion = 1;
+const QString PacketSchemaName = QStringLiteral("fluent-serial-assistant.send-packets");
+} // namespace
+
 void WorkbenchPage::updatePacketTable(int selectedRow)
 {
     if (!m_packetList) {
@@ -17,14 +22,22 @@ void WorkbenchPage::updatePacketTable(int selectedRow)
         if (payload.size() > 38) {
             payload = payload.left(35) + QStringLiteral("...");
         }
+        QString note = packet.note.simplified();
+        if (note.size() > 22) {
+            note = note.left(19) + QStringLiteral("...");
+        }
+        const QString group = packet.group.isEmpty() ? QStringLiteral("默认") : packet.group;
+        const QString status = packet.enabled ? QString() : QStringLiteral(" [停用]");
+        const QString suffix = note.isEmpty() ? QString() : QStringLiteral(" · %1").arg(note);
 
-        auto *item =
-            new QListWidgetItem(icon(FluentIcon::CommandPrompt), QStringLiteral("%1\n%2 · %3 · %4")
-                                                                     .arg(packet.name, modeLabel(packet.mode),
-                                                                          lineEndingLabel(packet.lineEnding), payload));
+        auto *item = new QListWidgetItem(icon(packet.enabled ? FluentIcon::CommandPrompt : FluentIcon::Cancel),
+                                         QStringLiteral("%1 / %2%3\n%4 · %5 · %6%7")
+                                             .arg(group, packet.name, status, modeLabel(packet.mode),
+                                                  lineEndingLabel(packet.lineEnding), payload, suffix));
         item->setData(Qt::UserRole, row);
-        item->setToolTip(packet.payload);
-        item->setSizeHint(QSize(0, 52));
+        item->setToolTip(QStringLiteral("分组：%1\n名称：%2\n备注：%3\n内容：%4")
+                             .arg(group, packet.name, packet.note, packet.payload));
+        item->setSizeHint(QSize(0, 58));
         m_packetList->addItem(item);
     }
 
@@ -33,21 +46,74 @@ void WorkbenchPage::updatePacketTable(int selectedRow)
             qBound(0, selectedRow >= 0 ? selectedRow : m_packetList->currentRow(), m_sendPackets.size() - 1);
         m_packetList->setCurrentRow(row);
     }
+    updatePacketActionState();
+}
+
+QList<int> WorkbenchPage::selectedPacketRows() const
+{
+    QList<int> rows;
+    if (!m_packetList) {
+        return rows;
+    }
+
+    const auto items = m_packetList->selectedItems();
+    rows.reserve(items.size());
+    for (QListWidgetItem *item : items) {
+        const int row = item->data(Qt::UserRole).toInt();
+        if (row >= 0 && row < m_sendPackets.size()) {
+            rows.append(row);
+        }
+    }
+
+    if (rows.isEmpty()) {
+        const int row = m_packetList->currentRow();
+        if (row >= 0 && row < m_sendPackets.size()) {
+            rows.append(row);
+        }
+    }
+
+    std::sort(rows.begin(), rows.end());
+    rows.erase(std::unique(rows.begin(), rows.end()), rows.end());
+    return rows;
+}
+
+void WorkbenchPage::updatePacketActionState()
+{
+    if (!m_packetList) {
+        return;
+    }
+
     const bool hasPacket = !m_sendPackets.isEmpty();
+    const int row = m_packetList->currentRow();
+    const bool hasCurrent = row >= 0 && row < m_sendPackets.size();
+    const QList<int> rows = selectedPacketRows();
+    bool hasEnabledSelection = false;
+    for (const int selectedRow : rows) {
+        if (m_sendPackets.at(selectedRow).enabled) {
+            hasEnabledSelection = true;
+            break;
+        }
+    }
     if (m_packetLoadButton) {
-        m_packetLoadButton->setEnabled(hasPacket);
+        m_packetLoadButton->setEnabled(hasCurrent);
     }
     if (m_packetDeleteButton) {
-        m_packetDeleteButton->setEnabled(hasPacket);
+        m_packetDeleteButton->setEnabled(!rows.isEmpty());
     }
     if (m_packetSendButton) {
-        m_packetSendButton->setEnabled(hasPacket && m_serial.isOpen());
+        m_packetSendButton->setEnabled(hasCurrent && m_sendPackets.at(row).enabled && m_serial.isOpen());
+    }
+    if (m_packetBatchSendButton) {
+        m_packetBatchSendButton->setEnabled(hasEnabledSelection && m_serial.isOpen());
     }
     if (m_packetUpButton) {
-        m_packetUpButton->setEnabled(hasPacket);
+        m_packetUpButton->setEnabled(rows.size() == 1 && rows.first() > 0);
     }
     if (m_packetDownButton) {
-        m_packetDownButton->setEnabled(hasPacket);
+        m_packetDownButton->setEnabled(rows.size() == 1 && rows.first() < m_sendPackets.size() - 1);
+    }
+    if (m_packetExportButton) {
+        m_packetExportButton->setEnabled(hasPacket);
     }
 }
 
@@ -58,7 +124,16 @@ void WorkbenchPage::applyPacket(int row)
     }
 
     const SendPacket packet = m_sendPackets.at(row);
+    if (m_packetGroupEdit) {
+        m_packetGroupEdit->setText(packet.group);
+    }
     m_packetNameEdit->setText(packet.name);
+    if (m_packetNoteEdit) {
+        m_packetNoteEdit->setText(packet.note);
+    }
+    if (m_packetEnabledCheck) {
+        m_packetEnabledCheck->setChecked(packet.enabled);
+    }
     m_packetPayloadEdit->setPlainText(packet.payload);
     const int packetModeIndex = m_packetModeCombo->findData(packet.mode);
     if (packetModeIndex >= 0) {
@@ -98,15 +173,18 @@ void WorkbenchPage::saveCurrentPacket()
     }
 
     SendPacket packet;
+    packet.group = m_packetGroupEdit ? m_packetGroupEdit->text().trimmed() : QString();
     packet.name = name;
+    packet.note = m_packetNoteEdit ? m_packetNoteEdit->text().trimmed() : QString();
     packet.mode = m_packetModeCombo->currentData().toString();
     packet.payload = payload;
     packet.lineEnding = m_packetLineEndingCombo->currentData().toString();
-    packet.enabled = true;
+    packet.enabled = !m_packetEnabledCheck || m_packetEnabledCheck->isChecked();
 
     int targetRow = -1;
     for (int i = 0; i < m_sendPackets.size(); ++i) {
-        if (m_sendPackets.at(i).name == packet.name) {
+        const SendPacket &existing = m_sendPackets.at(i);
+        if (existing.group == packet.group && existing.name == packet.name) {
             targetRow = i;
             break;
         }
@@ -129,20 +207,32 @@ void WorkbenchPage::saveCurrentPacket()
 
 void WorkbenchPage::removeSelectedPacket()
 {
-    const int row = m_packetList ? m_packetList->currentRow() : -1;
-    if (row < 0 || row >= m_sendPackets.size()) {
+    QList<int> rows = selectedPacketRows();
+    if (rows.isEmpty()) {
         return;
     }
-    const QString name = m_sendPackets.at(row).name;
-    m_sendPackets.removeAt(row);
-    updatePacketTable(qMin(row, m_sendPackets.size() - 1));
+
+    const QString name = rows.size() == 1 ? m_sendPackets.at(rows.first()).name : QString();
+    const int nextRow = rows.first();
+    std::sort(rows.begin(), rows.end(), [](int left, int right) { return left > right; });
+    for (const int row : rows) {
+        if (row >= 0 && row < m_sendPackets.size()) {
+            m_sendPackets.removeAt(row);
+        }
+    }
+
+    updatePacketTable(qMin(nextRow, m_sendPackets.size() - 1));
     saveSendPackets();
-    showInfo(QStringLiteral("已删除常用包"), name);
+    showInfo(QStringLiteral("已删除常用包"), name.isEmpty() ? QStringLiteral("%1 条").arg(rows.size()) : name);
 }
 
 void WorkbenchPage::moveSelectedPacket(int direction)
 {
-    const int row = m_packetList ? m_packetList->currentRow() : -1;
+    const QList<int> rows = selectedPacketRows();
+    if (rows.size() != 1) {
+        return;
+    }
+    const int row = rows.first();
     const int target = row + direction;
     if (row < 0 || row >= m_sendPackets.size() || target < 0 || target >= m_sendPackets.size()) {
         return;
@@ -155,6 +245,47 @@ void WorkbenchPage::moveSelectedPacket(int direction)
 
 void WorkbenchPage::sendSelectedPacket() { sendPacket(m_packetList ? m_packetList->currentRow() : -1); }
 
+void WorkbenchPage::sendSelectedPackets()
+{
+    if (!m_serial.isOpen()) {
+        showWarning(QStringLiteral("无法批量发送"), QStringLiteral("请先连接串口"));
+        return;
+    }
+
+    const QList<int> rows = selectedPacketRows();
+    if (rows.isEmpty()) {
+        showWarning(QStringLiteral("无法批量发送"), QStringLiteral("请先选择常用包"));
+        return;
+    }
+
+    int sent = 0;
+    int skipped = 0;
+    for (const int row : rows) {
+        if (row < 0 || row >= m_sendPackets.size()) {
+            continue;
+        }
+        const SendPacket packet = m_sendPackets.at(row);
+        if (!packet.enabled) {
+            ++skipped;
+            continue;
+        }
+        if (!sendPacketPayload(packet)) {
+            showWarning(QStringLiteral("批量发送已中止"),
+                        sent > 0 ? QStringLiteral("已发送 %1 条，失败项：%2").arg(sent).arg(packet.name)
+                                 : QStringLiteral("失败项：%1").arg(packet.name));
+            return;
+        }
+        ++sent;
+    }
+
+    if (sent == 0) {
+        showWarning(QStringLiteral("无法批量发送"), QStringLiteral("选中的常用包都已停用"));
+        return;
+    }
+    const QString skippedText = skipped > 0 ? QStringLiteral("，跳过停用 %1 条").arg(skipped) : QString();
+    showSuccess(QStringLiteral("批量发送完成"), QStringLiteral("已发送 %1 条%2").arg(sent).arg(skippedText));
+}
+
 void WorkbenchPage::sendPacket(int row)
 {
     if (row < 0 || row >= m_sendPackets.size()) {
@@ -166,25 +297,34 @@ void WorkbenchPage::sendPacket(int row)
     }
 
     const SendPacket packet = m_sendPackets.at(row);
+    if (!packet.enabled) {
+        showWarning(QStringLiteral("无法发送"), QStringLiteral("该常用包已停用"));
+        return;
+    }
+    sendPacketPayload(packet);
+}
+
+bool WorkbenchPage::sendPacketPayload(const SendPacket &packet)
+{
     bool ok = false;
     const QByteArray payload = payloadFromText(packet.payload, packet.mode, packet.lineEnding, false, &ok);
     if (!ok) {
-        return;
+        return false;
     }
     if (payload.isEmpty()) {
         showWarning(QStringLiteral("无法发送"), QStringLiteral("常用包内容为空"));
-        return;
+        return false;
     }
     bool checksumOk = false;
     const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
     if (!checksumOk) {
-        return;
+        return false;
     }
 
     QString error;
     if (!m_serial.writeData(output, &error)) {
         showError(QStringLiteral("发送失败"), error);
-        return;
+        return false;
     }
 
     SendHistoryItem historyItem;
@@ -193,6 +333,7 @@ void WorkbenchPage::sendPacket(int row)
     historyItem.lineEnding = packet.lineEnding;
     addSendHistory(historyItem);
     appendRecord(RecordDirection::Tx, output);
+    return true;
 }
 
 void WorkbenchPage::sendCurrentPayload()
@@ -304,20 +445,35 @@ void WorkbenchPage::loadSendPackets()
     m_sendPackets.clear();
     QSettings settings;
     const QByteArray json = settings.value(QStringLiteral("send/packets")).toString().toUtf8();
-    const QJsonDocument document = QJsonDocument::fromJson(json);
-    if (!document.isArray()) {
+    if (json.isEmpty()) {
         updatePacketTable();
         return;
     }
 
-    const QJsonArray array = document.array();
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(json, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        updatePacketTable();
+        return;
+    }
+
+    const QJsonObject root = document.object();
+    if (root.value(QStringLiteral("version")).toInt() != SendPacketSchemaVersion ||
+        !root.value(QStringLiteral("packets")).isArray()) {
+        updatePacketTable();
+        return;
+    }
+
+    const QJsonArray array = root.value(QStringLiteral("packets")).toArray();
     for (const QJsonValue &value : array) {
         if (!value.isObject()) {
             continue;
         }
         const QJsonObject object = value.toObject();
         SendPacket packet;
+        packet.group = object.value(QStringLiteral("group")).toString().trimmed();
         packet.name = object.value(QStringLiteral("name")).toString().trimmed();
+        packet.note = object.value(QStringLiteral("note")).toString().trimmed();
         packet.mode = object.value(QStringLiteral("mode")).toString(QStringLiteral("text"));
         packet.payload = object.value(QStringLiteral("payload")).toString();
         packet.lineEnding = object.value(QStringLiteral("lineEnding")).toString(QStringLiteral("none"));
@@ -328,7 +484,8 @@ void WorkbenchPage::loadSendPackets()
         if (packet.mode != QStringLiteral("hex")) {
             packet.mode = QStringLiteral("text");
         }
-        if (packet.lineEnding.isEmpty()) {
+        if (packet.lineEnding != QStringLiteral("cr") && packet.lineEnding != QStringLiteral("lf") &&
+            packet.lineEnding != QStringLiteral("crlf")) {
             packet.lineEnding = QStringLiteral("none");
         }
         m_sendPackets.append(packet);
@@ -344,7 +501,9 @@ void WorkbenchPage::saveSendPackets() const
     QJsonArray array;
     for (const SendPacket &packet : m_sendPackets) {
         QJsonObject object;
+        object.insert(QStringLiteral("group"), packet.group);
         object.insert(QStringLiteral("name"), packet.name);
+        object.insert(QStringLiteral("note"), packet.note);
         object.insert(QStringLiteral("mode"), packet.mode);
         object.insert(QStringLiteral("payload"), packet.payload);
         object.insert(QStringLiteral("lineEnding"), packet.lineEnding);
@@ -352,7 +511,169 @@ void WorkbenchPage::saveSendPackets() const
         array.append(object);
     }
 
+    QJsonObject root;
+    root.insert(QStringLiteral("schema"), PacketSchemaName);
+    root.insert(QStringLiteral("version"), SendPacketSchemaVersion);
+    root.insert(QStringLiteral("packets"), array);
+
     QSettings settings;
     settings.setValue(QStringLiteral("send/packets"),
-                      QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact)));
+                      QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact)));
+}
+
+void WorkbenchPage::importSendPackets()
+{
+    QSettings settings;
+    const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
+    const QString path = QFileDialog::getOpenFileName(window(), QStringLiteral("导入常用包"), initialFolder,
+                                                      QStringLiteral("JSON (*.json)"));
+    if (path.isEmpty()) {
+        return;
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        showError(QStringLiteral("导入失败"), file.errorString());
+        return;
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        showError(QStringLiteral("导入失败"), QStringLiteral("JSON 格式无效"));
+        return;
+    }
+
+    const QJsonObject root = document.object();
+    if (root.value(QStringLiteral("version")).toInt() != SendPacketSchemaVersion ||
+        !root.value(QStringLiteral("packets")).isArray()) {
+        showError(QStringLiteral("导入失败"), QStringLiteral("不是常用包 JSON v1 格式"));
+        return;
+    }
+
+    const QJsonArray array = root.value(QStringLiteral("packets")).toArray();
+    int added = 0;
+    int replaced = 0;
+    int skipped = 0;
+    int selectedRow = -1;
+    for (const QJsonValue &value : array) {
+        if (!value.isObject()) {
+            ++skipped;
+            continue;
+        }
+
+        const QJsonObject object = value.toObject();
+        SendPacket packet;
+        packet.group = object.value(QStringLiteral("group")).toString().trimmed();
+        packet.name = object.value(QStringLiteral("name")).toString().trimmed();
+        packet.note = object.value(QStringLiteral("note")).toString().trimmed();
+        packet.mode = object.value(QStringLiteral("mode")).toString(QStringLiteral("text"));
+        packet.payload = object.value(QStringLiteral("payload")).toString();
+        packet.lineEnding = object.value(QStringLiteral("lineEnding")).toString(QStringLiteral("none"));
+        packet.enabled = object.value(QStringLiteral("enabled")).toBool(true);
+
+        if (packet.name.isEmpty() || packet.payload.isEmpty()) {
+            ++skipped;
+            continue;
+        }
+        if (packet.mode != QStringLiteral("hex")) {
+            packet.mode = QStringLiteral("text");
+        }
+        if (packet.lineEnding != QStringLiteral("cr") && packet.lineEnding != QStringLiteral("lf") &&
+            packet.lineEnding != QStringLiteral("crlf")) {
+            packet.lineEnding = QStringLiteral("none");
+        }
+
+        int targetRow = -1;
+        for (int i = 0; i < m_sendPackets.size(); ++i) {
+            const SendPacket &existing = m_sendPackets.at(i);
+            if (existing.group == packet.group && existing.name == packet.name) {
+                targetRow = i;
+                break;
+            }
+        }
+
+        if (targetRow >= 0) {
+            m_sendPackets[targetRow] = packet;
+            ++replaced;
+        } else {
+            if (m_sendPackets.size() >= MaxSendPacketItems) {
+                ++skipped;
+                continue;
+            }
+            m_sendPackets.append(packet);
+            targetRow = m_sendPackets.size() - 1;
+            ++added;
+        }
+        if (selectedRow < 0) {
+            selectedRow = targetRow;
+        }
+    }
+
+    if (added == 0 && replaced == 0) {
+        showWarning(QStringLiteral("没有导入常用包"), QStringLiteral("文件中没有有效条目"));
+        return;
+    }
+
+    settings.setValue(QStringLiteral("export/folder"), QFileInfo(path).absolutePath());
+    updatePacketTable(selectedRow);
+    applyPacket(selectedRow);
+    saveSendPackets();
+    showSuccess(QStringLiteral("导入完成"),
+                QStringLiteral("新增 %1 条，更新 %2 条，跳过 %3 条").arg(added).arg(replaced).arg(skipped));
+}
+
+void WorkbenchPage::exportSendPackets()
+{
+    if (m_sendPackets.isEmpty()) {
+        showWarning(QStringLiteral("没有可导出的常用包"), QStringLiteral("请先保存常用包"));
+        return;
+    }
+
+    QSettings settings;
+    const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
+    const QString initialName =
+        QDir(initialFolder)
+            .filePath(QStringLiteral("send_packets_%1.json")
+                          .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"))));
+    QString path = QFileDialog::getSaveFileName(window(), QStringLiteral("导出常用包"), initialName,
+                                                QStringLiteral("JSON (*.json)"));
+    if (path.isEmpty()) {
+        return;
+    }
+    if (QFileInfo(path).suffix().isEmpty()) {
+        path.append(QStringLiteral(".json"));
+    }
+
+    QJsonArray array;
+    for (const SendPacket &packet : m_sendPackets) {
+        QJsonObject object;
+        object.insert(QStringLiteral("group"), packet.group);
+        object.insert(QStringLiteral("name"), packet.name);
+        object.insert(QStringLiteral("note"), packet.note);
+        object.insert(QStringLiteral("mode"), packet.mode);
+        object.insert(QStringLiteral("payload"), packet.payload);
+        object.insert(QStringLiteral("lineEnding"), packet.lineEnding);
+        object.insert(QStringLiteral("enabled"), packet.enabled);
+        array.append(object);
+    }
+
+    QJsonObject root;
+    root.insert(QStringLiteral("schema"), PacketSchemaName);
+    root.insert(QStringLiteral("version"), SendPacketSchemaVersion);
+    root.insert(QStringLiteral("exportedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    root.insert(QStringLiteral("packets"), array);
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        showError(QStringLiteral("导出失败"), file.errorString());
+        return;
+    }
+    if (file.write(QJsonDocument(root).toJson(QJsonDocument::Indented)) < 0) {
+        showError(QStringLiteral("导出失败"), file.errorString());
+        return;
+    }
+
+    settings.setValue(QStringLiteral("export/folder"), QFileInfo(path).absolutePath());
+    showSuccess(QStringLiteral("导出完成"), path);
 }

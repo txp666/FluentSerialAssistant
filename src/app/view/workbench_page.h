@@ -77,7 +77,9 @@ class WorkbenchPage : public AppPage
 
     struct SendPacket
     {
+        QString group;
         QString name;
+        QString note;
         QString mode;
         QString payload;
         QString lineEnding;
@@ -116,12 +118,18 @@ class WorkbenchPage : public AppPage
     void updateHistoryCombo();
     void applyHistoryItem(int index);
     void updatePacketTable(int selectedRow = -1);
+    void updatePacketActionState();
+    QList<int> selectedPacketRows() const;
     void applyPacket(int row);
     void saveCurrentPacket();
     void removeSelectedPacket();
     void moveSelectedPacket(int direction);
     void sendSelectedPacket();
+    void sendSelectedPackets();
     void sendPacket(int row);
+    bool sendPacketPayload(const SendPacket &packet);
+    void importSendPackets();
+    void exportSendPackets();
     void showInfo(const QString &title, const QString &message);
     void showSuccess(const QString &title, const QString &message);
     void showWarning(const QString &title, const QString &message);
@@ -247,6 +255,8 @@ class WorkbenchPage : public AppPage
     FluentQt::ComboBox *m_modbusFunctionCombo = nullptr;
     FluentQt::ComboBox *m_historyCombo = nullptr;
     FluentQt::LineEdit *m_packetNameEdit = nullptr;
+    FluentQt::LineEdit *m_packetGroupEdit = nullptr;
+    FluentQt::LineEdit *m_packetNoteEdit = nullptr;
     FluentQt::LineEdit *m_framePatternEdit = nullptr;
     FluentQt::PlainTextEdit *m_modbusValuesEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
@@ -270,6 +280,9 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_packetSaveButton = nullptr;
     FluentQt::PushButton *m_packetLoadButton = nullptr;
     FluentQt::PushButton *m_packetDeleteButton = nullptr;
+    FluentQt::PushButton *m_packetBatchSendButton = nullptr;
+    FluentQt::PushButton *m_packetImportButton = nullptr;
+    FluentQt::PushButton *m_packetExportButton = nullptr;
     FluentQt::PushButton *m_checksumCalcButton = nullptr;
     FluentQt::PushButton *m_modbusFillButton = nullptr;
     FluentQt::PushButton *m_modbusSendButton = nullptr;
@@ -285,6 +298,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_hexSendCheck = nullptr;
     FluentQt::CheckBox *m_showTxCheck = nullptr;
     FluentQt::CheckBox *m_loopCheck = nullptr;
+    FluentQt::CheckBox *m_packetEnabledCheck = nullptr;
     FluentQt::CheckBox *m_checksumAppendCheck = nullptr;
     FluentQt::CheckBox *m_autoReconnectCheck = nullptr;
     FluentQt::CheckBox *m_terminalSearchCaseCheck = nullptr;
