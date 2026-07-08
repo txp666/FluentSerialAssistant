@@ -5,7 +5,7 @@ using namespace WorkbenchPagePrivate;
 
 QWidget *WorkbenchPage::createModbusSection()
 {
-    auto *section = new HeaderCardWidget(QStringLiteral("Modbus RTU"), this);
+    auto *section = new ExpandSettingCard(FluentIcon::CommandPrompt, QStringLiteral("Modbus RTU"), QString(), this);
     auto *root = cardBody(section);
 
     m_modbusSlaveSpin = new SpinBox(section);
@@ -80,6 +80,7 @@ QWidget *WorkbenchPage::createModbusSection()
     connect(m_modbusSendButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::sendModbusRequest);
 
     updateModbusUi();
+    makeCollapsibleCard(section, QStringLiteral("modbus"));
     return section;
 }
 

@@ -23,6 +23,8 @@
 #include <QtCore/QSettings>
 #include <QtCore/QSignalBlocker>
 #include <QtCore/QStandardPaths>
+#include <QtCore/QTimer>
+#include <QtCore/QVariant>
 #include <QtGui/QIcon>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QTextCharFormat>
@@ -144,6 +146,34 @@ inline void hideCardTitle(HeaderCardWidget *card)
     }
 }
 
+inline void normalizeCollapsedCardHeight(ExpandSettingCard *card)
+{
+    if (!card || card->isExpanded() || !card->card()) {
+        return;
+    }
+
+    card->setFixedHeight(card->card()->height());
+    card->updateGeometry();
+}
+
+inline void makeCollapsibleCard(ExpandSettingCard *card, const QString &settingsName)
+{
+    if (!card) {
+        return;
+    }
+
+    const QString key = QStringLiteral("workbench/leftCards/%1Collapsed").arg(settingsName);
+    card->setExpanded(!QSettings().value(key, false).toBool());
+    normalizeCollapsedCardHeight(card);
+    QObject::connect(card, &ExpandSettingCard::expandedChanged, card, [card, key](bool expanded) {
+        QSettings settings;
+        settings.setValue(key, !expanded);
+        if (!expanded) {
+            QTimer::singleShot(240, card, [card]() { normalizeCollapsedCardHeight(card); });
+        }
+    });
+}
+
 inline QVBoxLayout *cardBody(HeaderCardWidget *card, int margin = 12)
 {
     card->setBorderRadius(8);
@@ -155,6 +185,18 @@ inline QVBoxLayout *cardBody(HeaderCardWidget *card, int margin = 12)
     layout->setContentsMargins(margin, margin, margin, margin);
     layout->setSpacing(8);
     card->viewLayout()->addWidget(body, 1);
+    return layout;
+}
+
+inline QVBoxLayout *cardBody(ExpandSettingCard *card, int margin = 12)
+{
+    card->viewLayout()->setContentsMargins(0, 0, 0, 0);
+
+    auto *body = new QWidget(card->view());
+    auto *layout = new QVBoxLayout(body);
+    layout->setContentsMargins(margin, margin, margin, margin);
+    layout->setSpacing(8);
+    card->viewLayout()->addWidget(body);
     return layout;
 }
 

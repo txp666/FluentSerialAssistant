@@ -5,8 +5,7 @@ using namespace WorkbenchPagePrivate;
 
 QWidget *WorkbenchPage::createConnectionSection()
 {
-    auto *section = new HeaderCardWidget(this);
-    hideCardHeader(section);
+    auto *section = new ExpandSettingCard(FluentIcon::Connect, QStringLiteral("连接"), QString(), this);
     auto *root = cardBody(section);
 
     m_portCombo = new ComboBox(section);
@@ -79,13 +78,13 @@ QWidget *WorkbenchPage::createConnectionSection()
         settings.setValue(QStringLiteral("serial/autoOpen"), checked);
     });
 
+    makeCollapsibleCard(section, QStringLiteral("connection"));
     return section;
 }
 
 QWidget *WorkbenchPage::createReceiveSettingsSection()
 {
-    auto *section = new HeaderCardWidget(this);
-    hideCardHeader(section);
+    auto *section = new ExpandSettingCard(FluentIcon::Download, QStringLiteral("接收设置"), QString(), this);
     auto *root = cardBody(section);
 
     m_displayModeSegment = new SegmentedWidget(section);
@@ -251,13 +250,13 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     connect(m_exportCsvButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Csv); });
     connect(m_exportBinButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Bin); });
 
+    makeCollapsibleCard(section, QStringLiteral("receive"));
     return section;
 }
 
 QWidget *WorkbenchPage::createSendSettingsSection()
 {
-    auto *section = new HeaderCardWidget(this);
-    hideCardHeader(section);
+    auto *section = new ExpandSettingCard(FluentIcon::Send, QStringLiteral("发送设置"), QString(), this);
     auto *root = cardBody(section);
 
     m_lineEndingCombo = new ComboBox(section);
@@ -373,12 +372,13 @@ QWidget *WorkbenchPage::createSendSettingsSection()
         }
     });
 
+    makeCollapsibleCard(section, QStringLiteral("send"));
     return section;
 }
 
 QWidget *WorkbenchPage::createPacketSection()
 {
-    auto *section = new HeaderCardWidget(QStringLiteral("常用包"), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Library, QStringLiteral("常用包"), QString(), this);
     auto *root = cardBody(section);
 
     m_packetNameEdit = new LineEdit(section);
@@ -459,12 +459,13 @@ QWidget *WorkbenchPage::createPacketSection()
     connect(m_packetDownButton, &ToolButton::clicked, this, [this]() { moveSelectedPacket(1); });
 
     updatePacketTable();
+    makeCollapsibleCard(section, QStringLiteral("packets"));
     return section;
 }
 
 QWidget *WorkbenchPage::createFileSendSection()
 {
-    auto *section = new HeaderCardWidget(QStringLiteral("文件发送"), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Folder, QStringLiteral("文件发送"), QString(), this);
     auto *root = cardBody(section);
 
     m_filePathEdit = new LineEdit(section);
@@ -513,5 +514,6 @@ QWidget *WorkbenchPage::createFileSendSection()
     connect(m_fileCancelButton, &PushButton::clicked, this, &WorkbenchPage::cancelFileSend);
 
     updateFileSendUi(false);
+    makeCollapsibleCard(section, QStringLiteral("fileSend"));
     return section;
 }
