@@ -15,6 +15,7 @@
 class QEvent;
 class QTextCharFormat;
 class QTextCursor;
+class QWheelEvent;
 
 class WorkbenchPage : public AppPage
 {
@@ -46,6 +47,8 @@ class WorkbenchPage : public AppPage
     QWidget *createTerminalSection();
     QWidget *createSendSection();
     QWidget *createCheckRow(const QStringList &labels, const QList<FluentQt::CheckBox **> &targets, QWidget *parent);
+    void installSidePanelWheelFilters(QWidget *root);
+    bool forwardSidePanelWheelEvent(QObject *watched, QWheelEvent *event);
 
     enum class RecordDirection
     {
@@ -293,6 +296,8 @@ class WorkbenchPage : public AppPage
     bool m_macroRunning = false;
     bool m_macroWaitingForResponse = false;
 
+    FluentQt::ScrollArea *m_sideScroll = nullptr;
+    QWidget *m_sidePanel = nullptr;
     FluentQt::ComboBox *m_portCombo = nullptr;
     FluentQt::EditableComboBox *m_baudCombo = nullptr;
     FluentQt::ComboBox *m_dataBitsCombo = nullptr;

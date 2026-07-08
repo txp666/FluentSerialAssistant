@@ -13,6 +13,7 @@
 #include <FluentQtWidgets/StyleSheet.h>
 #include <FluentQtWidgets/Theme.h>
 
+#include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
 #include <QtCore/QEvent>
 #include <QtCore/QFile>
@@ -31,6 +32,7 @@
 #include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextOption>
+#include <QtGui/QWheelEvent>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QtWidgets/QAbstractItemView>
 #include <QtWidgets/QFileDialog>
@@ -39,6 +41,7 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QListWidgetItem>
 #include <QtWidgets/QPlainTextEdit>
+#include <QtWidgets/QScrollBar>
 #include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QTextEdit>
 #include <QtWidgets/QVBoxLayout>

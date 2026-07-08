@@ -53,6 +53,12 @@ WorkbenchPage::~WorkbenchPage()
 
 bool WorkbenchPage::eventFilter(QObject *watched, QEvent *event)
 {
+    if (event->type() == QEvent::Wheel) {
+        if (forwardSidePanelWheelEvent(watched, static_cast<QWheelEvent *>(event))) {
+            return true;
+        }
+    }
+
     if (watched == m_sendEdit && event->type() == QEvent::KeyPress) {
         auto *keyEvent = static_cast<QKeyEvent *>(event);
         const bool enterKey = keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter;
@@ -62,4 +68,32 @@ bool WorkbenchPage::eventFilter(QObject *watched, QEvent *event)
         }
     }
     return AppPage::eventFilter(watched, event);
+}
+
+bool WorkbenchPage::forwardSidePanelWheelEvent(QObject *watched, QWheelEvent *event)
+{
+    if (!m_sideScroll || !m_sidePanel || !event) {
+        return false;
+    }
+
+    auto *widget = qobject_cast<QWidget *>(watched);
+    if (!widget || (widget != m_sidePanel && !m_sidePanel->isAncestorOf(widget))) {
+        return false;
+    }
+    if (widget == m_sideScroll->viewport()) {
+        return false;
+    }
+
+    auto *viewport = m_sideScroll->viewport();
+    if (!viewport) {
+        return false;
+    }
+
+    const QPointF viewportPosition = viewport->mapFromGlobal(event->globalPosition().toPoint());
+    QWheelEvent forwarded(viewportPosition, event->globalPosition(), event->pixelDelta(), event->angleDelta(),
+                          event->buttons(), event->modifiers(), event->phase(), event->inverted(), event->source(),
+                          event->pointingDevice());
+    QCoreApplication::sendEvent(viewport, &forwarded);
+    event->setAccepted(forwarded.isAccepted());
+    return forwarded.isAccepted();
 }

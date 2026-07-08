@@ -10,15 +10,15 @@ QWidget *WorkbenchPage::createWorkbench()
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(10);
 
-    auto *sideScroll = new ScrollArea(workbench);
-    sideScroll->setFixedWidth(SidePanelWidth);
-    sideScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    if (sideScroll->horizontalFluentScrollBar()) {
-        sideScroll->horizontalFluentScrollBar()->setForceHidden(true);
+    m_sideScroll = new ScrollArea(workbench);
+    m_sideScroll->setFixedWidth(SidePanelWidth);
+    m_sideScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    if (m_sideScroll->horizontalFluentScrollBar()) {
+        m_sideScroll->horizontalFluentScrollBar()->setForceHidden(true);
     }
 
-    auto *sidePanel = new QWidget(sideScroll);
-    auto *sideLayout = new QVBoxLayout(sidePanel);
+    m_sidePanel = new QWidget(m_sideScroll);
+    auto *sideLayout = new QVBoxLayout(m_sidePanel);
     sideLayout->setContentsMargins(0, 0, 0, 0);
     sideLayout->setSpacing(10);
     sideLayout->addWidget(createConnectionSection());
@@ -29,8 +29,9 @@ QWidget *WorkbenchPage::createWorkbench()
     sideLayout->addWidget(createMacroSection());
     sideLayout->addWidget(createFileSendSection());
     sideLayout->addStretch(1);
-    sideScroll->setWidget(sidePanel);
-    sideScroll->setWidgetResizable(true);
+    m_sideScroll->setWidget(m_sidePanel);
+    m_sideScroll->setWidgetResizable(true);
+    installSidePanelWheelFilters(m_sidePanel);
 
     auto *terminalPanel = new QWidget(workbench);
     auto *terminalLayout = new QVBoxLayout(terminalPanel);
@@ -39,9 +40,22 @@ QWidget *WorkbenchPage::createWorkbench()
     terminalLayout->addWidget(createTerminalSection(), 1);
     terminalLayout->addWidget(createSendSection());
 
-    root->addWidget(sideScroll);
+    root->addWidget(m_sideScroll);
     root->addWidget(terminalPanel, 1);
     return workbench;
+}
+
+void WorkbenchPage::installSidePanelWheelFilters(QWidget *root)
+{
+    if (!root) {
+        return;
+    }
+
+    root->installEventFilter(this);
+    const auto widgets = root->findChildren<QWidget *>();
+    for (QWidget *widget : widgets) {
+        widget->installEventFilter(this);
+    }
 }
 
 QWidget *WorkbenchPage::createCheckRow(const QStringList &labels, const QList<CheckBox **> &targets, QWidget *parent)
