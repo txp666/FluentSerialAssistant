@@ -5,7 +5,9 @@
 
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
+#include <FluentQtWidgets/Widgets/Button.h>
 #include <FluentQtWidgets/Widgets/ComboBox.h>
+#include <FluentQtWidgets/Widgets/InfoBar.h>
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
@@ -377,7 +379,13 @@ void SettingsPage::handleUpdateCheckFinished(bool ok,
         if(m_updateCard) {
             m_updateCard->setContent(QStringLiteral("检查失败：%1").arg(message));
         }
-        QMessageBox::warning(this, QStringLiteral("检查更新失败"), message);
+        InfoBar::error(QStringLiteral("检查更新失败"),
+                       message,
+                       Qt::Horizontal,
+                       true,
+                       3500,
+                       InfoBarPosition::TopRight,
+                       window());
         return;
     }
 
@@ -385,9 +393,13 @@ void SettingsPage::handleUpdateCheckFinished(bool ok,
         if(m_updateCard) {
             m_updateCard->setContent(QStringLiteral("当前已是最新版本 %1").arg(currentVersion));
         }
-        QMessageBox::information(this,
-                                 QStringLiteral("检查更新"),
-                                 QStringLiteral("当前已是最新版本：%1").arg(currentVersion));
+        InfoBar::success(QStringLiteral("当前已是最新版本"),
+                         QStringLiteral("版本 %1").arg(currentVersion),
+                         Qt::Horizontal,
+                         true,
+                         2200,
+                         InfoBarPosition::TopRight,
+                         window());
         return;
     }
 
@@ -395,16 +407,17 @@ void SettingsPage::handleUpdateCheckFinished(bool ok,
         m_updateCard->setContent(QStringLiteral("发现新版本 %1").arg(latestVersion));
     }
 
-    QMessageBox messageBox(this);
-    messageBox.setIcon(QMessageBox::Information);
-    messageBox.setWindowTitle(QStringLiteral("发现新版本"));
-    messageBox.setText(QStringLiteral("当前版本：%1\n最新版本：%2").arg(currentVersion, latestVersion));
-    messageBox.setInformativeText(QStringLiteral("可以打开 GitHub Releases 下载最新版本。"));
-    QPushButton *openButton = messageBox.addButton(QStringLiteral("打开发布页"), QMessageBox::AcceptRole);
-    messageBox.addButton(QStringLiteral("稍后"), QMessageBox::RejectRole);
-    messageBox.exec();
-
-    if(messageBox.clickedButton() == openButton && releaseUrl.isValid()) {
+    auto *bar = InfoBar::info(QStringLiteral("发现新版本"),
+                              QStringLiteral("当前 %1，最新 %2").arg(currentVersion, latestVersion),
+                              Qt::Horizontal,
+                              true,
+                              10000,
+                              InfoBarPosition::TopRight,
+                              window());
+    auto *openButton = new PushButton(icon(FluentIcon::Link), QStringLiteral("打开发布页"), bar);
+    openButton->setEnabled(releaseUrl.isValid());
+    bar->addWidget(openButton);
+    connect(openButton, &PushButton::clicked, this, [releaseUrl]() {
         QDesktopServices::openUrl(releaseUrl);
-    }
+    });
 }
