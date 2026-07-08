@@ -631,6 +631,117 @@ QWidget *WorkbenchPage::createMacroSection()
     return section;
 }
 
+QWidget *WorkbenchPage::createAutoReplySection()
+{
+    auto *section = new ExpandSettingCard(FluentIcon::Feedback, QStringLiteral("自动应答"), QString(), this);
+    auto *root = cardBody(section);
+
+    m_autoReplyNameEdit = new LineEdit(section);
+    m_autoReplyNameEdit->setPlaceholderText(QStringLiteral("规则名称"));
+    makeCompactControl(m_autoReplyNameEdit);
+    m_autoReplyEnabledCheck = new CheckBox(QStringLiteral("启用"), section);
+    m_autoReplyEnabledCheck->setChecked(true);
+    m_autoReplyEnabledCheck->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("名称"), m_autoReplyNameEdit, m_autoReplyEnabledCheck);
+
+    m_autoReplyPatternEdit = new LineEdit(section);
+    m_autoReplyPatternEdit->setPlaceholderText(QStringLiteral("匹配内容"));
+    makeCompactControl(m_autoReplyPatternEdit);
+    m_autoReplyMatchModeCombo = new ComboBox(section);
+    m_autoReplyMatchModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_autoReplyMatchModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
+    m_autoReplyMatchModeCombo->addItem(QStringLiteral("正则"), QIcon(), QStringLiteral("regex"));
+    m_autoReplyMatchModeCombo->setFixedHeight(CompactControlHeight);
+    m_autoReplyMatchModeCombo->setFixedWidth(78);
+    addFormRow(root, QStringLiteral("匹配"), m_autoReplyPatternEdit, m_autoReplyMatchModeCombo);
+
+    auto *responseModeRow = new QHBoxLayout;
+    responseModeRow->setSpacing(8);
+    m_autoReplyResponseModeCombo = new ComboBox(section);
+    m_autoReplyResponseModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_autoReplyResponseModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
+    makeCompactControl(m_autoReplyResponseModeCombo);
+    m_autoReplyLineEndingCombo = new ComboBox(section);
+    m_autoReplyLineEndingCombo->addItem(QStringLiteral("None"), QIcon(), QStringLiteral("none"));
+    m_autoReplyLineEndingCombo->addItem(QStringLiteral("CR"), QIcon(), QStringLiteral("cr"));
+    m_autoReplyLineEndingCombo->addItem(QStringLiteral("LF"), QIcon(), QStringLiteral("lf"));
+    m_autoReplyLineEndingCombo->addItem(QStringLiteral("CRLF"), QIcon(), QStringLiteral("crlf"));
+    makeCompactControl(m_autoReplyLineEndingCombo);
+    responseModeRow->addWidget(m_autoReplyResponseModeCombo);
+    responseModeRow->addWidget(m_autoReplyLineEndingCombo);
+    root->addLayout(responseModeRow);
+
+    m_autoReplyPayloadEdit = new PlainTextEdit(section);
+    m_autoReplyPayloadEdit->setPlaceholderText(QStringLiteral("应答内容"));
+    m_autoReplyPayloadEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_autoReplyPayloadEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    m_autoReplyPayloadEdit->setFixedHeight(64);
+    m_autoReplyPayloadEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    root->addWidget(m_autoReplyPayloadEdit);
+
+    m_autoReplyDelaySpin = new SpinBox(section);
+    m_autoReplyDelaySpin->setRange(0, 600000);
+    m_autoReplyDelaySpin->setValue(0);
+    m_autoReplyDelaySpin->setSuffix(QStringLiteral(" ms"));
+    m_autoReplyDelaySpin->setFixedHeight(CompactControlHeight);
+    addFormRow(root, QStringLiteral("延时"), m_autoReplyDelaySpin);
+
+    m_autoReplyList = new ListWidget(section);
+    m_autoReplyList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_autoReplyList->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_autoReplyList->setMinimumHeight(132);
+    m_autoReplyList->setMaximumHeight(220);
+    m_autoReplyList->setBorderRadius(8);
+    root->addWidget(m_autoReplyList);
+
+    auto *saveRow = new QHBoxLayout;
+    saveRow->setSpacing(8);
+    m_autoReplyUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
+    m_autoReplyUpButton->setToolTip(QStringLiteral("上移"));
+    m_autoReplyDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
+    m_autoReplyDownButton->setToolTip(QStringLiteral("下移"));
+    for (ToolButton *button : {m_autoReplyUpButton, m_autoReplyDownButton}) {
+        button->setFixedSize(CompactControlHeight, CompactControlHeight);
+        button->setIconSize(QSize(16, 16));
+    }
+    m_autoReplySaveButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("保存"), section);
+    setButtonRowControlPolicy(m_autoReplySaveButton);
+    saveRow->addWidget(m_autoReplyUpButton);
+    saveRow->addWidget(m_autoReplyDownButton);
+    saveRow->addWidget(m_autoReplySaveButton);
+    root->addLayout(saveRow);
+
+    auto *editRow = new QHBoxLayout;
+    editRow->setSpacing(8);
+    m_autoReplyLoadButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入"), section);
+    m_autoReplyDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
+    setButtonRowControlPolicy(m_autoReplyLoadButton);
+    setButtonRowControlPolicy(m_autoReplyDeleteButton);
+    editRow->addWidget(m_autoReplyLoadButton);
+    editRow->addWidget(m_autoReplyDeleteButton);
+    root->addLayout(editRow);
+
+    m_autoReplyStatusLabel = new CaptionLabel(QStringLiteral("未触发"), section);
+    m_autoReplyStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_autoReplyStatusLabel->setWordWrap(true);
+    root->addWidget(m_autoReplyStatusLabel);
+
+    connect(m_autoReplyList, &ListWidget::currentRowChanged, this, [this](int row) {
+        applyAutoReplyRule(row);
+        updateAutoReplyActionState();
+    });
+    connect(m_autoReplySaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentAutoReplyRule);
+    connect(m_autoReplyLoadButton, &PushButton::clicked, this,
+            [this]() { applyAutoReplyRule(m_autoReplyList->currentRow()); });
+    connect(m_autoReplyDeleteButton, &PushButton::clicked, this, &WorkbenchPage::removeSelectedAutoReplyRule);
+    connect(m_autoReplyUpButton, &ToolButton::clicked, this, [this]() { moveSelectedAutoReplyRule(-1); });
+    connect(m_autoReplyDownButton, &ToolButton::clicked, this, [this]() { moveSelectedAutoReplyRule(1); });
+
+    updateAutoReplyTable();
+    makeCollapsibleCard(section, QStringLiteral("autoReply"));
+    return section;
+}
+
 QWidget *WorkbenchPage::createFileSendSection()
 {
     auto *section = new ExpandSettingCard(FluentIcon::Folder, QStringLiteral("文件发送"), QString(), this);

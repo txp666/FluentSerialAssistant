@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.6
+    VERSION 0.1.7
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -80,6 +80,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench_page.cpp
     src/app/view/workbench_page.h
     src/app/view/workbench/workbench_page_checksum.cpp
+    src/app/view/workbench/workbench_page_auto_reply.cpp
     src/app/view/workbench/workbench_page_connection.cpp
     src/app/view/workbench/workbench_page_files.cpp
     src/app/view/workbench/workbench_page_internal.h

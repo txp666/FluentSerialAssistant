@@ -29,6 +29,7 @@ WorkbenchPage::WorkbenchPage(QWidget *parent)
     loadSendHistory();
     loadSendPackets();
     loadMacroSteps();
+    loadAutoReplyRules();
     restoreSettings();
     updateConnectionUi(false);
     updateCounters();

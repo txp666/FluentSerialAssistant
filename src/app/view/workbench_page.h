@@ -43,6 +43,7 @@ class WorkbenchPage : public AppPage
     QWidget *createModbusSection();
     QWidget *createPacketSection();
     QWidget *createMacroSection();
+    QWidget *createAutoReplySection();
     QWidget *createFileSendSection();
     QWidget *createTerminalSection();
     QWidget *createSendSection();
@@ -71,6 +72,7 @@ class WorkbenchPage : public AppPage
         QByteArray bytes;
         QString terminalText;
         QString displayText;
+        QString sourceLabel;
     };
 
     struct SendHistoryItem
@@ -114,6 +116,18 @@ class WorkbenchPage : public AppPage
         QByteArray txBytes;
         QByteArray rxBytes;
         int elapsedMs = 0;
+    };
+
+    struct AutoReplyRule
+    {
+        QString name;
+        bool enabled = true;
+        QString matchMode;
+        QString pattern;
+        QString responseMode;
+        QString responsePayload;
+        QString lineEnding;
+        int delayMs = 0;
     };
 
     struct SearchMatchRange
@@ -206,7 +220,8 @@ class WorkbenchPage : public AppPage
     void processBufferedFrameData(const QByteArray &data);
     void flushRxFrameBuffer();
     void updateFrameControlState();
-    void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true);
+    void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true,
+                      const QString &sourceLabel = QString());
     void trimRecords();
     void renderTerminal();
     void insertTextWithSearchHighlights(QTextCursor &cursor, const QString &line, int start, int length,
@@ -241,6 +256,17 @@ class WorkbenchPage : public AppPage
     void loadMacroSteps();
     void saveMacroSteps() const;
     void exportMacroResults();
+    void updateAutoReplyTable(int selectedRow = -1);
+    void updateAutoReplyActionState();
+    void applyAutoReplyRule(int row);
+    void saveCurrentAutoReplyRule();
+    void removeSelectedAutoReplyRule();
+    void moveSelectedAutoReplyRule(int direction);
+    void handleAutoReplyReceivedData(const QByteArray &data);
+    bool autoReplyRuleMatches(const AutoReplyRule &rule, const QByteArray &buffer) const;
+    void sendAutoReplyRule(const AutoReplyRule &rule);
+    void loadAutoReplyRules();
+    void saveAutoReplyRules() const;
     void exportRecords(ExportFormat format);
     void updateReceiveCapture(bool enabled);
     void closeReceiveCapture();
@@ -265,9 +291,11 @@ class WorkbenchPage : public AppPage
     QList<SendPacket> m_sendPackets;
     QList<MacroStep> m_macroSteps;
     QList<MacroRunResult> m_macroResults;
+    QList<AutoReplyRule> m_autoReplyRules;
     QList<TerminalSearchMatch> m_terminalSearchMatches;
     SerialPortConfig m_lastConfig;
     QByteArray m_rxFrameBuffer;
+    QByteArray m_autoReplyBuffer;
     qint64 m_rxCount = 0;
     qint64 m_txCount = 0;
     qint64 m_lastStatsRxCount = 0;
@@ -320,17 +348,24 @@ class WorkbenchPage : public AppPage
     FluentQt::LineEdit *m_packetNoteEdit = nullptr;
     FluentQt::LineEdit *m_macroNameEdit = nullptr;
     FluentQt::LineEdit *m_macroExpectedEdit = nullptr;
+    FluentQt::LineEdit *m_autoReplyNameEdit = nullptr;
+    FluentQt::LineEdit *m_autoReplyPatternEdit = nullptr;
     FluentQt::LineEdit *m_framePatternEdit = nullptr;
     FluentQt::PlainTextEdit *m_modbusValuesEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
     FluentQt::PlainTextEdit *m_macroPayloadEdit = nullptr;
+    FluentQt::PlainTextEdit *m_autoReplyPayloadEdit = nullptr;
     FluentQt::ComboBox *m_packetModeCombo = nullptr;
     FluentQt::ComboBox *m_packetLineEndingCombo = nullptr;
     FluentQt::ComboBox *m_macroModeCombo = nullptr;
     FluentQt::ComboBox *m_macroLineEndingCombo = nullptr;
     FluentQt::ComboBox *m_macroResponseModeCombo = nullptr;
+    FluentQt::ComboBox *m_autoReplyMatchModeCombo = nullptr;
+    FluentQt::ComboBox *m_autoReplyResponseModeCombo = nullptr;
+    FluentQt::ComboBox *m_autoReplyLineEndingCombo = nullptr;
     FluentQt::ListWidget *m_packetList = nullptr;
     FluentQt::ListWidget *m_macroList = nullptr;
+    FluentQt::ListWidget *m_autoReplyList = nullptr;
     FluentQt::PlainTextEdit *m_sendEdit = nullptr;
     FluentQt::TextBrowser *m_terminalView = nullptr;
     FluentQt::PrimaryPushButton *m_connectButton = nullptr;
@@ -343,6 +378,8 @@ class WorkbenchPage : public AppPage
     FluentQt::ToolButton *m_packetDownButton = nullptr;
     FluentQt::ToolButton *m_macroUpButton = nullptr;
     FluentQt::ToolButton *m_macroDownButton = nullptr;
+    FluentQt::ToolButton *m_autoReplyUpButton = nullptr;
+    FluentQt::ToolButton *m_autoReplyDownButton = nullptr;
     FluentQt::PushButton *m_clearButton = nullptr;
     FluentQt::PushButton *m_resetCountersButton = nullptr;
     FluentQt::PushButton *m_exportTxtButton = nullptr;
@@ -359,6 +396,9 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_macroDeleteButton = nullptr;
     FluentQt::PushButton *m_macroStopButton = nullptr;
     FluentQt::PushButton *m_macroExportButton = nullptr;
+    FluentQt::PushButton *m_autoReplySaveButton = nullptr;
+    FluentQt::PushButton *m_autoReplyLoadButton = nullptr;
+    FluentQt::PushButton *m_autoReplyDeleteButton = nullptr;
     FluentQt::PushButton *m_checksumCalcButton = nullptr;
     FluentQt::PushButton *m_modbusFillButton = nullptr;
     FluentQt::PushButton *m_modbusSendButton = nullptr;
@@ -376,6 +416,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_loopCheck = nullptr;
     FluentQt::CheckBox *m_packetEnabledCheck = nullptr;
     FluentQt::CheckBox *m_macroAbortOnFailureCheck = nullptr;
+    FluentQt::CheckBox *m_autoReplyEnabledCheck = nullptr;
     FluentQt::CheckBox *m_checksumAppendCheck = nullptr;
     FluentQt::CheckBox *m_autoReconnectCheck = nullptr;
     FluentQt::CheckBox *m_terminalSearchCaseCheck = nullptr;
@@ -392,6 +433,7 @@ class WorkbenchPage : public AppPage
     FluentQt::SpinBox *m_macroTimeoutSpin = nullptr;
     FluentQt::SpinBox *m_macroDelaySpin = nullptr;
     FluentQt::SpinBox *m_macroLoopCountSpin = nullptr;
+    FluentQt::SpinBox *m_autoReplyDelaySpin = nullptr;
     FluentQt::SpinBox *m_fileChunkSizeSpin = nullptr;
     FluentQt::SpinBox *m_fileIntervalSpin = nullptr;
     FluentQt::ColorPickerButton *m_txColorButton = nullptr;
@@ -401,6 +443,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CaptionLabel *m_checksumResultLabel = nullptr;
     FluentQt::CaptionLabel *m_modbusStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_macroStatusLabel = nullptr;
+    FluentQt::CaptionLabel *m_autoReplyStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_terminalSummaryLabel = nullptr;
     FluentQt::CaptionLabel *m_connectionTimeLabel = nullptr;
     FluentQt::CaptionLabel *m_fileStatusLabel = nullptr;

@@ -243,7 +243,10 @@ QString WorkbenchPage::formatRecordLine(const SessionRecord &record) const
         payload = (!m_timestampCheck || !m_timestampCheck->isChecked()) ? record.terminalText : record.displayText;
     }
 
-    const QString marker = record.direction == RecordDirection::Tx ? QStringLiteral("»") : QStringLiteral("«");
+    QString marker = record.direction == RecordDirection::Tx ? QStringLiteral("»") : QStringLiteral("«");
+    if (!record.sourceLabel.trimmed().isEmpty()) {
+        marker = QStringLiteral("%1[%2]").arg(marker, record.sourceLabel.trimmed());
+    }
     if (m_timestampCheck && m_timestampCheck->isChecked()) {
         return payload.isEmpty()
                    ? QStringLiteral("%1 %2").arg(record.timestamp.toString(QStringLiteral("HH:mm:ss.zzz")), marker)
@@ -288,6 +291,7 @@ void WorkbenchPage::handleReceivedData(const QByteArray &data)
     }
 
     handleMacroReceivedData(data);
+    handleAutoReplyReceivedData(data);
 
     if (!m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked() ||
         frameBreakModeKey() == QStringLiteral("timeout")) {
@@ -408,7 +412,8 @@ void WorkbenchPage::updateFrameControlState()
     }
 }
 
-void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats)
+void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats,
+                                 const QString &sourceLabel)
 {
     if (data.isEmpty()) {
         return;
@@ -435,6 +440,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
         AppTextEncoding::decode(data, direction == RecordDirection::Rx ? receiveEncodingKey() : sendEncodingKey());
     record.terminalText = AppTextEncoding::toTerminalText(decoded);
     record.displayText = AppTextEncoding::toSingleLineText(decoded);
+    record.sourceLabel = sourceLabel;
     m_records.append(record);
     m_pendingRecordIndexes.append(m_records.size() - 1);
     if (direction == RecordDirection::Rx) {

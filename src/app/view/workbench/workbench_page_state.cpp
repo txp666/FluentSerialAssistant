@@ -279,6 +279,7 @@ void WorkbenchPage::saveSettings() const
     saveSendHistory();
     saveSendPackets();
     saveMacroSteps();
+    saveAutoReplyRules();
 }
 
 void WorkbenchPage::setTerminalFontFamily(const QString &family) { applyTerminalFont(family); }

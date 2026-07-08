@@ -42,14 +42,14 @@ void WorkbenchPage::exportRecords(ExportFormat format)
         }
     } else if (format == ExportFormat::Csv) {
         QByteArray output("\xEF\xBB\xBF", 3);
-        output.append("timestamp,direction,length,hex,text\n");
+        output.append("timestamp,direction,source,length,hex,text\n");
         for (const SessionRecord &record : m_records) {
             if (record.direction == RecordDirection::FrameBreak) {
                 continue;
             }
-            const QString line = QStringLiteral("%1,%2,%3,%4,%5\n")
+            const QString line = QStringLiteral("%1,%2,%3,%4,%5,%6\n")
                                      .arg(csvEscape(record.timestamp.toString(Qt::ISODateWithMs)),
-                                          csvEscape(directionText(record.direction)))
+                                          csvEscape(directionText(record.direction)), csvEscape(record.sourceLabel))
                                      .arg(record.bytes.size())
                                      .arg(csvEscape(bytesToHex(record.bytes)), csvEscape(record.displayText));
             output.append(line.toUtf8());
