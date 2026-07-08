@@ -60,4 +60,5 @@ void MainWindow::populateInterfaces()
     connect(settingsPage, &SettingsPage::terminalRequested, this, [this]() {
         switchTo(QStringLiteral("workbench"));
     });
+    connect(settingsPage, &SettingsPage::terminalFontChanged, m_workbenchPage, &WorkbenchPage::setTerminalFontFamily);
 }

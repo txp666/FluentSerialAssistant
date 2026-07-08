@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug FluentSerialAssistant",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/vscode-debug/FluentSerialAssistant",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "preLaunchTask": "Build FluentSerialAssistant (Debug)",
+      "linux": {
+        "program": "${workspaceFolder}/build/vscode-debug/FluentSerialAssistant",
+        "MIMode": "gdb"
+      },
+      "osx": {
+        "program": "${workspaceFolder}/build/vscode-debug/FluentSerialAssistant.app/Contents/MacOS/FluentSerialAssistant",
+        "MIMode": "lldb"
+      },
+      "windows": {
+        "program": "${workspaceFolder}/build/mingw-debug/FluentSerialAssistant.exe",
+        "MIMode": "gdb",
+        "miDebuggerPath": "C:/Qt/Tools/mingw1310_64/bin/gdb.exe"
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.1
+    VERSION 0.1.2
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -20,7 +20,7 @@ if(MINGW)
     string(APPEND CMAKE_EXE_LINKER_FLAGS_MINSIZEREL " -Wl,--gc-sections -s")
 endif()
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg Network)
 
 set(FLUENTQTWIDGETS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/FluentQtWidgets" CACHE PATH "Path to FluentQtWidgets checkout")
 if(NOT EXISTS "${FLUENTQTWIDGETS_ROOT}/CMakeLists.txt")
@@ -38,8 +38,12 @@ set(FQW_COMPACT_BUILD ON CACHE BOOL "" FORCE)
 add_subdirectory("${FLUENTQTWIDGETS_ROOT}" "${CMAKE_BINARY_DIR}/_deps/fluentqtwidgets")
 
 add_executable(FluentSerialAssistant
+    src/app/core/font_preferences.cpp
+    src/app/core/font_preferences.h
     src/app/core/hex_utils.cpp
     src/app/core/hex_utils.h
+    src/app/core/update_checker.cpp
+    src/app/core/update_checker.h
     src/app/serial/serial_controller.cpp
     src/app/serial/serial_controller.h
     src/app/view/app_page.cpp
@@ -72,6 +76,7 @@ target_link_libraries(FluentSerialAssistant
         Qt6::Gui
         Qt6::Widgets
         Qt6::SerialPort
+        Qt6::Network
         FluentQtWidgets::Widgets
 )
 

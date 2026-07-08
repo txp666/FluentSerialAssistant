@@ -1,0 +1,97 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Configure FluentSerialAssistant (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S",
+        "${workspaceFolder}",
+        "-B",
+        "${workspaceFolder}/build/vscode-debug",
+        "-G",
+        "Ninja",
+        "-DCMAKE_BUILD_TYPE=Debug"
+      ],
+      "windows": {
+        "args": [
+          "--preset",
+          "mingw-debug"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build FluentSerialAssistant (Debug)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build/vscode-debug",
+        "--parallel"
+      ],
+      "windows": {
+        "args": [
+          "--build",
+          "--preset",
+          "mingw-debug",
+          "--parallel"
+        ]
+      },
+      "dependsOn": [
+        "Configure FluentSerialAssistant (Debug)"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Configure FluentSerialAssistant (Release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "-S",
+        "${workspaceFolder}",
+        "-B",
+        "${workspaceFolder}/build/vscode-release",
+        "-G",
+        "Ninja",
+        "-DCMAKE_BUILD_TYPE=MinSizeRel"
+      ],
+      "windows": {
+        "args": [
+          "--preset",
+          "mingw-release"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build FluentSerialAssistant (Release)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build/vscode-release",
+        "--parallel"
+      ],
+      "windows": {
+        "args": [
+          "--build",
+          "--preset",
+          "mingw-release",
+          "--parallel"
+        ]
+      },
+      "dependsOn": [
+        "Configure FluentSerialAssistant (Release)"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": "$gcc"
+    }
+  ]
+}

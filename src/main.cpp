@@ -1,5 +1,7 @@
 #include "app/view/main_window.h"
 
+#include "app/core/font_preferences.h"
+
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
 #include <QtCore/QCoreApplication>
@@ -18,11 +20,13 @@ int main(int argc, char *argv[])
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QCoreApplication::setOrganizationName(QStringLiteral("txp"));
     QCoreApplication::setApplicationName(QStringLiteral("FluentSerialAssistant"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.2"));
 
+    AppFontPreferences::loadCustomFonts();
     FluentQt::FluentConfig::instance()->load();
     FluentQt::ThemeManager::instance()->setTheme(FluentQt::FluentConfig::instance()->themeMode());
     FluentQt::ThemeManager::instance()->setAccentColor(FluentQt::FluentConfig::instance()->themeColor());
+    AppFontPreferences::applyConfiguredUiFont();
 
     MainWindow window;
     window.show();

@@ -21,6 +21,9 @@ class WorkbenchPage : public AppPage
 
     void saveSettings() const;
 
+  public slots:
+    void setTerminalFontFamily(const QString &family);
+
   signals:
     void settingsRequested();
 
@@ -69,6 +72,7 @@ class WorkbenchPage : public AppPage
     void setupSerialSignals();
     void refreshPorts();
     void restoreSettings();
+    void applyTerminalFont(const QString &family = QString());
     void updateConnectionUi(bool connected);
     void updateCounters();
     void updateHistoryCombo();

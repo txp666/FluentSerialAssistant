@@ -1,13 +1,21 @@
 #include "app/view/settings_page.h"
 
+#include "app/core/font_preferences.h"
+#include "app/core/update_checker.h"
+
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
+#include <FluentQtWidgets/Widgets/ComboBox.h>
 
+#include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
 #include <QtCore/QSettings>
 #include <QtCore/QStandardPaths>
 #include <QtGui/QColor>
+#include <QtGui/QDesktopServices>
+#include <QtWidgets/QFileDialog>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QMessageBox>
 
 using namespace FluentQt;
 
@@ -87,6 +95,12 @@ QString indexToLineEnding(int index)
     return QStringLiteral("none");
 }
 
+int fontIndex(const QStringList &families, const QString &family)
+{
+    const int index = families.indexOf(family);
+    return index >= 0 ? index : 0;
+}
+
 QString defaultExportFolder()
 {
     const QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
@@ -98,6 +112,25 @@ void hideGroupTitle(SettingCardGroup *group)
     if(group && group->titleLabel()) {
         group->titleLabel()->hide();
     }
+}
+
+void selectFont(ComboBoxSettingCard *card, const QString &family)
+{
+    if(!card || !card->comboBox()) {
+        return;
+    }
+
+    auto *comboBox = card->comboBox();
+    if(comboBox->findText(family) < 0) {
+        comboBox->addItem(family);
+    }
+    comboBox->setCurrentText(family);
+}
+
+QString currentVersionText()
+{
+    const QString version = QCoreApplication::applicationVersion();
+    return QStringLiteral("当前版本 %1").arg(version.isEmpty() ? QStringLiteral("未知") : version);
 }
 
 } // namespace
@@ -132,6 +165,24 @@ SettingsPage::SettingsPage(QWidget *parent)
                                                       QStringLiteral("主题色"),
                                                       QStringLiteral("选择 Fluent 控件的强调色"),
                                                       personalization);
+    const QStringList uiFonts = AppFontPreferences::uiFontFamilies();
+    auto *uiFontCard = new ComboBoxSettingCard(uiFonts,
+                                               FluentIcon::Font,
+                                               QStringLiteral("界面字体"),
+                                               QStringLiteral("设置按钮、标签和页面文本的字体"),
+                                               personalization);
+    uiFontCard->setCurrentIndex(fontIndex(uiFonts, AppFontPreferences::currentUiFontFamily()));
+    auto *importFontCard = new PushSettingCard(QStringLiteral("选择文件"),
+                                               FluentIcon::Download,
+                                               QStringLiteral("导入字体"),
+                                               QStringLiteral("支持 TTF、OTF 和 TTC 字体文件"),
+                                               personalization);
+    m_updateCard = new PushSettingCard(QStringLiteral("检查更新"),
+                                       FluentIcon::Update,
+                                       QStringLiteral("应用更新"),
+                                       currentVersionText(),
+                                       personalization);
+    m_updateChecker = new AppUpdate::UpdateChecker(this);
 
     connect(themeModeCard, &ComboBoxSettingCard::currentIndexChanged, this, [](int index) {
         const Theme theme = indexToTheme(index);
@@ -156,8 +207,17 @@ SettingsPage::SettingsPage(QWidget *parent)
             themeColorCard->setColor(color);
         }
     });
+    connect(uiFontCard, &ComboBoxSettingCard::currentTextChanged, this, [](const QString &family) {
+        AppFontPreferences::setUiFontFamily(family);
+    });
+    connect(m_updateCard, &PushSettingCard::clicked, this, &SettingsPage::checkForUpdates);
+    connect(m_updateChecker, &AppUpdate::UpdateChecker::checkStarted, this, &SettingsPage::handleUpdateCheckStarted);
+    connect(m_updateChecker,
+            &AppUpdate::UpdateChecker::checkFinished,
+            this,
+            &SettingsPage::handleUpdateCheckFinished);
 
-    personalization->addSettingCards({themeModeCard, themeColorCard});
+    personalization->addSettingCards({themeModeCard, themeColorCard, uiFontCard, importFontCard, m_updateCard});
     addSection(QString(), personalization);
 
     auto *terminalGroup = new SettingCardGroup(QString(), this);
@@ -192,6 +252,20 @@ SettingsPage::SettingsPage(QWidget *parent)
                              QStringLiteral("最大显示记录"),
                              QStringLiteral("限制终端视图保留的记录数量"),
                              terminalGroup);
+    const QStringList terminalFonts = AppFontPreferences::terminalFontFamilies();
+    auto *terminalFontCard = new ComboBoxSettingCard(terminalFonts,
+                                                    FluentIcon::CommandPrompt,
+                                                    QStringLiteral("终端字体"),
+                                                    QStringLiteral("设置接收和发送记录的等宽字体"),
+                                                    terminalGroup);
+    terminalFontCard->setCurrentIndex(fontIndex(terminalFonts, AppFontPreferences::currentTerminalFontFamily()));
+    auto *terminalFontSizeCard = new RangeSettingCard(8,
+                                                      28,
+                                                      AppFontPreferences::currentTerminalFontPointSize(),
+                                                      FluentIcon::FontSize,
+                                                      QStringLiteral("终端字号"),
+                                                      QStringLiteral("设置终端记录的字体大小"),
+                                                      terminalGroup);
 
     const QString exportFolder =
         settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
@@ -213,6 +287,39 @@ SettingsPage::SettingsPage(QWidget *parent)
         QSettings settings;
         settings.setValue(QStringLiteral("terminal/maxRecords"), value);
     });
+    connect(terminalFontCard, &ComboBoxSettingCard::currentTextChanged, this, [this](const QString &family) {
+        AppFontPreferences::setTerminalFontFamily(family);
+        emit terminalFontChanged(AppFontPreferences::currentTerminalFontFamily());
+    });
+    connect(terminalFontSizeCard, &RangeSettingCard::valueChanged, this, [this](int value) {
+        AppFontPreferences::setTerminalFontPointSize(value);
+        emit terminalFontChanged(AppFontPreferences::currentTerminalFontFamily());
+    });
+    connect(importFontCard, &PushSettingCard::clicked, this, [this, importFontCard, uiFontCard, terminalFontCard]() {
+        const QString filePath =
+            QFileDialog::getOpenFileName(importFontCard->window(),
+                                         QStringLiteral("选择字体文件"),
+                                         QDir::homePath(),
+                                         QStringLiteral("字体文件 (*.ttf *.otf *.ttc);;所有文件 (*)"));
+        if(filePath.isEmpty()) {
+            return;
+        }
+
+        const AppFontPreferences::FontImportResult result = AppFontPreferences::importFontFile(filePath);
+        if(!result.ok || result.families.isEmpty()) {
+            QMessageBox::warning(importFontCard->window(),
+                                 QStringLiteral("导入字体失败"),
+                                 result.errorMessage.isEmpty() ? QStringLiteral("无法加载该字体文件。")
+                                                               : result.errorMessage);
+            return;
+        }
+
+        const QString family = result.families.first();
+        importFontCard->setContent(family);
+        selectFont(uiFontCard, family);
+        selectFont(terminalFontCard, family);
+        emit terminalFontChanged(family);
+    });
     connect(exportFolderCard, &PushSettingCard::clicked, this, [exportFolderCard]() {
         QSettings settings;
         const QString current = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
@@ -228,6 +335,76 @@ SettingsPage::SettingsPage(QWidget *parent)
         exportFolderCard->setContent(folder);
     });
 
-    terminalGroup->addSettingCards({displayModeCard, lineEndingCard, maxRecordsCard, exportFolderCard});
+    terminalGroup->addSettingCards({displayModeCard,
+                                    lineEndingCard,
+                                    maxRecordsCard,
+                                    terminalFontCard,
+                                    terminalFontSizeCard,
+                                    exportFolderCard});
     addSection(QString(), terminalGroup);
+}
+
+void SettingsPage::checkForUpdates()
+{
+    if(m_updateChecker && !m_updateChecker->isChecking()) {
+        m_updateChecker->checkLatestRelease();
+    }
+}
+
+void SettingsPage::handleUpdateCheckStarted()
+{
+    if(!m_updateCard) {
+        return;
+    }
+    m_updateCard->setContent(QStringLiteral("正在检查更新..."));
+    if(m_updateCard->button()) {
+        m_updateCard->button()->setEnabled(false);
+    }
+}
+
+void SettingsPage::handleUpdateCheckFinished(bool ok,
+                                             bool updateAvailable,
+                                             const QString &currentVersion,
+                                             const QString &latestVersion,
+                                             const QUrl &releaseUrl,
+                                             const QString &message)
+{
+    if(m_updateCard && m_updateCard->button()) {
+        m_updateCard->button()->setEnabled(true);
+    }
+
+    if(!ok) {
+        if(m_updateCard) {
+            m_updateCard->setContent(QStringLiteral("检查失败：%1").arg(message));
+        }
+        QMessageBox::warning(this, QStringLiteral("检查更新失败"), message);
+        return;
+    }
+
+    if(!updateAvailable) {
+        if(m_updateCard) {
+            m_updateCard->setContent(QStringLiteral("当前已是最新版本 %1").arg(currentVersion));
+        }
+        QMessageBox::information(this,
+                                 QStringLiteral("检查更新"),
+                                 QStringLiteral("当前已是最新版本：%1").arg(currentVersion));
+        return;
+    }
+
+    if(m_updateCard) {
+        m_updateCard->setContent(QStringLiteral("发现新版本 %1").arg(latestVersion));
+    }
+
+    QMessageBox messageBox(this);
+    messageBox.setIcon(QMessageBox::Information);
+    messageBox.setWindowTitle(QStringLiteral("发现新版本"));
+    messageBox.setText(QStringLiteral("当前版本：%1\n最新版本：%2").arg(currentVersion, latestVersion));
+    messageBox.setInformativeText(QStringLiteral("可以打开 GitHub Releases 下载最新版本。"));
+    QPushButton *openButton = messageBox.addButton(QStringLiteral("打开发布页"), QMessageBox::AcceptRole);
+    messageBox.addButton(QStringLiteral("稍后"), QMessageBox::RejectRole);
+    messageBox.exec();
+
+    if(messageBox.clickedButton() == openButton && releaseUrl.isValid()) {
+        QDesktopServices::openUrl(releaseUrl);
+    }
 }

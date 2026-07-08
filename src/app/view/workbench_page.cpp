@@ -1,9 +1,11 @@
 #include "app/view/workbench_page.h"
 
+#include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
 
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
+#include <FluentQtWidgets/StyleSheet.h>
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -14,7 +16,6 @@
 #include <QtCore/QSettings>
 #include <QtCore/QSignalBlocker>
 #include <QtCore/QStandardPaths>
-#include <QtGui/QFontDatabase>
 #include <QtGui/QIcon>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QTextCharFormat>
@@ -204,6 +205,13 @@ QStringList commonBaudRateTexts()
 QColor defaultTxColor()
 {
     return QColor(QStringLiteral("#ff9f0a"));
+}
+
+QString qssString(QString value)
+{
+    value.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    value.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    return QStringLiteral("\"%1\"").arg(value);
 }
 
 QString bytesToTerminalText(const QByteArray &data)
@@ -655,9 +663,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_terminalView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_terminalView->document()->setMaximumBlockCount(maxRecordCount());
     m_terminalView->setMinimumHeight(420);
-    QFont terminalFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    terminalFont.setPointSize(10);
-    m_terminalView->setFont(terminalFont);
+    applyTerminalFont();
 
     root->addWidget(m_terminalView, 1);
 
@@ -820,6 +826,7 @@ void WorkbenchPage::restoreSettings()
     m_txColorButton->setEnabled(m_showTxCheck->isChecked());
     m_autoReconnectCheck->setChecked(settings.value(QStringLiteral("serial/autoReconnect"), true).toBool());
     m_terminalView->document()->setMaximumBlockCount(maxRecordCount());
+    applyTerminalFont();
 }
 
 void WorkbenchPage::saveSettings() const
@@ -846,6 +853,27 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("send/loopIntervalMs"), m_loopIntervalSpin->value());
     settings.setValue(QStringLiteral("serial/autoReconnect"), m_autoReconnectCheck->isChecked());
     saveSendHistory();
+}
+
+void WorkbenchPage::setTerminalFontFamily(const QString &family)
+{
+    applyTerminalFont(family);
+}
+
+void WorkbenchPage::applyTerminalFont(const QString &family)
+{
+    if(m_terminalView) {
+        const QFont font = AppFontPreferences::terminalFont(family);
+        m_terminalView->setFont(font);
+        m_terminalView->setCurrentFont(font);
+        m_terminalView->document()->setDefaultFont(font);
+
+        const QString qss = QStringLiteral("QTextBrowser[fqw=\"TextBrowser\"] { font-family: %1; font-size: %2pt; }")
+                                .arg(qssString(font.family()))
+                                .arg(font.pointSize());
+        FluentStyleSheet::setCustomStyleSheet(m_terminalView, qss, qss);
+        m_terminalView->viewport()->update();
+    }
 }
 
 void WorkbenchPage::updateConnectionUi(bool connected)
