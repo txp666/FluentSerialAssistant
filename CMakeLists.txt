@@ -39,7 +39,7 @@ if(MINGW)
     string(APPEND CMAKE_EXE_LINKER_FLAGS_MINSIZEREL " -Wl,--gc-sections -s")
 endif()
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg Network)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg Network Core5Compat)
 
 set(FLUENTQTWIDGETS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/FluentQtWidgets" CACHE PATH "Path to FluentQtWidgets checkout")
 if(NOT EXISTS "${FLUENTQTWIDGETS_ROOT}/CMakeLists.txt")
@@ -61,6 +61,8 @@ add_executable(FluentSerialAssistant
     src/app/core/font_preferences.h
     src/app/core/hex_utils.cpp
     src/app/core/hex_utils.h
+    src/app/core/text_encoding.cpp
+    src/app/core/text_encoding.h
     src/app/core/update_checker.cpp
     src/app/core/update_checker.h
     src/app/serial/serial_controller.cpp
@@ -111,6 +113,7 @@ target_link_libraries(FluentSerialAssistant
         Qt6::Widgets
         Qt6::SerialPort
         Qt6::Network
+        Qt6::Core5Compat
         FluentQtWidgets::Widgets
 )
 

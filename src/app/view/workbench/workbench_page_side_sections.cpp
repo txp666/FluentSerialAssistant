@@ -95,6 +95,11 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     m_displayModeSegment->setCurrentItem(QStringLiteral("text"));
     root->addWidget(m_displayModeSegment);
 
+    m_receiveEncodingCombo = new ComboBox(section);
+    addEncodingOptions(m_receiveEncodingCombo);
+    makeCompactControl(m_receiveEncodingCombo);
+    addFormRow(root, QStringLiteral("编码"), m_receiveEncodingCombo);
+
     auto *receiveOptions = new QWidget(section);
     auto *receiveOptionsGrid = new QGridLayout(receiveOptions);
     receiveOptionsGrid->setContentsMargins(0, 0, 0, 0);
@@ -171,6 +176,10 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
         settings.setValue(QStringLiteral("terminal/displayMode"), routeKey);
         renderTerminal();
     });
+    connect(m_receiveEncodingCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("receive/encoding"), receiveEncodingKey());
+    });
     connect(m_saveReceiveCheck, &CheckBox::toggled, this, &WorkbenchPage::updateReceiveCapture);
     connect(m_autoScrollCheck, &CheckBox::toggled, this, [this](bool checked) {
         QSettings settings;
@@ -232,6 +241,11 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     m_lineEndingCombo->setCurrentIndex(0);
     addFormRow(root, QStringLiteral("换行"), m_lineEndingCombo);
 
+    m_sendEncodingCombo = new ComboBox(section);
+    addEncodingOptions(m_sendEncodingCombo);
+    makeCompactControl(m_sendEncodingCombo);
+    addFormRow(root, QStringLiteral("编码"), m_sendEncodingCombo);
+
     auto *sendOptions = new QWidget(section);
     auto *sendOptionsGrid = new QGridLayout(sendOptions);
     sendOptionsGrid->setContentsMargins(0, 0, 0, 0);
@@ -268,6 +282,10 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     addFormRow(root, QStringLiteral("间隔"), m_loopIntervalSpin);
 
     connect(m_historyCombo, &ComboBox::currentIndexChanged, this, &WorkbenchPage::applyHistoryItem);
+    connect(m_sendEncodingCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("send/encoding"), sendEncodingKey());
+    });
     connect(m_hexSendCheck, &CheckBox::toggled, this, [](bool checked) {
         QSettings settings;
         settings.setValue(QStringLiteral("send/mode"), checked ? QStringLiteral("hex") : QStringLiteral("text"));

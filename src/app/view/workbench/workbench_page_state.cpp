@@ -88,7 +88,11 @@ void WorkbenchPage::restoreSettings()
         settings.value(QStringLiteral("serial/flowControl"), static_cast<int>(QSerialPort::NoFlowControl)).toInt();
     const QString displayMode =
         settings.value(QStringLiteral("terminal/displayMode"), QStringLiteral("text")).toString();
+    const QString receiveEncoding =
+        settings.value(QStringLiteral("receive/encoding"), AppTextEncoding::defaultKey()).toString();
     const QString sendMode = settings.value(QStringLiteral("send/mode"), QStringLiteral("text")).toString();
+    const QString sendEncoding =
+        settings.value(QStringLiteral("send/encoding"), AppTextEncoding::defaultKey()).toString();
     const QString lineEnding = settings.value(QStringLiteral("send/lineEnding"), QStringLiteral("none")).toString();
     const int loopInterval = settings.value(QStringLiteral("send/loopIntervalMs"), 1000).toInt();
     const int frameBreakMs = settings.value(QStringLiteral("receive/frameBreakMs"), 20).toInt();
@@ -124,7 +128,9 @@ void WorkbenchPage::restoreSettings()
     if (m_displayModeSegment->contains(displayMode)) {
         m_displayModeSegment->setCurrentItem(displayMode);
     }
+    selectEncodingOption(m_receiveEncodingCombo, receiveEncoding);
     m_hexSendCheck->setChecked(sendMode == QStringLiteral("hex"));
+    selectEncodingOption(m_sendEncodingCombo, sendEncoding);
     const int eolIndex = m_lineEndingCombo->findData(lineEnding);
     if (eolIndex >= 0) {
         m_lineEndingCombo->setCurrentIndex(eolIndex);
@@ -185,9 +191,11 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("receive/timestamp"), m_timestampCheck->isChecked());
     settings.setValue(QStringLiteral("receive/autoFrameBreak"), m_autoFrameBreakCheck->isChecked());
     settings.setValue(QStringLiteral("receive/frameBreakMs"), m_frameBreakIntervalSpin->value());
+    settings.setValue(QStringLiteral("receive/encoding"), receiveEncodingKey());
     settings.setValue(QStringLiteral("terminal/displayMode"), currentDisplayMode());
     settings.setValue(QStringLiteral("send/mode"),
                       m_hexSendCheck->isChecked() ? QStringLiteral("hex") : QStringLiteral("text"));
+    settings.setValue(QStringLiteral("send/encoding"), sendEncodingKey());
     settings.setValue(QStringLiteral("send/lineEnding"), selectedLineEndingKey());
     settings.setValue(QStringLiteral("send/showTx"), m_showTxCheck->isChecked());
     settings.setValue(QStringLiteral("send/txColor"), selectedTxColor().name(QColor::HexRgb));

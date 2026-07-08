@@ -49,7 +49,15 @@ QByteArray WorkbenchPage::payloadFromText(const QString &payloadText, const QStr
         }
         data = result.bytes;
     } else {
-        data = payloadText.toUtf8();
+        const AppTextEncoding::EncodeResult result = AppTextEncoding::encode(payloadText, sendEncodingKey());
+        if (!result.ok) {
+            if (focusEditorOnError) {
+                m_sendEdit->setFocus();
+            }
+            showWarning(QStringLiteral("文本编码失败"), result.errorMessage);
+            return data;
+        }
+        data = result.bytes;
     }
 
     data.append(lineEndingForKey(lineEndingKey));
@@ -64,6 +72,18 @@ QByteArray WorkbenchPage::selectedLineEnding() const { return lineEndingForKey(s
 QByteArray WorkbenchPage::lineEndingForKey(const QString &key) const { return lineEndingBytes(key); }
 
 QString WorkbenchPage::selectedLineEndingKey() const { return m_lineEndingCombo->currentData().toString(); }
+
+QString WorkbenchPage::receiveEncodingKey() const
+{
+    return AppTextEncoding::normalizedKey(m_receiveEncodingCombo ? m_receiveEncodingCombo->currentData().toString()
+                                                                 : AppTextEncoding::defaultKey());
+}
+
+QString WorkbenchPage::sendEncodingKey() const
+{
+    return AppTextEncoding::normalizedKey(m_sendEncodingCombo ? m_sendEncodingCombo->currentData().toString()
+                                                              : AppTextEncoding::defaultKey());
+}
 
 QString WorkbenchPage::currentDisplayMode() const
 {
@@ -126,8 +146,7 @@ QString WorkbenchPage::formatRecordLine(const SessionRecord &record) const
     } else if (mode == QStringLiteral("mixed")) {
         payload = QStringLiteral("%1    | %2").arg(bytesToHex(record.bytes), record.displayText);
     } else {
-        payload = (!m_timestampCheck || !m_timestampCheck->isChecked()) ? bytesToTerminalText(record.bytes)
-                                                                        : record.displayText;
+        payload = (!m_timestampCheck || !m_timestampCheck->isChecked()) ? record.terminalText : record.displayText;
     }
 
     const QString marker = record.direction == RecordDirection::Tx ? QStringLiteral("»") : QStringLiteral("«");
@@ -199,7 +218,10 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     record.timestamp = now;
     record.direction = direction;
     record.bytes = data;
-    record.displayText = bytesToPrintableText(data);
+    const QString decoded =
+        AppTextEncoding::decode(data, direction == RecordDirection::Rx ? receiveEncodingKey() : sendEncodingKey());
+    record.terminalText = AppTextEncoding::toTerminalText(decoded);
+    record.displayText = AppTextEncoding::toSingleLineText(decoded);
     m_records.append(record);
     m_pendingRecordIndexes.append(m_records.size() - 1);
 

@@ -59,6 +59,7 @@ class WorkbenchPage : public AppPage
         QDateTime timestamp;
         RecordDirection direction = RecordDirection::Rx;
         QByteArray bytes;
+        QString terminalText;
         QString displayText;
     };
 
@@ -107,6 +108,8 @@ class WorkbenchPage : public AppPage
     QByteArray lineEndingForKey(const QString &key) const;
     QString currentDisplayMode() const;
     QString selectedLineEndingKey() const;
+    QString receiveEncodingKey() const;
+    QString sendEncodingKey() const;
     QString terminalSearchText() const;
     QString terminalDirectionFilter() const;
     QString directionText(RecordDirection direction) const;
@@ -176,7 +179,9 @@ class WorkbenchPage : public AppPage
     FluentQt::SegmentedWidget *m_displayModeSegment = nullptr;
     FluentQt::SearchLineEdit *m_terminalSearchEdit = nullptr;
     FluentQt::ComboBox *m_terminalFilterCombo = nullptr;
+    FluentQt::ComboBox *m_receiveEncodingCombo = nullptr;
     FluentQt::ComboBox *m_lineEndingCombo = nullptr;
+    FluentQt::ComboBox *m_sendEncodingCombo = nullptr;
     FluentQt::ComboBox *m_historyCombo = nullptr;
     FluentQt::LineEdit *m_packetNameEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;

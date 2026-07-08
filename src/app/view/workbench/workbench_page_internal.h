@@ -4,6 +4,7 @@
 
 #include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
+#include "app/core/text_encoding.h"
 
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
@@ -311,30 +312,24 @@ inline QStringList commonBaudRateTexts()
 
 inline QColor defaultTxColor() { return QColor(QStringLiteral("#ff9f0a")); }
 
+inline void addEncodingOptions(ComboBox *combo)
+{
+    for (const AppTextEncoding::EncodingOption &option : AppTextEncoding::options()) {
+        combo->addItem(option.label, QIcon(), option.key);
+    }
+}
+
+inline void selectEncodingOption(ComboBox *combo, const QString &key)
+{
+    const int index = combo->findData(AppTextEncoding::normalizedKey(key));
+    combo->setCurrentIndex(index >= 0 ? index : combo->findData(AppTextEncoding::defaultKey()));
+}
+
 inline QString qssString(QString value)
 {
     value.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
     value.replace(QLatin1Char('"'), QStringLiteral("\\\""));
     return QStringLiteral("\"%1\"").arg(value);
-}
-
-inline QString bytesToTerminalText(const QByteArray &data)
-{
-    QString text = QString::fromUtf8(data);
-    text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
-    text.replace(QLatin1Char('\r'), QLatin1Char('\n'));
-    for (QChar &ch : text) {
-        if (ch == QLatin1Char('\n') || ch == QLatin1Char('\t')) {
-            continue;
-        }
-        if (ch.unicode() < 0x20) {
-            ch = QLatin1Char('.');
-        }
-    }
-    while (text.endsWith(QLatin1Char('\n'))) {
-        text.chop(1);
-    }
-    return text;
 }
 
 inline QString csvEscape(QString text)
