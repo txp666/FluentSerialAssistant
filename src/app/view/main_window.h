@@ -2,7 +2,7 @@
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
-class WorkbenchPage;
+class WorkbenchSessionsPage;
 
 class MainWindow : public FluentQt::MSFluentWindow
 {
@@ -18,5 +18,5 @@ class MainWindow : public FluentQt::MSFluentWindow
   private:
     void populateInterfaces();
 
-    WorkbenchPage *m_workbenchPage = nullptr;
+    WorkbenchSessionsPage *m_workbenchPage = nullptr;
 };

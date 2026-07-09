@@ -3,7 +3,7 @@
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
-WorkbenchPage::WorkbenchPage(QWidget *parent)
+WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool allowAutoOpen)
     : AppPage(QStringLiteral("终端"), QStringLiteral("连接串口设备，查看收发记录，并执行文本或 HEX 数据发送。"), parent,
               false)
 {
@@ -26,17 +26,31 @@ WorkbenchPage::WorkbenchPage(QWidget *parent)
     connect(ThemeManager::instance(), &ThemeManager::effectiveThemeChanged, this, [this]() { renderTerminal(); });
 
     refreshPorts();
-    loadSendHistory();
-    loadSendPackets();
-    loadMacroSteps();
-    loadAutoReplyRules();
-    restoreSettings();
+    if (restoreSavedSession) {
+        loadSendHistory();
+        loadSendPackets();
+        loadMacroSteps();
+        loadAutoReplyRules();
+        restoreSettings();
+    } else {
+        updateFrameControlState();
+        updateModbusUi();
+        updatePacketTable();
+        updateMacroTable();
+        updateAutoReplyTable();
+        updatePacketActionState();
+        updateMacroActionState();
+        updateAutoReplyActionState();
+        updateFileSendUi(false);
+        updateFileProgress();
+        updateAutoLogStatus();
+    }
     updateConnectionUi(false);
     updateCounters();
     updateRateStats();
     updateHistoryCombo();
 
-    if (m_autoOpenCheck && m_autoOpenCheck->isChecked() && !currentSerialConfig().portName.isEmpty()) {
+    if (allowAutoOpen && m_autoOpenCheck && m_autoOpenCheck->isChecked() && !currentSerialConfig().portName.isEmpty()) {
         QTimer::singleShot(250, this, &WorkbenchPage::onConnectClicked);
     }
 }

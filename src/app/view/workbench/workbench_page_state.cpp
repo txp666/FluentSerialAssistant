@@ -297,6 +297,185 @@ void WorkbenchPage::saveSettings() const
     saveAutoReplyRules();
 }
 
+void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
+{
+    refreshPorts();
+
+    const int portIndex = m_portCombo->findData(source.m_portCombo->currentData());
+    if (portIndex >= 0) {
+        m_portCombo->setCurrentIndex(portIndex);
+    }
+    m_baudCombo->setCurrentText(source.m_baudCombo->currentText());
+    m_dataBitsCombo->setCurrentText(source.m_dataBitsCombo->currentText());
+    const int parityIndex = m_parityCombo->findData(source.m_parityCombo->currentData());
+    if (parityIndex >= 0) {
+        m_parityCombo->setCurrentIndex(parityIndex);
+    }
+    const int stopIndex = m_stopBitsCombo->findData(source.m_stopBitsCombo->currentData());
+    if (stopIndex >= 0) {
+        m_stopBitsCombo->setCurrentIndex(stopIndex);
+    }
+    const int flowIndex = m_flowControlCombo->findData(source.m_flowControlCombo->currentData());
+    if (flowIndex >= 0) {
+        m_flowControlCombo->setCurrentIndex(flowIndex);
+    }
+    m_rtsCheck->setChecked(source.m_rtsCheck->isChecked());
+    m_dtrCheck->setChecked(source.m_dtrCheck->isChecked());
+    m_autoOpenCheck->setChecked(source.m_autoOpenCheck->isChecked());
+
+    if (m_displayModeSegment->contains(source.currentDisplayMode())) {
+        m_displayModeSegment->setCurrentItem(source.currentDisplayMode());
+    }
+    selectEncodingOption(m_receiveEncodingCombo, source.receiveEncodingKey());
+    {
+        const QSignalBlocker blocker(m_saveReceiveCheck);
+        m_saveReceiveCheck->setChecked(source.m_saveReceiveCheck->isChecked());
+    }
+    closeReceiveCapture();
+    m_autoScrollCheck->setChecked(source.m_autoScrollCheck->isChecked());
+    m_timestampCheck->setChecked(source.m_timestampCheck->isChecked());
+    m_pauseCheck->setChecked(false);
+    const int frameModeIndex = m_frameModeCombo->findData(source.frameBreakModeKey());
+    if (frameModeIndex >= 0) {
+        m_frameModeCombo->setCurrentIndex(frameModeIndex);
+    }
+    m_framePatternEdit->setText(source.m_framePatternEdit->text());
+    m_frameFixedLengthSpin->setValue(source.m_frameFixedLengthSpin->value());
+    m_frameBreakIntervalSpin->setValue(source.m_frameBreakIntervalSpin->value());
+    m_autoFrameBreakCheck->setChecked(source.m_autoFrameBreakCheck->isChecked());
+    updateFrameControlState();
+
+    const int autoLogFormatIndex = m_autoLogFormatCombo->findData(source.autoLogFormatKey());
+    if (autoLogFormatIndex >= 0) {
+        m_autoLogFormatCombo->setCurrentIndex(autoLogFormatIndex);
+    }
+    m_autoLogMaxSizeSpin->setValue(source.m_autoLogMaxSizeSpin->value());
+    {
+        const QSignalBlocker blocker(m_autoLogCheck);
+        m_autoLogCheck->setChecked(source.m_autoLogCheck->isChecked());
+    }
+    resetAutoLogSession();
+    updateAutoLogStatus();
+
+    m_hexSendCheck->setChecked(source.m_hexSendCheck->isChecked());
+    m_showTxCheck->setChecked(source.m_showTxCheck->isChecked());
+    m_txColorButton->setColor(source.selectedTxColor());
+    m_txColorButton->setEnabled(m_showTxCheck->isChecked());
+    m_loopCheck->setChecked(false);
+    m_autoReconnectCheck->setChecked(source.m_autoReconnectCheck->isChecked());
+    m_loopIntervalSpin->setValue(source.m_loopIntervalSpin->value());
+    selectEncodingOption(m_sendEncodingCombo, source.sendEncodingKey());
+    const int checksumAlgorithmIndex = m_checksumAlgorithmCombo->findData(source.checksumAlgorithmKey());
+    if (checksumAlgorithmIndex >= 0) {
+        m_checksumAlgorithmCombo->setCurrentIndex(checksumAlgorithmIndex);
+    }
+    const int checksumByteOrderIndex =
+        m_checksumByteOrderCombo->findData(AppChecksum::byteOrderKey(source.checksumByteOrder()));
+    if (checksumByteOrderIndex >= 0) {
+        m_checksumByteOrderCombo->setCurrentIndex(checksumByteOrderIndex);
+    }
+    m_checksumAppendCheck->setChecked(source.m_checksumAppendCheck->isChecked());
+    const int lineEndingIndex = m_lineEndingCombo->findData(source.selectedLineEndingKey());
+    if (lineEndingIndex >= 0) {
+        m_lineEndingCombo->setCurrentIndex(lineEndingIndex);
+    }
+
+    m_sendEdit->setPlainText(source.m_sendEdit->toPlainText());
+    m_sendHistory = source.m_sendHistory;
+    updateHistoryCombo();
+
+    m_sendPackets = source.m_sendPackets;
+    m_packetGroupEdit->setText(source.m_packetGroupEdit->text());
+    m_packetNameEdit->setText(source.m_packetNameEdit->text());
+    m_packetNoteEdit->setText(source.m_packetNoteEdit->text());
+    m_packetPayloadEdit->setPlainText(source.m_packetPayloadEdit->toPlainText());
+    const int packetModeIndex = m_packetModeCombo->findData(source.m_packetModeCombo->currentData());
+    if (packetModeIndex >= 0) {
+        m_packetModeCombo->setCurrentIndex(packetModeIndex);
+    }
+    const int packetLineEndingIndex = m_packetLineEndingCombo->findData(source.m_packetLineEndingCombo->currentData());
+    if (packetLineEndingIndex >= 0) {
+        m_packetLineEndingCombo->setCurrentIndex(packetLineEndingIndex);
+    }
+    m_packetEnabledCheck->setChecked(source.m_packetEnabledCheck->isChecked());
+    updatePacketTable();
+
+    const int modbusFunctionIndex = m_modbusFunctionCombo->findData(source.m_modbusFunctionCombo->currentData());
+    if (modbusFunctionIndex >= 0) {
+        m_modbusFunctionCombo->setCurrentIndex(modbusFunctionIndex);
+    }
+    m_modbusSlaveSpin->setValue(source.m_modbusSlaveSpin->value());
+    m_modbusAddressSpin->setValue(source.m_modbusAddressSpin->value());
+    m_modbusQuantitySpin->setValue(source.m_modbusQuantitySpin->value());
+    m_modbusValuesEdit->setPlainText(source.m_modbusValuesEdit->toPlainText());
+    updateModbusUi();
+
+    m_macroSteps = source.m_macroSteps;
+    m_macroNameEdit->setText(source.m_macroNameEdit->text());
+    m_macroPayloadEdit->setPlainText(source.m_macroPayloadEdit->toPlainText());
+    m_macroExpectedEdit->setText(source.m_macroExpectedEdit->text());
+    const int macroModeIndex = m_macroModeCombo->findData(source.m_macroModeCombo->currentData());
+    if (macroModeIndex >= 0) {
+        m_macroModeCombo->setCurrentIndex(macroModeIndex);
+    }
+    const int macroLineEndingIndex = m_macroLineEndingCombo->findData(source.m_macroLineEndingCombo->currentData());
+    if (macroLineEndingIndex >= 0) {
+        m_macroLineEndingCombo->setCurrentIndex(macroLineEndingIndex);
+    }
+    const int macroResponseModeIndex =
+        m_macroResponseModeCombo->findData(source.m_macroResponseModeCombo->currentData());
+    if (macroResponseModeIndex >= 0) {
+        m_macroResponseModeCombo->setCurrentIndex(macroResponseModeIndex);
+    }
+    m_macroTimeoutSpin->setValue(source.m_macroTimeoutSpin->value());
+    m_macroDelaySpin->setValue(source.m_macroDelaySpin->value());
+    m_macroLoopCountSpin->setValue(source.m_macroLoopCountSpin->value());
+    m_macroAbortOnFailureCheck->setChecked(source.m_macroAbortOnFailureCheck->isChecked());
+    updateMacroTable();
+
+    m_autoReplyRules = source.m_autoReplyRules;
+    m_autoReplyNameEdit->setText(source.m_autoReplyNameEdit->text());
+    m_autoReplyPatternEdit->setText(source.m_autoReplyPatternEdit->text());
+    m_autoReplyPayloadEdit->setPlainText(source.m_autoReplyPayloadEdit->toPlainText());
+    const int autoReplyMatchIndex =
+        m_autoReplyMatchModeCombo->findData(source.m_autoReplyMatchModeCombo->currentData());
+    if (autoReplyMatchIndex >= 0) {
+        m_autoReplyMatchModeCombo->setCurrentIndex(autoReplyMatchIndex);
+    }
+    const int autoReplyResponseIndex =
+        m_autoReplyResponseModeCombo->findData(source.m_autoReplyResponseModeCombo->currentData());
+    if (autoReplyResponseIndex >= 0) {
+        m_autoReplyResponseModeCombo->setCurrentIndex(autoReplyResponseIndex);
+    }
+    const int autoReplyLineEndingIndex =
+        m_autoReplyLineEndingCombo->findData(source.m_autoReplyLineEndingCombo->currentData());
+    if (autoReplyLineEndingIndex >= 0) {
+        m_autoReplyLineEndingCombo->setCurrentIndex(autoReplyLineEndingIndex);
+    }
+    m_autoReplyDelaySpin->setValue(source.m_autoReplyDelaySpin->value());
+    m_autoReplyEnabledCheck->setChecked(source.m_autoReplyEnabledCheck->isChecked());
+    updateAutoReplyTable();
+
+    m_filePathEdit->setText(source.m_filePathEdit->text());
+    m_fileChunkSizeSpin->setValue(source.m_fileChunkSizeSpin->value());
+    m_fileIntervalSpin->setValue(source.m_fileIntervalSpin->value());
+    updateFileSendUi(false);
+    updateFileProgress();
+
+    m_records.clear();
+    m_pendingRecordIndexes.clear();
+    m_terminalSearchMatches.clear();
+    m_terminalCurrentSearchMatch = -1;
+    m_terminalStartRecord = 0;
+    m_rxCount = 0;
+    m_txCount = 0;
+    m_lastStatsRxCount = 0;
+    m_lastStatsTxCount = 0;
+    m_terminalView->clear();
+    updateCounters();
+    updateRateStats();
+}
+
 void WorkbenchPage::setTerminalFontFamily(const QString &family) { applyTerminalFont(family); }
 
 void WorkbenchPage::applyTerminalFont(const QString &family)

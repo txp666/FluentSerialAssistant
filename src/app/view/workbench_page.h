@@ -22,10 +22,11 @@ class WorkbenchPage : public AppPage
     Q_OBJECT
 
   public:
-    explicit WorkbenchPage(QWidget *parent = nullptr);
+    explicit WorkbenchPage(QWidget *parent = nullptr, bool restoreSavedSession = true, bool allowAutoOpen = true);
     ~WorkbenchPage() override;
 
     void saveSettings() const;
+    void copySessionConfigFrom(const WorkbenchPage &source);
 
   public slots:
     void setTerminalFontFamily(const QString &family);

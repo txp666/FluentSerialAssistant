@@ -1,7 +1,7 @@
 #include "app/view/main_window.h"
 
 #include "app/view/settings_page.h"
-#include "app/view/workbench_page.h"
+#include "app/view/workbench_sessions_page.h"
 
 #include <QtGui/QCloseEvent>
 #include <QtGui/QGuiApplication>
@@ -43,10 +43,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::populateInterfaces()
 {
-    m_workbenchPage = new WorkbenchPage(this);
+    m_workbenchPage = new WorkbenchSessionsPage(this);
     m_workbenchPage->setObjectName(QStringLiteral("workbench"));
     addSubInterface(m_workbenchPage, icon(FluentIcon::CommandPrompt), QStringLiteral("终端"));
-    connect(m_workbenchPage, &WorkbenchPage::settingsRequested, this,
+    connect(m_workbenchPage, &WorkbenchSessionsPage::settingsRequested, this,
             [this]() { switchTo(QStringLiteral("settings")); });
 
     auto *settingsPage = new SettingsPage(this);
@@ -54,5 +54,6 @@ void MainWindow::populateInterfaces()
     addSubInterface(settingsPage, icon(FluentIcon::Setting), QStringLiteral("设置"), QIcon(),
                     NavigationItemPosition::Bottom);
     connect(settingsPage, &SettingsPage::terminalRequested, this, [this]() { switchTo(QStringLiteral("workbench")); });
-    connect(settingsPage, &SettingsPage::terminalFontChanged, m_workbenchPage, &WorkbenchPage::setTerminalFontFamily);
+    connect(settingsPage, &SettingsPage::terminalFontChanged, m_workbenchPage,
+            &WorkbenchSessionsPage::setTerminalFontFamily);
 }

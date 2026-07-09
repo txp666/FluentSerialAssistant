@@ -79,6 +79,8 @@ add_executable(FluentSerialAssistant
     src/app/view/settings_page.h
     src/app/view/workbench_page.cpp
     src/app/view/workbench_page.h
+    src/app/view/workbench_sessions_page.cpp
+    src/app/view/workbench_sessions_page.h
     src/app/view/workbench/workbench_page_checksum.cpp
     src/app/view/workbench/workbench_page_auto_reply.cpp
     src/app/view/workbench/workbench_page_connection.cpp
