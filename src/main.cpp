@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QCoreApplication::setOrganizationName(QStringLiteral("txp"));
     QCoreApplication::setApplicationName(QStringLiteral("FluentSerialAssistant"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.7"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.8"));
 
     AppFontPreferences::loadCustomFonts();
     FluentQt::FluentConfig::instance()->load();
