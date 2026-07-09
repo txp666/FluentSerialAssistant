@@ -46,14 +46,24 @@ void MainWindow::populateInterfaces()
     m_workbenchPage = new WorkbenchSessionsPage(this);
     m_workbenchPage->setObjectName(QStringLiteral("workbench"));
     addSubInterface(m_workbenchPage, icon(FluentIcon::CommandPrompt), QStringLiteral("终端"));
-    connect(m_workbenchPage, &WorkbenchSessionsPage::settingsRequested, this,
-            [this]() { switchTo(QStringLiteral("settings")); });
+    m_workbenchPage->installTitleBarTabs(titleBar());
+    connect(m_workbenchPage, &WorkbenchSessionsPage::settingsRequested, this, [this]() {
+        if (m_workbenchPage) {
+            m_workbenchPage->setTitleBarTabsVisible(false);
+        }
+        switchTo(QStringLiteral("settings"));
+    });
 
     auto *settingsPage = new SettingsPage(this);
     settingsPage->setObjectName(QStringLiteral("settings"));
     addSubInterface(settingsPage, icon(FluentIcon::Setting), QStringLiteral("设置"), QIcon(),
                     NavigationItemPosition::Bottom);
-    connect(settingsPage, &SettingsPage::terminalRequested, this, [this]() { switchTo(QStringLiteral("workbench")); });
+    connect(settingsPage, &SettingsPage::terminalRequested, this, [this]() {
+        switchTo(QStringLiteral("workbench"));
+        if (m_workbenchPage) {
+            m_workbenchPage->setTitleBarTabsVisible(true);
+        }
+    });
     connect(settingsPage, &SettingsPage::terminalFontChanged, m_workbenchPage,
             &WorkbenchSessionsPage::setTerminalFontFamily);
 }

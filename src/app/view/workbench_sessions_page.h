@@ -12,6 +12,8 @@ class WorkbenchSessionsPage : public QWidget
     explicit WorkbenchSessionsPage(QWidget *parent = nullptr);
 
     void saveSettings() const;
+    void installTitleBarTabs(FluentQt::FluentTitleBar *titleBar);
+    void setTitleBarTabsVisible(bool visible);
 
   public slots:
     void setTerminalFontFamily(const QString &family);
@@ -27,5 +29,6 @@ class WorkbenchSessionsPage : public QWidget
     QString nextTitle() const;
 
     FluentQt::TabWidget *m_tabs = nullptr;
+    FluentQt::FluentTitleBar *m_titleBar = nullptr;
     int m_nextSession = 1;
 };

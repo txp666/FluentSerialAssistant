@@ -2,6 +2,10 @@
 
 #include "app/view/workbench_page.h"
 
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QLayout>
+#include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QVBoxLayout>
 
 using namespace FluentQt;
@@ -36,6 +40,58 @@ void WorkbenchSessionsPage::saveSettings() const
 {
     if (auto *session = currentSession()) {
         session->saveSettings();
+    }
+}
+
+void WorkbenchSessionsPage::installTitleBarTabs(FluentTitleBar *titleBar)
+{
+    if (!titleBar || !m_tabs || !m_tabs->tabBar()) {
+        return;
+    }
+
+    m_titleBar = titleBar;
+    auto *tabBar = m_tabs->tabBar();
+    if (tabBar->parentWidget() != titleBar) {
+        if (QLayout *sourceLayout = m_tabs->layout()) {
+            sourceLayout->removeWidget(tabBar);
+        }
+        tabBar->setParent(titleBar);
+        tabBar->setFixedHeight(40);
+        tabBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+        if (auto *titleLayout = qobject_cast<QHBoxLayout *>(titleBar->layout())) {
+            int insertIndex = 0;
+            if (titleBar->titleLabel()) {
+                for (int i = 0; i < titleLayout->count(); ++i) {
+                    if (titleLayout->itemAt(i) && titleLayout->itemAt(i)->widget() == titleBar->titleLabel()) {
+                        insertIndex = i + 1;
+                        break;
+                    }
+                }
+            }
+            titleLayout->insertWidget(insertIndex, tabBar, 100, Qt::AlignVCenter);
+        }
+    }
+
+    setTitleBarTabsVisible(true);
+}
+
+void WorkbenchSessionsPage::setTitleBarTabsVisible(bool visible)
+{
+    if (!m_tabs || !m_tabs->tabBar()) {
+        return;
+    }
+
+    m_tabs->tabBar()->setVisible(visible);
+    if (!m_titleBar || m_tabs->tabBar()->parentWidget() != m_titleBar) {
+        return;
+    }
+
+    if (m_titleBar->iconLabel()) {
+        m_titleBar->iconLabel()->setVisible(true);
+    }
+    if (m_titleBar->titleLabel()) {
+        m_titleBar->titleLabel()->setVisible(!visible);
     }
 }
 
