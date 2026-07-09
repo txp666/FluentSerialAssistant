@@ -63,7 +63,8 @@ jobs:
           if (-not $qtPrefix) {
             throw "Qt prefix was not found."
           }
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$qtPrefix"
+          $buildType = if ($env:RUNNER_OS -eq "Windows") { "MinSizeRel" } else { "Release" }
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE="$buildType" -DCMAKE_PREFIX_PATH="$qtPrefix"
 
       - name: Build
         run: cmake --build build/release --parallel
@@ -86,7 +87,18 @@ jobs:
               exit 1
             fi
             cp "$binary_target" "$package_root/"
-            windeployqt --release --no-translations --no-system-d3d-compiler --no-opengl-sw "$package_root/FluentSerialAssistant.exe"
+            windeployqt \
+              --release \
+              --no-translations \
+              --no-system-d3d-compiler \
+              --no-system-dxc-compiler \
+              --no-compiler-runtime \
+              --no-opengl-sw \
+              --no-ffmpeg \
+              --skip-plugin-types generic,tls,networkinformation,styles \
+              --exclude-plugins qgif,qjpeg,qico \
+              "$package_root/FluentSerialAssistant.exe"
+            rm -f "$package_root"/vc_redist.*.exe
           elif [ "${{ runner.os }}" = "macOS" ]; then
             app_target="$(find build/release -maxdepth 6 -type d -name 'FluentSerialAssistant.app' | head -n 1 || true)"
             if [ -z "$app_target" ]; then
