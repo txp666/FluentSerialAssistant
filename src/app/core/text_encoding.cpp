@@ -1,4 +1,5 @@
 #include "app/core/text_encoding.h"
+#include "app/core/app_i18n.h"
 
 #include <QtCore/QChar>
 #include <QtCore5Compat/QTextCodec>
@@ -44,9 +45,9 @@ QString encodeErrorMessage(const QString &key, qsizetype invalidChars)
 {
     const QString label = AppTextEncoding::labelForKey(key);
     if (invalidChars > 0) {
-        return QStringLiteral("文本包含 %1 个无法用 %2 编码的字符").arg(invalidChars).arg(label);
+        return AppI18n::text("文本包含 %1 个无法用 %2 编码的字符").arg(invalidChars).arg(label);
     }
-    return QStringLiteral("文本无法用 %1 编码").arg(label);
+    return AppI18n::text("文本无法用 %1 编码").arg(label);
 }
 
 } // namespace
@@ -88,7 +89,7 @@ EncodeResult encode(const QString &text, const QString &key)
     EncodeResult result;
     QTextCodec *codec = codecForKey(key);
     if (!codec) {
-        result.errorMessage = QStringLiteral("编码器不可用");
+        result.errorMessage = AppI18n::text("编码器不可用");
         return result;
     }
 

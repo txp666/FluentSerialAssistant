@@ -1,10 +1,11 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
 WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool allowAutoOpen)
-    : AppPage(QStringLiteral("终端"), QStringLiteral("连接串口设备，查看收发记录，并执行文本或 HEX 数据发送。"), parent,
+    : AppPage(AppI18n::text("终端"), AppI18n::text("连接串口设备，查看收发记录，并执行文本或 HEX 数据发送。"), parent,
               false)
 {
     contentLayout()->setAlignment(Qt::Alignment());
@@ -24,6 +25,20 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
     m_macroTimer.setSingleShot(true);
     connect(&m_macroTimer, &QTimer::timeout, this, &WorkbenchPage::handleMacroTimer);
     connect(ThemeManager::instance(), &ThemeManager::effectiveThemeChanged, this, [this]() { renderTerminal(); });
+    connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this, [this]() {
+        updateConnectionUi(m_serial.isOpen());
+        updateCounters();
+        updateHistoryCombo();
+        updatePacketTable(m_packetList ? m_packetList->currentRow() : -1);
+        updateMacroTable(m_macroList ? m_macroList->currentRow() : -1);
+        updateAutoReplyTable(m_autoReplyList ? m_autoReplyList->currentRow() : -1);
+        updateModbusUi();
+        updateFrameControlState();
+        updateAutoLogStatus();
+        updateFileSendUi(m_fileSendFile.isOpen());
+        updateFileProgress();
+        renderTerminal();
+    });
 
     refreshPorts();
     if (restoreSavedSession) {

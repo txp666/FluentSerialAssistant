@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -21,7 +22,7 @@ void WorkbenchPage::setupSerialSignals()
         if (m_saveReceiveCheck->isChecked()) {
             updateReceiveCapture(true);
         }
-        showSuccess(QStringLiteral("连接成功"), QStringLiteral("%1 已打开").arg(portName));
+        showSuccess(AppI18n::text("连接成功"), AppI18n::text("%1 已打开").arg(portName));
     });
     connect(&m_serial, &SerialController::closed, this, [this]() {
         flushRxFrameBuffer();
@@ -41,7 +42,7 @@ void WorkbenchPage::setupSerialSignals()
             scheduleReconnect();
             return;
         }
-        showInfo(QStringLiteral("连接已关闭"), QStringLiteral("串口已断开"));
+        showInfo(AppI18n::text("连接已关闭"), AppI18n::text("串口已断开"));
     });
     connect(&m_serial, &SerialController::dataReceived, this,
             [this](const QByteArray &data) { handleReceivedData(data); });
@@ -50,7 +51,7 @@ void WorkbenchPage::setupSerialSignals()
             if (m_reconnectTimer.isActive()) {
                 return;
             }
-            showError(QStringLiteral("串口错误"), message);
+            showError(AppI18n::text("串口错误"), message);
         }
     });
 }
@@ -71,7 +72,7 @@ void WorkbenchPage::refreshPorts()
     }
 
     if (m_ports.isEmpty()) {
-        m_portCombo->addItem(QStringLiteral("未发现串口"));
+        m_portCombo->addItem(AppI18n::text("未发现串口"));
         m_portCombo->setItemEnabled(0, false);
         m_portCombo->setCurrentIndex(0);
         return;
@@ -230,7 +231,7 @@ void WorkbenchPage::restoreSettings()
         const QFileInfo info(filePath);
         m_fileStatusLabel->setText(info.exists()
                                        ? QStringLiteral("%1 · %2").arg(info.fileName(), formatBytes(info.size()))
-                                       : QStringLiteral("文件不存在：%1").arg(filePath));
+                                       : AppI18n::text("文件不存在：%1").arg(filePath));
     }
     m_terminalView->document()->setMaximumBlockCount(maxRecordCount());
     applyTerminalFont();
@@ -496,7 +497,7 @@ void WorkbenchPage::applyTerminalFont(const QString &family)
 
 void WorkbenchPage::updateConnectionUi(bool connected)
 {
-    m_connectButton->setText(connected ? QStringLiteral("断开") : QStringLiteral("连接"));
+    m_connectButton->setText(connected ? AppI18n::text("断开") : AppI18n::text("连接"));
     m_connectButton->setIcon(icon(connected ? FluentIcon::PowerButton : FluentIcon::Connect));
     setControlsEnabledForConnection(connected);
 }
@@ -526,19 +527,19 @@ void WorkbenchPage::updateCounters()
         }
 
         if (query.text.isEmpty()) {
-            m_terminalSummaryLabel->setText(QStringLiteral("显示 %1 条").arg(visibleRecords));
+            m_terminalSummaryLabel->setText(AppI18n::text("显示 %1 条").arg(visibleRecords));
             m_terminalSummaryLabel->setToolTip(QString());
         } else if (!query.valid) {
-            m_terminalSummaryLabel->setText(QStringLiteral("正则无效"));
+            m_terminalSummaryLabel->setText(AppI18n::text("正则无效"));
             m_terminalSummaryLabel->setToolTip(query.errorMessage);
         } else if (m_terminalSearchMatches.isEmpty()) {
-            m_terminalSummaryLabel->setText(QStringLiteral("匹配 0 · %1 条").arg(visibleRecords));
+            m_terminalSummaryLabel->setText(AppI18n::text("匹配 0 · %1 条").arg(visibleRecords));
             m_terminalSummaryLabel->setToolTip(QString());
         } else {
             const int current = qBound(0, m_terminalCurrentSearchMatch, m_terminalSearchMatches.size() - 1) + 1;
             m_terminalSummaryLabel->setText(
-                QStringLiteral("匹配 %1/%2").arg(current).arg(m_terminalSearchMatches.size()));
-            m_terminalSummaryLabel->setToolTip(QStringLiteral("显示 %1 条").arg(visibleRecords));
+                AppI18n::text("匹配 %1/%2").arg(current).arg(m_terminalSearchMatches.size()));
+            m_terminalSummaryLabel->setToolTip(AppI18n::text("显示 %1 条").arg(visibleRecords));
         }
     }
 }
@@ -559,9 +560,9 @@ void WorkbenchPage::updateRateStats()
     }
     if (m_serial.isOpen() && m_connectionStartedAt.isValid()) {
         const qint64 seconds = m_connectionStartedAt.secsTo(QDateTime::currentDateTime());
-        m_connectionTimeLabel->setText(QStringLiteral("已连接 %1").arg(formatDuration(seconds)));
+        m_connectionTimeLabel->setText(AppI18n::text("已连接 %1").arg(formatDuration(seconds)));
     } else {
-        m_connectionTimeLabel->setText(QStringLiteral("未连接"));
+        m_connectionTimeLabel->setText(AppI18n::text("未连接"));
     }
 }
 
@@ -573,7 +574,7 @@ void WorkbenchPage::updateHistoryCombo()
 
     const QSignalBlocker blocker(m_historyCombo);
     m_historyCombo->clear();
-    m_historyCombo->addItem(QStringLiteral("发送历史"), QIcon(), QVariant());
+    m_historyCombo->addItem(AppI18n::text("发送历史"), QIcon(), QVariant());
     m_historyCombo->setItemEnabled(0, false);
     for (int i = 0; i < m_sendHistory.size(); ++i) {
         m_historyCombo->addItem(historyLabel(m_sendHistory.at(i)), QIcon(), i);

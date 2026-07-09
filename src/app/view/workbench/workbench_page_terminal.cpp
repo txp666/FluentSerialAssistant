@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -41,9 +42,9 @@ QByteArray WorkbenchPage::payloadFromText(const QString &payloadText, const QStr
             if (focusEditorOnError) {
                 m_sendEdit->setFocus();
             }
-            showWarning(QStringLiteral("HEX 输入无效"),
+            showWarning(AppI18n::text("HEX 输入无效"),
                         result.errorOffset >= 0
-                            ? QStringLiteral("%1，位置 %2").arg(result.errorMessage).arg(result.errorOffset + 1)
+                            ? AppI18n::text("%1，位置 %2").arg(result.errorMessage).arg(result.errorOffset + 1)
                             : result.errorMessage);
             return data;
         }
@@ -54,7 +55,7 @@ QByteArray WorkbenchPage::payloadFromText(const QString &payloadText, const QStr
             if (focusEditorOnError) {
                 m_sendEdit->setFocus();
             }
-            showWarning(QStringLiteral("文本编码失败"), result.errorMessage);
+            showWarning(AppI18n::text("文本编码失败"), result.errorMessage);
             return data;
         }
         data = result.bytes;
@@ -197,10 +198,10 @@ QList<WorkbenchPage::SearchMatchRange> WorkbenchPage::terminalSearchRanges(const
 QString WorkbenchPage::directionText(RecordDirection direction) const
 {
     if (direction == RecordDirection::Rx) {
-        return QStringLiteral("收到");
+        return AppI18n::text("收到");
     }
     if (direction == RecordDirection::Tx) {
-        return QStringLiteral("发送");
+        return AppI18n::text("发送");
     }
     return {};
 }

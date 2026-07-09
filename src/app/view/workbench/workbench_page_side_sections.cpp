@@ -1,64 +1,65 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
 QWidget *WorkbenchPage::createConnectionSection()
 {
-    auto *section = new ExpandSettingCard(FluentIcon::Connect, QStringLiteral("连接"), QString(), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Connect, AppI18n::text("连接"), QString(), this);
     auto *root = cardBody(section);
 
     m_portCombo = new ComboBox(section);
     makeCompactControl(m_portCombo);
-    m_portCombo->setPlaceholderText(QStringLiteral("选择端口"));
+    m_portCombo->setPlaceholderText(AppI18n::text("选择端口"));
     m_refreshButton = new TransparentToolButton(icon(FluentIcon::Sync), section);
-    m_refreshButton->setToolTip(QStringLiteral("刷新端口"));
+    m_refreshButton->setToolTip(AppI18n::text("刷新端口"));
     m_refreshButton->setIconSize(QSize(16, 16));
     m_refreshButton->setFixedSize(CompactControlHeight, CompactControlHeight);
-    addFormRow(root, QStringLiteral("端口"), m_portCombo, m_refreshButton);
+    addFormRow(root, AppI18n::text("端口"), m_portCombo, m_refreshButton);
 
     m_baudCombo = new EditableComboBox(section);
     makeCompactControl(m_baudCombo);
     m_baudCombo->addItems(commonBaudRateTexts());
     m_baudCombo->setCurrentText(QStringLiteral("115200"));
-    addFormRow(root, QStringLiteral("波特率"), m_baudCombo);
+    addFormRow(root, AppI18n::text("波特率"), m_baudCombo);
 
     m_dataBitsCombo = new ComboBox(section);
     makeCompactControl(m_dataBitsCombo);
     m_dataBitsCombo->addItems({QStringLiteral("5"), QStringLiteral("6"), QStringLiteral("7"), QStringLiteral("8")});
     m_dataBitsCombo->setCurrentText(QStringLiteral("8"));
-    addFormRow(root, QStringLiteral("数据位"), m_dataBitsCombo);
+    addFormRow(root, AppI18n::text("数据位"), m_dataBitsCombo);
 
     m_parityCombo = new ComboBox(section);
     makeCompactControl(m_parityCombo);
-    m_parityCombo->addItem(QStringLiteral("无校验"), QIcon(), static_cast<int>(QSerialPort::NoParity));
-    m_parityCombo->addItem(QStringLiteral("偶校验"), QIcon(), static_cast<int>(QSerialPort::EvenParity));
-    m_parityCombo->addItem(QStringLiteral("奇校验"), QIcon(), static_cast<int>(QSerialPort::OddParity));
-    m_parityCombo->addItem(QStringLiteral("空格"), QIcon(), static_cast<int>(QSerialPort::SpaceParity));
-    m_parityCombo->addItem(QStringLiteral("标记"), QIcon(), static_cast<int>(QSerialPort::MarkParity));
+    m_parityCombo->addItem(AppI18n::text("无校验"), QIcon(), static_cast<int>(QSerialPort::NoParity));
+    m_parityCombo->addItem(AppI18n::text("偶校验"), QIcon(), static_cast<int>(QSerialPort::EvenParity));
+    m_parityCombo->addItem(AppI18n::text("奇校验"), QIcon(), static_cast<int>(QSerialPort::OddParity));
+    m_parityCombo->addItem(AppI18n::text("空格"), QIcon(), static_cast<int>(QSerialPort::SpaceParity));
+    m_parityCombo->addItem(AppI18n::text("标记"), QIcon(), static_cast<int>(QSerialPort::MarkParity));
     m_parityCombo->setCurrentIndex(0);
-    addFormRow(root, QStringLiteral("校验位"), m_parityCombo);
+    addFormRow(root, AppI18n::text("校验位"), m_parityCombo);
 
     m_stopBitsCombo = new ComboBox(section);
     makeCompactControl(m_stopBitsCombo);
-    m_stopBitsCombo->addItem(QStringLiteral("1 停止位"), QIcon(), static_cast<int>(QSerialPort::OneStop));
-    m_stopBitsCombo->addItem(QStringLiteral("1.5 停止位"), QIcon(), static_cast<int>(QSerialPort::OneAndHalfStop));
-    m_stopBitsCombo->addItem(QStringLiteral("2 停止位"), QIcon(), static_cast<int>(QSerialPort::TwoStop));
+    m_stopBitsCombo->addItem(AppI18n::text("1 停止位"), QIcon(), static_cast<int>(QSerialPort::OneStop));
+    m_stopBitsCombo->addItem(AppI18n::text("1.5 停止位"), QIcon(), static_cast<int>(QSerialPort::OneAndHalfStop));
+    m_stopBitsCombo->addItem(AppI18n::text("2 停止位"), QIcon(), static_cast<int>(QSerialPort::TwoStop));
     m_stopBitsCombo->setCurrentIndex(0);
-    addFormRow(root, QStringLiteral("停止位"), m_stopBitsCombo);
+    addFormRow(root, AppI18n::text("停止位"), m_stopBitsCombo);
 
     m_flowControlCombo = new ComboBox(section);
     makeCompactControl(m_flowControlCombo);
-    m_flowControlCombo->addItem(QStringLiteral("无流控"), QIcon(), static_cast<int>(QSerialPort::NoFlowControl));
-    m_flowControlCombo->addItem(QStringLiteral("硬件流控"), QIcon(), static_cast<int>(QSerialPort::HardwareControl));
-    m_flowControlCombo->addItem(QStringLiteral("软件流控"), QIcon(), static_cast<int>(QSerialPort::SoftwareControl));
+    m_flowControlCombo->addItem(AppI18n::text("无流控"), QIcon(), static_cast<int>(QSerialPort::NoFlowControl));
+    m_flowControlCombo->addItem(AppI18n::text("硬件流控"), QIcon(), static_cast<int>(QSerialPort::HardwareControl));
+    m_flowControlCombo->addItem(AppI18n::text("软件流控"), QIcon(), static_cast<int>(QSerialPort::SoftwareControl));
     m_flowControlCombo->setCurrentIndex(0);
-    addFormRow(root, QStringLiteral("流控"), m_flowControlCombo);
+    addFormRow(root, AppI18n::text("流控"), m_flowControlCombo);
 
-    root->addWidget(createCheckRow({QStringLiteral("RTS"), QStringLiteral("DTR"), QStringLiteral("启动连接")},
+    root->addWidget(createCheckRow({QStringLiteral("RTS"), QStringLiteral("DTR"), AppI18n::text("启动连接")},
                                    {&m_rtsCheck, &m_dtrCheck, &m_autoOpenCheck}, section));
 
-    m_connectButton = new PrimaryPushButton(icon(FluentIcon::Connect), QStringLiteral("连接"), section);
+    m_connectButton = new PrimaryPushButton(icon(FluentIcon::Connect), AppI18n::text("连接"), section);
     root->addWidget(m_connectButton);
 
     connect(m_refreshButton, &ToolButton::clicked, this, &WorkbenchPage::refreshPorts);
@@ -84,20 +85,20 @@ QWidget *WorkbenchPage::createConnectionSection()
 
 QWidget *WorkbenchPage::createReceiveSettingsSection()
 {
-    auto *section = new ExpandSettingCard(FluentIcon::Download, QStringLiteral("接收设置"), QString(), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Download, AppI18n::text("接收设置"), QString(), this);
     auto *root = cardBody(section);
 
     m_displayModeSegment = new SegmentedWidget(section);
-    m_displayModeSegment->addItem(QStringLiteral("text"), QStringLiteral("文本"));
+    m_displayModeSegment->addItem(QStringLiteral("text"), AppI18n::text("文本"));
     m_displayModeSegment->addItem(QStringLiteral("hex"), QStringLiteral("HEX"));
-    m_displayModeSegment->addItem(QStringLiteral("mixed"), QStringLiteral("混合"));
+    m_displayModeSegment->addItem(QStringLiteral("mixed"), AppI18n::text("混合"));
     m_displayModeSegment->setCurrentItem(QStringLiteral("text"));
     root->addWidget(m_displayModeSegment);
 
     m_receiveEncodingCombo = new ComboBox(section);
     addEncodingOptions(m_receiveEncodingCombo);
     makeCompactControl(m_receiveEncodingCombo);
-    addFormRow(root, QStringLiteral("编码"), m_receiveEncodingCombo);
+    addFormRow(root, AppI18n::text("编码"), m_receiveEncodingCombo);
 
     auto *receiveOptions = new QWidget(section);
     auto *receiveOptionsGrid = new QGridLayout(receiveOptions);
@@ -106,10 +107,10 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     receiveOptionsGrid->setVerticalSpacing(6);
     receiveOptionsGrid->setColumnStretch(0, 1);
     receiveOptionsGrid->setColumnStretch(1, 1);
-    m_saveReceiveCheck = new CheckBox(QStringLiteral("保存接收"), receiveOptions);
-    m_autoScrollCheck = new CheckBox(QStringLiteral("自动滚动"), receiveOptions);
-    m_timestampCheck = new CheckBox(QStringLiteral("时间戳"), receiveOptions);
-    m_pauseCheck = new CheckBox(QStringLiteral("暂停显示"), receiveOptions);
+    m_saveReceiveCheck = new CheckBox(AppI18n::text("保存接收"), receiveOptions);
+    m_autoScrollCheck = new CheckBox(AppI18n::text("自动滚动"), receiveOptions);
+    m_timestampCheck = new CheckBox(AppI18n::text("时间戳"), receiveOptions);
+    m_pauseCheck = new CheckBox(AppI18n::text("暂停显示"), receiveOptions);
     for (CheckBox *check : {m_saveReceiveCheck, m_autoScrollCheck, m_timestampCheck, m_pauseCheck}) {
         check->setMinimumWidth(0);
         check->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -125,35 +126,35 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     m_autoLogFormatCombo->addItem(QStringLiteral("CSV"), QIcon(), QStringLiteral("csv"));
     m_autoLogFormatCombo->addItem(QStringLiteral("BIN"), QIcon(), QStringLiteral("bin"));
     makeCompactControl(m_autoLogFormatCombo);
-    m_autoLogCheck = new CheckBox(QStringLiteral("自动日志"), section);
+    m_autoLogCheck = new CheckBox(AppI18n::text("自动日志"), section);
     m_autoLogCheck->setMinimumWidth(0);
     m_autoLogCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-    addFormRow(root, QStringLiteral("日志"), m_autoLogFormatCombo, m_autoLogCheck);
+    addFormRow(root, AppI18n::text("日志"), m_autoLogFormatCombo, m_autoLogCheck);
 
     m_autoLogMaxSizeSpin = new SpinBox(section);
     m_autoLogMaxSizeSpin->setRange(1, 4096);
     m_autoLogMaxSizeSpin->setValue(16);
     m_autoLogMaxSizeSpin->setSuffix(QStringLiteral(" MB"));
-    addFormRow(root, QStringLiteral("滚动"), m_autoLogMaxSizeSpin);
+    addFormRow(root, AppI18n::text("滚动"), m_autoLogMaxSizeSpin);
 
     m_frameModeCombo = new ComboBox(section);
     addFrameModeOptions(m_frameModeCombo);
     makeCompactControl(m_frameModeCombo);
-    m_autoFrameBreakCheck = new CheckBox(QStringLiteral("启用"), section);
+    m_autoFrameBreakCheck = new CheckBox(AppI18n::text("启用"), section);
     m_autoFrameBreakCheck->setMinimumWidth(0);
     m_autoFrameBreakCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-    addFormRow(root, QStringLiteral("断帧"), m_frameModeCombo, m_autoFrameBreakCheck);
+    addFormRow(root, AppI18n::text("断帧"), m_frameModeCombo, m_autoFrameBreakCheck);
 
     m_framePatternEdit = new LineEdit(section);
-    m_framePatternEdit->setPlaceholderText(QStringLiteral("HEX 边界，如 AA 55 或 0D 0A"));
+    m_framePatternEdit->setPlaceholderText(AppI18n::text("HEX 边界，如 AA 55 或 0D 0A"));
     makeCompactControl(m_framePatternEdit);
-    addFormRow(root, QStringLiteral("边界"), m_framePatternEdit);
+    addFormRow(root, AppI18n::text("边界"), m_framePatternEdit);
 
     m_frameFixedLengthSpin = new SpinBox(section);
     m_frameFixedLengthSpin->setRange(1, 65536);
     m_frameFixedLengthSpin->setValue(8);
     m_frameFixedLengthSpin->setSuffix(QStringLiteral(" B"));
-    addFormRow(root, QStringLiteral("长度"), m_frameFixedLengthSpin);
+    addFormRow(root, AppI18n::text("长度"), m_frameFixedLengthSpin);
 
     m_frameBreakIntervalSpin = new SpinBox(section);
     m_frameBreakIntervalSpin->setRange(1, 60000);
@@ -164,12 +165,12 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     frameBreakUnitLabel->setFixedHeight(CompactControlHeight);
     frameBreakUnitLabel->setFixedWidth(22);
     frameBreakUnitLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    addFormRow(root, QStringLiteral("超时"), m_frameBreakIntervalSpin, frameBreakUnitLabel);
+    addFormRow(root, AppI18n::text("超时"), m_frameBreakIntervalSpin, frameBreakUnitLabel);
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
-    m_clearButton = new PushButton(icon(FluentIcon::Broom), QStringLiteral("清空"), section);
-    m_resetCountersButton = new PushButton(icon(FluentIcon::Cancel), QStringLiteral("计数"), section);
+    m_clearButton = new PushButton(icon(FluentIcon::Broom), AppI18n::text("清空"), section);
+    m_resetCountersButton = new PushButton(icon(FluentIcon::Cancel), AppI18n::text("计数"), section);
     setButtonRowControlPolicy(m_clearButton);
     setButtonRowControlPolicy(m_resetCountersButton);
     actionRow->addWidget(m_clearButton);
@@ -189,12 +190,12 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     exportRow->addWidget(m_exportBinButton);
     root->addLayout(exportRow);
 
-    m_receiveCaptureLabel = new CaptionLabel(QStringLiteral("接收保存未启用"), section);
+    m_receiveCaptureLabel = new CaptionLabel(AppI18n::text("接收保存未启用"), section);
     m_receiveCaptureLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_receiveCaptureLabel->setWordWrap(true);
     root->addWidget(m_receiveCaptureLabel);
 
-    m_autoLogStatusLabel = new CaptionLabel(QStringLiteral("自动日志未启用"), section);
+    m_autoLogStatusLabel = new CaptionLabel(AppI18n::text("自动日志未启用"), section);
     m_autoLogStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_autoLogStatusLabel->setWordWrap(true);
     root->addWidget(m_autoLogStatusLabel);
@@ -292,7 +293,7 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
 
 QWidget *WorkbenchPage::createSendSettingsSection()
 {
-    auto *section = new ExpandSettingCard(FluentIcon::Send, QStringLiteral("发送设置"), QString(), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Send, AppI18n::text("发送设置"), QString(), this);
     auto *root = cardBody(section);
 
     m_lineEndingCombo = new ComboBox(section);
@@ -302,29 +303,29 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     m_lineEndingCombo->addItem(QStringLiteral("LF"), QIcon(), QStringLiteral("lf"));
     m_lineEndingCombo->addItem(QStringLiteral("CRLF"), QIcon(), QStringLiteral("crlf"));
     m_lineEndingCombo->setCurrentIndex(0);
-    addFormRow(root, QStringLiteral("换行"), m_lineEndingCombo);
+    addFormRow(root, AppI18n::text("换行"), m_lineEndingCombo);
 
     m_sendEncodingCombo = new ComboBox(section);
     addEncodingOptions(m_sendEncodingCombo);
     makeCompactControl(m_sendEncodingCombo);
-    addFormRow(root, QStringLiteral("编码"), m_sendEncodingCombo);
+    addFormRow(root, AppI18n::text("编码"), m_sendEncodingCombo);
 
     m_checksumAlgorithmCombo = new ComboBox(section);
     addChecksumAlgorithmOptions(m_checksumAlgorithmCombo);
     makeCompactControl(m_checksumAlgorithmCombo);
-    m_checksumCalcButton = new PushButton(icon(FluentIcon::Asterisk), QStringLiteral("计算"), section);
+    m_checksumCalcButton = new PushButton(icon(FluentIcon::Asterisk), AppI18n::text("计算"), section);
     m_checksumCalcButton->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("校验"), m_checksumAlgorithmCombo, m_checksumCalcButton);
+    addFormRow(root, AppI18n::text("校验"), m_checksumAlgorithmCombo, m_checksumCalcButton);
 
     m_checksumByteOrderCombo = new ComboBox(section);
     addChecksumByteOrderOptions(m_checksumByteOrderCombo);
     makeCompactControl(m_checksumByteOrderCombo);
-    m_checksumAppendCheck = new CheckBox(QStringLiteral("自动追加"), section);
+    m_checksumAppendCheck = new CheckBox(AppI18n::text("自动追加"), section);
     m_checksumAppendCheck->setMinimumWidth(0);
     m_checksumAppendCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-    addFormRow(root, QStringLiteral("字节序"), m_checksumByteOrderCombo, m_checksumAppendCheck);
+    addFormRow(root, AppI18n::text("字节序"), m_checksumByteOrderCombo, m_checksumAppendCheck);
 
-    m_checksumResultLabel = new CaptionLabel(QStringLiteral("校验未计算"), section);
+    m_checksumResultLabel = new CaptionLabel(AppI18n::text("校验未计算"), section);
     m_checksumResultLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_checksumResultLabel->setWordWrap(true);
     root->addWidget(m_checksumResultLabel);
@@ -336,15 +337,15 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     sendOptionsGrid->setVerticalSpacing(6);
     sendOptionsGrid->setColumnStretch(0, 1);
     sendOptionsGrid->setColumnStretch(1, 1);
-    m_hexSendCheck = new CheckBox(QStringLiteral("HEX 发送"), sendOptions);
-    m_showTxCheck = new CheckBox(QStringLiteral("显示发送字符串"), sendOptions);
-    m_loopCheck = new CheckBox(QStringLiteral("定时发送"), sendOptions);
-    m_autoReconnectCheck = new CheckBox(QStringLiteral("自动重连"), sendOptions);
+    m_hexSendCheck = new CheckBox(AppI18n::text("HEX 发送"), sendOptions);
+    m_showTxCheck = new CheckBox(AppI18n::text("显示发送字符串"), sendOptions);
+    m_loopCheck = new CheckBox(AppI18n::text("定时发送"), sendOptions);
+    m_autoReconnectCheck = new CheckBox(AppI18n::text("自动重连"), sendOptions);
     for (CheckBox *check : {m_hexSendCheck, m_showTxCheck, m_loopCheck, m_autoReconnectCheck}) {
         check->setMinimumWidth(0);
         check->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
-    m_txColorButton = new ColorPickerButton(defaultTxColor(), QStringLiteral("TX 颜色"), sendOptions);
+    m_txColorButton = new ColorPickerButton(defaultTxColor(), AppI18n::text("TX 颜色"), sendOptions);
     m_txColorButton->setFixedSize(32, CompactControlHeight);
     sendOptionsGrid->addWidget(m_hexSendCheck, 0, 0);
     sendOptionsGrid->addWidget(m_showTxCheck, 0, 1);
@@ -355,14 +356,14 @@ QWidget *WorkbenchPage::createSendSettingsSection()
 
     m_historyCombo = new ComboBox(section);
     makeCompactControl(m_historyCombo);
-    addFormRow(root, QStringLiteral("历史"), m_historyCombo);
+    addFormRow(root, AppI18n::text("历史"), m_historyCombo);
 
     m_loopIntervalSpin = new SpinBox(section);
     m_loopIntervalSpin->setRange(10, 600000);
     m_loopIntervalSpin->setValue(1000);
     m_loopIntervalSpin->setSuffix(QStringLiteral(" ms"));
     m_loopIntervalSpin->setEnabled(false);
-    addFormRow(root, QStringLiteral("间隔"), m_loopIntervalSpin);
+    addFormRow(root, AppI18n::text("间隔"), m_loopIntervalSpin);
 
     connect(m_historyCombo, &ComboBox::currentIndexChanged, this, &WorkbenchPage::applyHistoryItem);
     connect(m_sendEncodingCombo, &ComboBox::currentIndexChanged, this, [this](int) {
@@ -414,31 +415,31 @@ QWidget *WorkbenchPage::createSendSettingsSection()
 
 QWidget *WorkbenchPage::createPacketSection()
 {
-    auto *section = new ExpandSettingCard(FluentIcon::Library, QStringLiteral("常用包"), QString(), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Library, AppI18n::text("常用包"), QString(), this);
     auto *root = cardBody(section);
 
     m_packetNameEdit = new LineEdit(section);
-    m_packetNameEdit->setPlaceholderText(QStringLiteral("包名称"));
+    m_packetNameEdit->setPlaceholderText(AppI18n::text("包名称"));
     makeCompactControl(m_packetNameEdit);
-    addFormRow(root, QStringLiteral("名称"), m_packetNameEdit);
+    addFormRow(root, AppI18n::text("名称"), m_packetNameEdit);
 
     m_packetGroupEdit = new LineEdit(section);
-    m_packetGroupEdit->setPlaceholderText(QStringLiteral("分组"));
+    m_packetGroupEdit->setPlaceholderText(AppI18n::text("分组"));
     makeCompactControl(m_packetGroupEdit);
-    m_packetEnabledCheck = new CheckBox(QStringLiteral("启用"), section);
+    m_packetEnabledCheck = new CheckBox(AppI18n::text("启用"), section);
     m_packetEnabledCheck->setChecked(true);
     m_packetEnabledCheck->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("分组"), m_packetGroupEdit, m_packetEnabledCheck);
+    addFormRow(root, AppI18n::text("分组"), m_packetGroupEdit, m_packetEnabledCheck);
 
     m_packetNoteEdit = new LineEdit(section);
-    m_packetNoteEdit->setPlaceholderText(QStringLiteral("备注"));
+    m_packetNoteEdit->setPlaceholderText(AppI18n::text("备注"));
     makeCompactControl(m_packetNoteEdit);
-    addFormRow(root, QStringLiteral("备注"), m_packetNoteEdit);
+    addFormRow(root, AppI18n::text("备注"), m_packetNoteEdit);
 
     auto *modeRow = new QHBoxLayout;
     modeRow->setSpacing(8);
     m_packetModeCombo = new ComboBox(section);
-    m_packetModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_packetModeCombo->addItem(AppI18n::text("文本"), QIcon(), QStringLiteral("text"));
     m_packetModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
     m_packetModeCombo->setCurrentIndex(0);
     makeCompactControl(m_packetModeCombo);
@@ -454,7 +455,7 @@ QWidget *WorkbenchPage::createPacketSection()
     root->addLayout(modeRow);
 
     m_packetPayloadEdit = new PlainTextEdit(section);
-    m_packetPayloadEdit->setPlaceholderText(QStringLiteral("发送内容"));
+    m_packetPayloadEdit->setPlaceholderText(AppI18n::text("发送内容"));
     m_packetPayloadEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     m_packetPayloadEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     m_packetPayloadEdit->setFixedHeight(72);
@@ -472,15 +473,15 @@ QWidget *WorkbenchPage::createPacketSection()
     auto *moveRow = new QHBoxLayout;
     moveRow->setSpacing(8);
     m_packetUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
-    m_packetUpButton->setToolTip(QStringLiteral("上移"));
+    m_packetUpButton->setToolTip(AppI18n::text("上移"));
     m_packetDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
-    m_packetDownButton->setToolTip(QStringLiteral("下移"));
+    m_packetDownButton->setToolTip(AppI18n::text("下移"));
     for (ToolButton *button : {m_packetUpButton, m_packetDownButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
     }
-    m_packetSaveButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("保存"), section);
-    m_packetLoadButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入发送"), section);
+    m_packetSaveButton = new PushButton(icon(FluentIcon::Save), AppI18n::text("保存"), section);
+    m_packetLoadButton = new PushButton(icon(FluentIcon::Edit), AppI18n::text("填入发送"), section);
     setButtonRowControlPolicy(m_packetSaveButton);
     setButtonRowControlPolicy(m_packetLoadButton);
     moveRow->addWidget(m_packetUpButton);
@@ -491,8 +492,8 @@ QWidget *WorkbenchPage::createPacketSection()
 
     auto *ioRow = new QHBoxLayout;
     ioRow->setSpacing(8);
-    m_packetImportButton = new PushButton(icon(FluentIcon::Download), QStringLiteral("导入 JSON"), section);
-    m_packetExportButton = new PushButton(icon(FluentIcon::SaveAs), QStringLiteral("导出 JSON"), section);
+    m_packetImportButton = new PushButton(icon(FluentIcon::Download), AppI18n::text("导入 JSON"), section);
+    m_packetExportButton = new PushButton(icon(FluentIcon::SaveAs), AppI18n::text("导出 JSON"), section);
     setButtonRowControlPolicy(m_packetImportButton);
     setButtonRowControlPolicy(m_packetExportButton);
     ioRow->addWidget(m_packetImportButton);
@@ -501,9 +502,9 @@ QWidget *WorkbenchPage::createPacketSection()
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
-    m_packetSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送"), section);
-    m_packetBatchSendButton = new PushButton(icon(FluentIcon::SendFill), QStringLiteral("批量发送"), section);
-    m_packetDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
+    m_packetSendButton = new PrimaryPushButton(icon(FluentIcon::Send), AppI18n::text("发送"), section);
+    m_packetBatchSendButton = new PushButton(icon(FluentIcon::SendFill), AppI18n::text("批量发送"), section);
+    m_packetDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), section);
     setButtonRowControlPolicy(m_packetSendButton);
     setButtonRowControlPolicy(m_packetBatchSendButton);
     setButtonRowControlPolicy(m_packetDeleteButton);
@@ -531,18 +532,18 @@ QWidget *WorkbenchPage::createPacketSection()
 
 QWidget *WorkbenchPage::createMacroSection()
 {
-    auto *section = new ExpandSettingCard(FluentIcon::Play, QStringLiteral("宏命令"), QString(), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Play, AppI18n::text("宏命令"), QString(), this);
     auto *root = cardBody(section);
 
     m_macroNameEdit = new LineEdit(section);
-    m_macroNameEdit->setPlaceholderText(QStringLiteral("步骤名称"));
+    m_macroNameEdit->setPlaceholderText(AppI18n::text("步骤名称"));
     makeCompactControl(m_macroNameEdit);
-    addFormRow(root, QStringLiteral("步骤"), m_macroNameEdit);
+    addFormRow(root, AppI18n::text("步骤"), m_macroNameEdit);
 
     auto *modeRow = new QHBoxLayout;
     modeRow->setSpacing(8);
     m_macroModeCombo = new ComboBox(section);
-    m_macroModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_macroModeCombo->addItem(AppI18n::text("文本"), QIcon(), QStringLiteral("text"));
     m_macroModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
     makeCompactControl(m_macroModeCombo);
     m_macroLineEndingCombo = new ComboBox(section);
@@ -556,7 +557,7 @@ QWidget *WorkbenchPage::createMacroSection()
     root->addLayout(modeRow);
 
     m_macroPayloadEdit = new PlainTextEdit(section);
-    m_macroPayloadEdit->setPlaceholderText(QStringLiteral("发送内容"));
+    m_macroPayloadEdit->setPlaceholderText(AppI18n::text("发送内容"));
     m_macroPayloadEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     m_macroPayloadEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     m_macroPayloadEdit->setFixedHeight(64);
@@ -564,28 +565,28 @@ QWidget *WorkbenchPage::createMacroSection()
     root->addWidget(m_macroPayloadEdit);
 
     m_macroExpectedEdit = new LineEdit(section);
-    m_macroExpectedEdit->setPlaceholderText(QStringLiteral("响应包含，留空不等待"));
+    m_macroExpectedEdit->setPlaceholderText(AppI18n::text("响应包含，留空不等待"));
     makeCompactControl(m_macroExpectedEdit);
     m_macroResponseModeCombo = new ComboBox(section);
-    m_macroResponseModeCombo->addItem(QStringLiteral("文"), QIcon(), QStringLiteral("text"));
+    m_macroResponseModeCombo->addItem(AppI18n::text("文"), QIcon(), QStringLiteral("text"));
     m_macroResponseModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
     m_macroResponseModeCombo->setFixedHeight(CompactControlHeight);
     m_macroResponseModeCombo->setFixedWidth(78);
-    addFormRow(root, QStringLiteral("响应"), m_macroExpectedEdit, m_macroResponseModeCombo);
+    addFormRow(root, AppI18n::text("响应"), m_macroExpectedEdit, m_macroResponseModeCombo);
 
     m_macroTimeoutSpin = new SpinBox(section);
     m_macroTimeoutSpin->setRange(1, 600000);
     m_macroTimeoutSpin->setValue(1000);
     m_macroTimeoutSpin->setSuffix(QStringLiteral(" ms"));
     m_macroTimeoutSpin->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("超时"), m_macroTimeoutSpin);
+    addFormRow(root, AppI18n::text("超时"), m_macroTimeoutSpin);
 
     m_macroDelaySpin = new SpinBox(section);
     m_macroDelaySpin->setRange(0, 600000);
     m_macroDelaySpin->setValue(0);
     m_macroDelaySpin->setSuffix(QStringLiteral(" ms"));
     m_macroDelaySpin->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("延时"), m_macroDelaySpin);
+    addFormRow(root, AppI18n::text("延时"), m_macroDelaySpin);
 
     m_macroList = new ListWidget(section);
     m_macroList->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -598,16 +599,16 @@ QWidget *WorkbenchPage::createMacroSection()
     auto *stepRow = new QHBoxLayout;
     stepRow->setSpacing(8);
     m_macroUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
-    m_macroUpButton->setToolTip(QStringLiteral("上移"));
+    m_macroUpButton->setToolTip(AppI18n::text("上移"));
     m_macroDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
-    m_macroDownButton->setToolTip(QStringLiteral("下移"));
+    m_macroDownButton->setToolTip(AppI18n::text("下移"));
     for (ToolButton *button : {m_macroUpButton, m_macroDownButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
     }
-    m_macroSaveButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("保存"), section);
-    m_macroLoadButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入"), section);
-    m_macroDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
+    m_macroSaveButton = new PushButton(icon(FluentIcon::Save), AppI18n::text("保存"), section);
+    m_macroLoadButton = new PushButton(icon(FluentIcon::Edit), AppI18n::text("填入"), section);
+    m_macroDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), section);
     setButtonRowControlPolicy(m_macroSaveButton);
     stepRow->addWidget(m_macroUpButton);
     stepRow->addWidget(m_macroDownButton);
@@ -626,16 +627,16 @@ QWidget *WorkbenchPage::createMacroSection()
     m_macroLoopCountSpin->setRange(1, 100000);
     m_macroLoopCountSpin->setValue(1);
     m_macroLoopCountSpin->setFixedHeight(CompactControlHeight);
-    m_macroAbortOnFailureCheck = new CheckBox(QStringLiteral("失败中止"), section);
+    m_macroAbortOnFailureCheck = new CheckBox(AppI18n::text("失败中止"), section);
     m_macroAbortOnFailureCheck->setChecked(true);
     m_macroAbortOnFailureCheck->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("循环"), m_macroLoopCountSpin, m_macroAbortOnFailureCheck);
+    addFormRow(root, AppI18n::text("循环"), m_macroLoopCountSpin, m_macroAbortOnFailureCheck);
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
-    m_macroRunButton = new PrimaryPushButton(icon(FluentIcon::Play), QStringLiteral("运行"), section);
-    m_macroStopButton = new PushButton(icon(FluentIcon::Cancel), QStringLiteral("停止"), section);
-    m_macroExportButton = new PushButton(icon(FluentIcon::SaveAs), QStringLiteral("导出结果"), section);
+    m_macroRunButton = new PrimaryPushButton(icon(FluentIcon::Play), AppI18n::text("运行"), section);
+    m_macroStopButton = new PushButton(icon(FluentIcon::Cancel), AppI18n::text("停止"), section);
+    m_macroExportButton = new PushButton(icon(FluentIcon::SaveAs), AppI18n::text("导出结果"), section);
     setButtonRowControlPolicy(m_macroRunButton);
     setButtonRowControlPolicy(m_macroStopButton);
     setButtonRowControlPolicy(m_macroExportButton);
@@ -644,7 +645,7 @@ QWidget *WorkbenchPage::createMacroSection()
     actionRow->addWidget(m_macroExportButton);
     root->addLayout(actionRow);
 
-    m_macroStatusLabel = new CaptionLabel(QStringLiteral("未运行"), section);
+    m_macroStatusLabel = new CaptionLabel(AppI18n::text("未运行"), section);
     m_macroStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_macroStatusLabel->setWordWrap(true);
     root->addWidget(m_macroStatusLabel);
@@ -659,7 +660,7 @@ QWidget *WorkbenchPage::createMacroSection()
     connect(m_macroUpButton, &ToolButton::clicked, this, [this]() { moveSelectedMacroStep(-1); });
     connect(m_macroDownButton, &ToolButton::clicked, this, [this]() { moveSelectedMacroStep(1); });
     connect(m_macroRunButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::startMacroSequence);
-    connect(m_macroStopButton, &PushButton::clicked, this, [this]() { stopMacroSequence(QStringLiteral("用户停止")); });
+    connect(m_macroStopButton, &PushButton::clicked, this, [this]() { stopMacroSequence(AppI18n::text("用户停止")); });
     connect(m_macroExportButton, &PushButton::clicked, this, &WorkbenchPage::exportMacroResults);
 
     updateMacroTable();
@@ -669,32 +670,32 @@ QWidget *WorkbenchPage::createMacroSection()
 
 QWidget *WorkbenchPage::createAutoReplySection()
 {
-    auto *section = new ExpandSettingCard(FluentIcon::Feedback, QStringLiteral("自动应答"), QString(), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Feedback, AppI18n::text("自动应答"), QString(), this);
     auto *root = cardBody(section);
 
     m_autoReplyNameEdit = new LineEdit(section);
-    m_autoReplyNameEdit->setPlaceholderText(QStringLiteral("规则名称"));
+    m_autoReplyNameEdit->setPlaceholderText(AppI18n::text("规则名称"));
     makeCompactControl(m_autoReplyNameEdit);
-    m_autoReplyEnabledCheck = new CheckBox(QStringLiteral("启用"), section);
+    m_autoReplyEnabledCheck = new CheckBox(AppI18n::text("启用"), section);
     m_autoReplyEnabledCheck->setChecked(true);
     m_autoReplyEnabledCheck->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("名称"), m_autoReplyNameEdit, m_autoReplyEnabledCheck);
+    addFormRow(root, AppI18n::text("名称"), m_autoReplyNameEdit, m_autoReplyEnabledCheck);
 
     m_autoReplyPatternEdit = new LineEdit(section);
-    m_autoReplyPatternEdit->setPlaceholderText(QStringLiteral("匹配内容"));
+    m_autoReplyPatternEdit->setPlaceholderText(AppI18n::text("匹配内容"));
     makeCompactControl(m_autoReplyPatternEdit);
     m_autoReplyMatchModeCombo = new ComboBox(section);
-    m_autoReplyMatchModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_autoReplyMatchModeCombo->addItem(AppI18n::text("文本"), QIcon(), QStringLiteral("text"));
     m_autoReplyMatchModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
-    m_autoReplyMatchModeCombo->addItem(QStringLiteral("正则"), QIcon(), QStringLiteral("regex"));
+    m_autoReplyMatchModeCombo->addItem(AppI18n::text("正则"), QIcon(), QStringLiteral("regex"));
     m_autoReplyMatchModeCombo->setFixedHeight(CompactControlHeight);
     m_autoReplyMatchModeCombo->setFixedWidth(78);
-    addFormRow(root, QStringLiteral("匹配"), m_autoReplyPatternEdit, m_autoReplyMatchModeCombo);
+    addFormRow(root, AppI18n::text("匹配"), m_autoReplyPatternEdit, m_autoReplyMatchModeCombo);
 
     auto *responseModeRow = new QHBoxLayout;
     responseModeRow->setSpacing(8);
     m_autoReplyResponseModeCombo = new ComboBox(section);
-    m_autoReplyResponseModeCombo->addItem(QStringLiteral("文本"), QIcon(), QStringLiteral("text"));
+    m_autoReplyResponseModeCombo->addItem(AppI18n::text("文本"), QIcon(), QStringLiteral("text"));
     m_autoReplyResponseModeCombo->addItem(QStringLiteral("HEX"), QIcon(), QStringLiteral("hex"));
     makeCompactControl(m_autoReplyResponseModeCombo);
     m_autoReplyLineEndingCombo = new ComboBox(section);
@@ -708,7 +709,7 @@ QWidget *WorkbenchPage::createAutoReplySection()
     root->addLayout(responseModeRow);
 
     m_autoReplyPayloadEdit = new PlainTextEdit(section);
-    m_autoReplyPayloadEdit->setPlaceholderText(QStringLiteral("应答内容"));
+    m_autoReplyPayloadEdit->setPlaceholderText(AppI18n::text("应答内容"));
     m_autoReplyPayloadEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     m_autoReplyPayloadEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     m_autoReplyPayloadEdit->setFixedHeight(64);
@@ -720,7 +721,7 @@ QWidget *WorkbenchPage::createAutoReplySection()
     m_autoReplyDelaySpin->setValue(0);
     m_autoReplyDelaySpin->setSuffix(QStringLiteral(" ms"));
     m_autoReplyDelaySpin->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("延时"), m_autoReplyDelaySpin);
+    addFormRow(root, AppI18n::text("延时"), m_autoReplyDelaySpin);
 
     m_autoReplyList = new ListWidget(section);
     m_autoReplyList->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -733,14 +734,14 @@ QWidget *WorkbenchPage::createAutoReplySection()
     auto *saveRow = new QHBoxLayout;
     saveRow->setSpacing(8);
     m_autoReplyUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
-    m_autoReplyUpButton->setToolTip(QStringLiteral("上移"));
+    m_autoReplyUpButton->setToolTip(AppI18n::text("上移"));
     m_autoReplyDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
-    m_autoReplyDownButton->setToolTip(QStringLiteral("下移"));
+    m_autoReplyDownButton->setToolTip(AppI18n::text("下移"));
     for (ToolButton *button : {m_autoReplyUpButton, m_autoReplyDownButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
     }
-    m_autoReplySaveButton = new PushButton(icon(FluentIcon::Save), QStringLiteral("保存"), section);
+    m_autoReplySaveButton = new PushButton(icon(FluentIcon::Save), AppI18n::text("保存"), section);
     setButtonRowControlPolicy(m_autoReplySaveButton);
     saveRow->addWidget(m_autoReplyUpButton);
     saveRow->addWidget(m_autoReplyDownButton);
@@ -749,15 +750,15 @@ QWidget *WorkbenchPage::createAutoReplySection()
 
     auto *editRow = new QHBoxLayout;
     editRow->setSpacing(8);
-    m_autoReplyLoadButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入"), section);
-    m_autoReplyDeleteButton = new PushButton(icon(FluentIcon::Delete), QStringLiteral("删除"), section);
+    m_autoReplyLoadButton = new PushButton(icon(FluentIcon::Edit), AppI18n::text("填入"), section);
+    m_autoReplyDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), section);
     setButtonRowControlPolicy(m_autoReplyLoadButton);
     setButtonRowControlPolicy(m_autoReplyDeleteButton);
     editRow->addWidget(m_autoReplyLoadButton);
     editRow->addWidget(m_autoReplyDeleteButton);
     root->addLayout(editRow);
 
-    m_autoReplyStatusLabel = new CaptionLabel(QStringLiteral("未触发"), section);
+    m_autoReplyStatusLabel = new CaptionLabel(AppI18n::text("未触发"), section);
     m_autoReplyStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_autoReplyStatusLabel->setWordWrap(true);
     root->addWidget(m_autoReplyStatusLabel);
@@ -780,28 +781,28 @@ QWidget *WorkbenchPage::createAutoReplySection()
 
 QWidget *WorkbenchPage::createFileSendSection()
 {
-    auto *section = new ExpandSettingCard(FluentIcon::Folder, QStringLiteral("文件发送"), QString(), this);
+    auto *section = new ExpandSettingCard(FluentIcon::Folder, AppI18n::text("文件发送"), QString(), this);
     auto *root = cardBody(section);
 
     m_filePathEdit = new LineEdit(section);
-    m_filePathEdit->setPlaceholderText(QStringLiteral("选择待发送文件"));
+    m_filePathEdit->setPlaceholderText(AppI18n::text("选择待发送文件"));
     m_filePathEdit->setReadOnly(true);
     makeCompactControl(m_filePathEdit);
-    m_fileBrowseButton = new PushButton(icon(FluentIcon::Folder), QStringLiteral("浏览"), section);
+    m_fileBrowseButton = new PushButton(icon(FluentIcon::Folder), AppI18n::text("浏览"), section);
     m_fileBrowseButton->setFixedHeight(CompactControlHeight);
-    addFormRow(root, QStringLiteral("文件"), m_filePathEdit, m_fileBrowseButton);
+    addFormRow(root, AppI18n::text("文件"), m_filePathEdit, m_fileBrowseButton);
 
     m_fileChunkSizeSpin = new SpinBox(section);
     m_fileChunkSizeSpin->setRange(1, 65536);
     m_fileChunkSizeSpin->setValue(DefaultFileChunkSize);
     m_fileChunkSizeSpin->setSuffix(QStringLiteral(" B"));
-    addFormRow(root, QStringLiteral("块长"), m_fileChunkSizeSpin);
+    addFormRow(root, AppI18n::text("块长"), m_fileChunkSizeSpin);
 
     m_fileIntervalSpin = new SpinBox(section);
     m_fileIntervalSpin->setRange(0, 60000);
     m_fileIntervalSpin->setValue(DefaultFileChunkIntervalMs);
     m_fileIntervalSpin->setSuffix(QStringLiteral(" ms"));
-    addFormRow(root, QStringLiteral("间隔"), m_fileIntervalSpin);
+    addFormRow(root, AppI18n::text("间隔"), m_fileIntervalSpin);
 
     m_fileProgressBar = new ProgressBar(section);
     m_fileProgressBar->setRange(0, 100);
@@ -811,15 +812,15 @@ QWidget *WorkbenchPage::createFileSendSection()
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
-    m_fileSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送文件"), section);
-    m_fileCancelButton = new PushButton(icon(FluentIcon::Cancel), QStringLiteral("取消"), section);
+    m_fileSendButton = new PrimaryPushButton(icon(FluentIcon::Send), AppI18n::text("发送文件"), section);
+    m_fileCancelButton = new PushButton(icon(FluentIcon::Cancel), AppI18n::text("取消"), section);
     setButtonRowControlPolicy(m_fileSendButton);
     setButtonRowControlPolicy(m_fileCancelButton);
     actionRow->addWidget(m_fileSendButton);
     actionRow->addWidget(m_fileCancelButton);
     root->addLayout(actionRow);
 
-    m_fileStatusLabel = new CaptionLabel(QStringLiteral("未选择文件"), section);
+    m_fileStatusLabel = new CaptionLabel(AppI18n::text("未选择文件"), section);
     m_fileStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_fileStatusLabel->setWordWrap(true);
     root->addWidget(m_fileStatusLabel);

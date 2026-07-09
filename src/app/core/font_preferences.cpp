@@ -1,4 +1,5 @@
 #include "app/core/font_preferences.h"
+#include "app/core/app_i18n.h"
 
 #include <FluentQtWidgets/Config.h>
 #include <FluentQtWidgets/Theme.h>
@@ -155,7 +156,7 @@ QString fontFileHash(const QString &filePath, QString *errorMessage)
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("无法读取字体文件。");
+            *errorMessage = AppI18n::text("无法读取字体文件。");
         }
         return QString();
     }
@@ -165,7 +166,7 @@ QString fontFileHash(const QString &filePath, QString *errorMessage)
         const QByteArray chunk = file.read(1024 * 1024);
         if (chunk.isEmpty() && file.error() != QFile::NoError) {
             if (errorMessage) {
-                *errorMessage = QStringLiteral("读取字体文件失败。");
+                *errorMessage = AppI18n::text("读取字体文件失败。");
             }
             return QString();
         }
@@ -277,24 +278,24 @@ FontImportResult importFontFile(const QString &filePath)
     FontImportResult result;
     const QFileInfo sourceInfo(filePath);
     if (!sourceInfo.exists() || !sourceInfo.isFile()) {
-        result.errorMessage = QStringLiteral("字体文件不存在。");
+        result.errorMessage = AppI18n::text("字体文件不存在。");
         return result;
     }
     if (!isSupportedFontFile(sourceInfo)) {
-        result.errorMessage = QStringLiteral("请选择 TTF、OTF 或 TTC 字体文件。");
+        result.errorMessage = AppI18n::text("请选择 TTF、OTF 或 TTC 字体文件。");
         return result;
     }
 
     QString hashError;
     const QString digest = fontFileHash(sourceInfo.absoluteFilePath(), &hashError);
     if (digest.isEmpty()) {
-        result.errorMessage = hashError.isEmpty() ? QStringLiteral("无法识别字体文件。") : hashError;
+        result.errorMessage = hashError.isEmpty() ? AppI18n::text("无法识别字体文件。") : hashError;
         return result;
     }
 
     QDir fontDir(customFontDirectory());
     if (!fontDir.exists() && !fontDir.mkpath(QStringLiteral("."))) {
-        result.errorMessage = QStringLiteral("无法创建字体保存目录。");
+        result.errorMessage = AppI18n::text("无法创建字体保存目录。");
         return result;
     }
 
@@ -304,7 +305,7 @@ FontImportResult importFontFile(const QString &filePath)
     bool copied = false;
     if (!QFileInfo::exists(storedPath)) {
         if (!QFile::copy(sourceInfo.absoluteFilePath(), storedPath)) {
-            result.errorMessage = QStringLiteral("复制字体文件失败。");
+            result.errorMessage = AppI18n::text("复制字体文件失败。");
             return result;
         }
         copied = true;
@@ -315,7 +316,7 @@ FontImportResult importFontFile(const QString &filePath)
         if (copied) {
             QFile::remove(storedPath);
         }
-        result.errorMessage = QStringLiteral("无法加载该字体文件。");
+        result.errorMessage = AppI18n::text("无法加载该字体文件。");
         return result;
     }
 

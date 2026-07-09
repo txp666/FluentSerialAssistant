@@ -1,4 +1,5 @@
 #include "app/core/update_checker.h"
+#include "app/core/app_i18n.h"
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QJsonDocument>
@@ -97,13 +98,13 @@ void UpdateChecker::handleReply(QNetworkReply *reply)
     const int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (statusCode < 200 || statusCode >= 300) {
         emit checkFinished(false, false, currentVersion, QString(), QUrl(),
-                           QStringLiteral("GitHub 返回 HTTP %1").arg(statusCode));
+                           AppI18n::text("GitHub 返回 HTTP %1").arg(statusCode));
         return;
     }
 
     const QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
     if (!document.isObject()) {
-        emit checkFinished(false, false, currentVersion, QString(), QUrl(), QStringLiteral("更新信息格式无效"));
+        emit checkFinished(false, false, currentVersion, QString(), QUrl(), AppI18n::text("更新信息格式无效"));
         return;
     }
 
@@ -111,13 +112,13 @@ void UpdateChecker::handleReply(QNetworkReply *reply)
     const QString latestVersion = normalizedVersion(release.value(QStringLiteral("tag_name")).toString());
     const QUrl releaseUrl(release.value(QStringLiteral("html_url")).toString());
     if (latestVersion.isEmpty() || !releaseUrl.isValid()) {
-        emit checkFinished(false, false, currentVersion, QString(), QUrl(), QStringLiteral("未找到有效的发布版本"));
+        emit checkFinished(false, false, currentVersion, QString(), QUrl(), AppI18n::text("未找到有效的发布版本"));
         return;
     }
 
     const bool updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
     emit checkFinished(true, updateAvailable, currentVersion, latestVersion, releaseUrl,
-                       updateAvailable ? QStringLiteral("发现新版本") : QStringLiteral("当前已是最新版本"));
+                       updateAvailable ? AppI18n::text("发现新版本") : AppI18n::text("当前已是最新版本"));
 }
 
 } // namespace AppUpdate

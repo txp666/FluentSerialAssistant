@@ -1,4 +1,5 @@
 #include "app/core/hex_utils.h"
+#include "app/core/app_i18n.h"
 
 #include <QtCore/QChar>
 #include <QtCore/QStringList>
@@ -64,17 +65,17 @@ HexParseResult parseHexPayload(const QString &input)
         while (i < size && !isSeparator(input.at(i))) {
             const QChar ch = input.at(i);
             if (!isHexChar(ch)) {
-                return fail(i, QStringLiteral("包含非 HEX 字符"));
+                return fail(i, AppI18n::text("包含非 HEX 字符"));
             }
             token.append(ch);
             ++i;
         }
 
         if (token.isEmpty()) {
-            return fail(tokenStart, QStringLiteral("0x 后缺少字节"));
+            return fail(tokenStart, AppI18n::text("0x 后缺少字节"));
         }
         if (token.size() > 2 && token.size() % 2 != 0) {
-            return fail(hexStart, QStringLiteral("连续 HEX 字符数量必须为偶数"));
+            return fail(hexStart, AppI18n::text("连续 HEX 字符数量必须为偶数"));
         }
 
         if (token.size() <= 2) {
@@ -93,7 +94,7 @@ HexParseResult parseHexPayload(const QString &input)
     }
 
     if (result.bytes.isEmpty() && !input.trimmed().isEmpty()) {
-        return fail(0, QStringLiteral("没有解析到有效字节"));
+        return fail(0, AppI18n::text("没有解析到有效字节"));
     }
 
     return result;

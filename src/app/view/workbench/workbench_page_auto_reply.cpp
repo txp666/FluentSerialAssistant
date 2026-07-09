@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -34,9 +35,9 @@ QString matchModeLabel(const QString &mode)
         return QStringLiteral("HEX");
     }
     if (mode == QStringLiteral("regex")) {
-        return QStringLiteral("正则");
+        return AppI18n::text("正则");
     }
-    return QStringLiteral("文本");
+    return AppI18n::text("文本");
 }
 
 QString autoReplyRuleName(const QString &name, int row)
@@ -44,7 +45,7 @@ QString autoReplyRuleName(const QString &name, int row)
     if (!name.trimmed().isEmpty()) {
         return name.trimmed();
     }
-    return QStringLiteral("规则 %1").arg(row + 1);
+    return AppI18n::text("规则 %1").arg(row + 1);
 }
 } // namespace
 
@@ -66,16 +67,16 @@ void WorkbenchPage::updateAutoReplyTable(int selectedRow)
         if (payload.size() > 22) {
             payload = payload.left(19) + QStringLiteral("...");
         }
-        const QString status = rule.enabled ? QStringLiteral("启用") : QStringLiteral("停用");
+        const QString status = rule.enabled ? AppI18n::text("启用") : AppI18n::text("停用");
 
         auto *item = new QListWidgetItem(
             icon(rule.enabled ? FluentIcon::Feedback : FluentIcon::Cancel),
-            QStringLiteral("%1. %2 · %3\n%4：%5 → %6 · 延时 %7 ms")
+            AppI18n::text("%1. %2 · %3\n%4：%5 → %6 · 延时 %7 ms")
                 .arg(row + 1)
                 .arg(autoReplyRuleName(rule.name, row), status, matchModeLabel(rule.matchMode), pattern, payload)
                 .arg(qBound(0, rule.delayMs, 600000)));
         item->setData(Qt::UserRole, row);
-        item->setToolTip(QStringLiteral("匹配：%1\n应答：%2").arg(rule.pattern, rule.responsePayload));
+        item->setToolTip(AppI18n::text("匹配：%1\n应答：%2").arg(rule.pattern, rule.responsePayload));
         item->setSizeHint(QSize(0, 58));
         m_autoReplyList->addItem(item);
     }
@@ -145,30 +146,30 @@ void WorkbenchPage::saveCurrentAutoReplyRule()
     rule.delayMs = qBound(0, m_autoReplyDelaySpin->value(), 600000);
 
     if (rule.pattern.isEmpty()) {
-        showWarning(QStringLiteral("无法保存自动应答"), QStringLiteral("匹配内容为空"));
+        showWarning(AppI18n::text("无法保存自动应答"), AppI18n::text("匹配内容为空"));
         return;
     }
     if (rule.responsePayload.trimmed().isEmpty()) {
-        showWarning(QStringLiteral("无法保存自动应答"), QStringLiteral("应答内容为空"));
+        showWarning(AppI18n::text("无法保存自动应答"), AppI18n::text("应答内容为空"));
         return;
     }
     if (rule.matchMode == QStringLiteral("hex")) {
         const HexParseResult result = parseHexPayload(rule.pattern);
         if (!result.ok || result.bytes.isEmpty()) {
-            showWarning(QStringLiteral("HEX 匹配无效"), result.errorMessage);
+            showWarning(AppI18n::text("HEX 匹配无效"), result.errorMessage);
             return;
         }
     } else if (rule.matchMode == QStringLiteral("regex")) {
         const QRegularExpression regex(rule.pattern);
         if (!regex.isValid()) {
-            showWarning(QStringLiteral("正则匹配无效"), regex.errorString());
+            showWarning(AppI18n::text("正则匹配无效"), regex.errorString());
             return;
         }
     }
     if (rule.responseMode == QStringLiteral("hex")) {
         const HexParseResult result = parseHexPayload(rule.responsePayload);
         if (!result.ok || result.bytes.isEmpty()) {
-            showWarning(QStringLiteral("HEX 应答无效"), result.errorMessage);
+            showWarning(AppI18n::text("HEX 应答无效"), result.errorMessage);
             return;
         }
     }
@@ -192,7 +193,7 @@ void WorkbenchPage::saveCurrentAutoReplyRule()
     updateAutoReplyTable(row);
     applyAutoReplyRule(row);
     saveAutoReplyRules();
-    showSuccess(QStringLiteral("已保存自动应答"), autoReplyRuleName(rule.name, row));
+    showSuccess(AppI18n::text("已保存自动应答"), autoReplyRuleName(rule.name, row));
 }
 
 void WorkbenchPage::removeSelectedAutoReplyRule()
@@ -206,7 +207,7 @@ void WorkbenchPage::removeSelectedAutoReplyRule()
     m_autoReplyRules.removeAt(row);
     updateAutoReplyTable(qMin(row, m_autoReplyRules.size() - 1));
     saveAutoReplyRules();
-    showInfo(QStringLiteral("已删除自动应答"), name);
+    showInfo(AppI18n::text("已删除自动应答"), name);
 }
 
 void WorkbenchPage::moveSelectedAutoReplyRule(int direction)
@@ -257,7 +258,7 @@ void WorkbenchPage::handleAutoReplyReceivedData(const QByteArray &data)
     }
 
     if (m_autoReplyStatusLabel) {
-        m_autoReplyStatusLabel->setText(QStringLiteral("已匹配：%1").arg(names.join(QStringLiteral("、"))));
+        m_autoReplyStatusLabel->setText(AppI18n::text("已匹配：%1").arg(names.join(AppI18n::text("、"))));
     }
 }
 
@@ -283,7 +284,7 @@ void WorkbenchPage::sendAutoReplyRule(const AutoReplyRule &rule)
 {
     if (!m_serial.isOpen()) {
         if (m_autoReplyStatusLabel) {
-            m_autoReplyStatusLabel->setText(QStringLiteral("串口已断开，自动应答未发送"));
+            m_autoReplyStatusLabel->setText(AppI18n::text("串口已断开，自动应答未发送"));
         }
         return;
     }
@@ -292,7 +293,7 @@ void WorkbenchPage::sendAutoReplyRule(const AutoReplyRule &rule)
     const QByteArray payload = payloadFromText(rule.responsePayload, rule.responseMode, rule.lineEnding, false, &ok);
     if (!ok || payload.isEmpty()) {
         if (m_autoReplyStatusLabel) {
-            m_autoReplyStatusLabel->setText(QStringLiteral("自动应答内容无效：%1").arg(rule.name));
+            m_autoReplyStatusLabel->setText(AppI18n::text("自动应答内容无效：%1").arg(rule.name));
         }
         return;
     }
@@ -300,7 +301,7 @@ void WorkbenchPage::sendAutoReplyRule(const AutoReplyRule &rule)
     const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
     if (!checksumOk) {
         if (m_autoReplyStatusLabel) {
-            m_autoReplyStatusLabel->setText(QStringLiteral("自动应答校验失败：%1").arg(rule.name));
+            m_autoReplyStatusLabel->setText(AppI18n::text("自动应答校验失败：%1").arg(rule.name));
         }
         return;
     }
@@ -308,15 +309,15 @@ void WorkbenchPage::sendAutoReplyRule(const AutoReplyRule &rule)
     QString error;
     if (!m_serial.writeData(output, &error)) {
         if (m_autoReplyStatusLabel) {
-            m_autoReplyStatusLabel->setText(QStringLiteral("自动应答发送失败：%1").arg(error));
+            m_autoReplyStatusLabel->setText(AppI18n::text("自动应答发送失败：%1").arg(error));
         }
         return;
     }
 
-    appendRecord(RecordDirection::Tx, output, true, QStringLiteral("自动应答"));
+    appendRecord(RecordDirection::Tx, output, true, AppI18n::text("自动应答"));
     if (m_autoReplyStatusLabel) {
         const QString name = rule.name.isEmpty() ? rule.pattern.simplified() : rule.name;
-        m_autoReplyStatusLabel->setText(QStringLiteral("已应答：%1").arg(name));
+        m_autoReplyStatusLabel->setText(AppI18n::text("已应答：%1").arg(name));
     }
 }
 

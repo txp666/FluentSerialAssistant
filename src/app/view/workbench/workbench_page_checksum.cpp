@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -33,7 +34,7 @@ QByteArray WorkbenchPage::payloadWithOptionalChecksum(const QByteArray &payload,
     const AppChecksum::ChecksumResult result =
         AppChecksum::calculate(payload, checksumAlgorithmKey(), checksumByteOrder());
     if (!result.ok) {
-        showWarning(QStringLiteral("校验计算失败"), result.errorMessage);
+        showWarning(AppI18n::text("校验计算失败"), result.errorMessage);
         return payload;
     }
 
@@ -60,14 +61,14 @@ void WorkbenchPage::calculateChecksumForCurrentPayload()
         return;
     }
     if (payload.isEmpty()) {
-        showWarning(QStringLiteral("无法计算校验"), QStringLiteral("发送内容为空"));
+        showWarning(AppI18n::text("无法计算校验"), AppI18n::text("发送内容为空"));
         return;
     }
 
     const AppChecksum::ChecksumResult result =
         AppChecksum::calculate(payload, checksumAlgorithmKey(), checksumByteOrder());
     if (!result.ok) {
-        showWarning(QStringLiteral("校验计算失败"), result.errorMessage);
+        showWarning(AppI18n::text("校验计算失败"), result.errorMessage);
         return;
     }
 

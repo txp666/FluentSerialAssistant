@@ -1,5 +1,6 @@
 #include "app/view/main_window.h"
 
+#include "app/core/app_i18n.h"
 #include "app/core/font_preferences.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
@@ -16,6 +17,7 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
+    Q_INIT_RESOURCE(app);
     Q_INIT_RESOURCE(fluentqtwidgets);
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QCoreApplication::setOrganizationName(QStringLiteral("txp"));
@@ -24,6 +26,7 @@ int main(int argc, char *argv[])
 
     AppFontPreferences::loadCustomFonts();
     FluentQt::FluentConfig::instance()->load();
+    AppI18n::installTranslators(&app, FluentQt::FluentConfig::instance()->localeName());
     FluentQt::ThemeManager::instance()->setTheme(FluentQt::FluentConfig::instance()->themeMode());
     FluentQt::ThemeManager::instance()->setAccentColor(FluentQt::FluentConfig::instance()->themeColor());
     AppFontPreferences::applyConfiguredUiFont();

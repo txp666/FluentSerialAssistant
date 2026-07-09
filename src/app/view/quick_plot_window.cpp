@@ -1,4 +1,5 @@
 #include "app/view/quick_plot_window.h"
+#include "app/core/app_i18n.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
@@ -55,7 +56,7 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
 {
     using namespace FluentQt;
 
-    setWindowTitle(QStringLiteral("快速绘图"));
+    setWindowTitle(AppI18n::text("快速绘图"));
     setMinimumSize(760, 460);
     resize(980, 620);
 
@@ -66,32 +67,32 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     auto *toolbar = new QHBoxLayout;
     toolbar->setSpacing(8);
 
-    auto *protocolLabel = new BodyLabel(QStringLiteral("协议"), this);
+    auto *protocolLabel = new BodyLabel(AppI18n::text("协议"), this);
     protocolLabel->setFixedHeight(32);
     m_protocolCombo = new ComboBox(this);
-    m_protocolCombo->addItem(QStringLiteral("全部数字"), QIcon(), QStringLiteral("numbers"));
-    m_protocolCombo->addItem(QStringLiteral("分隔值"), QIcon(), QStringLiteral("delimited"));
-    m_protocolCombo->addItem(QStringLiteral("键值对"), QIcon(), QStringLiteral("keyValue"));
-    m_protocolCombo->addItem(QStringLiteral("JSON 对象"), QIcon(), QStringLiteral("json"));
+    m_protocolCombo->addItem(AppI18n::text("全部数字"), QIcon(), QStringLiteral("numbers"));
+    m_protocolCombo->addItem(AppI18n::text("分隔值"), QIcon(), QStringLiteral("delimited"));
+    m_protocolCombo->addItem(AppI18n::text("键值对"), QIcon(), QStringLiteral("keyValue"));
+    m_protocolCombo->addItem(AppI18n::text("JSON 对象"), QIcon(), QStringLiteral("json"));
     m_protocolCombo->setFixedSize(132, 32);
-    m_protocolCombo->setToolTip(QStringLiteral("选择接收文本如何转换为曲线数据"));
+    m_protocolCombo->setToolTip(AppI18n::text("选择接收文本如何转换为曲线数据"));
     const QString savedProtocol =
         QSettings().value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
     const int protocolIndex = m_protocolCombo->findData(savedProtocol);
     m_protocolCombo->setCurrentIndex(protocolIndex >= 0 ? protocolIndex : 0);
     m_protocol = protocolFromKey(m_protocolCombo->currentData().toString());
     auto *protocolHelpButton = new TransparentToolButton(icon(FluentIcon::Question), this);
-    protocolHelpButton->setToolTip(QStringLiteral("绘图协议示例"));
+    protocolHelpButton->setToolTip(AppI18n::text("绘图协议示例"));
     protocolHelpButton->setFixedSize(32, 32);
     protocolHelpButton->setIconSize(QSize(16, 16));
 
-    m_pauseButton = new PushButton(icon(FluentIcon::Pause), QStringLiteral("暂停"), this);
+    m_pauseButton = new PushButton(icon(FluentIcon::Pause), AppI18n::text("暂停"), this);
     m_pauseButton->setFixedHeight(32);
-    auto *clearButton = new PushButton(icon(FluentIcon::Broom), QStringLiteral("清空"), this);
+    auto *clearButton = new PushButton(icon(FluentIcon::Broom), AppI18n::text("清空"), this);
     clearButton->setFixedHeight(32);
-    auto *resetButton = new PushButton(icon(FluentIcon::FitPage), QStringLiteral("复位视图"), this);
+    auto *resetButton = new PushButton(icon(FluentIcon::FitPage), AppI18n::text("复位视图"), this);
     resetButton->setFixedHeight(32);
-    auto *exportButton = new PushButton(icon(FluentIcon::ImageExport), QStringLiteral("导出 CSV"), this);
+    auto *exportButton = new PushButton(icon(FluentIcon::ImageExport), AppI18n::text("导出 CSV"), this);
     exportButton->setFixedHeight(32);
 
     m_statusLabel = new CaptionLabel(QString(), this);
@@ -370,9 +371,9 @@ void QuickPlotWindow::ensureSeriesCount(int count)
 
 void QuickPlotWindow::updateStatus()
 {
-    const QString state = m_paused ? QStringLiteral("已暂停") : QStringLiteral("实时");
+    const QString state = m_paused ? AppI18n::text("已暂停") : AppI18n::text("实时");
     m_statusLabel->setText(
-        QStringLiteral("%1 · %2 点 · %3 通道").arg(state).arg(m_rows.size()).arg(qMax(1, m_channelCount)));
+        AppI18n::text("%1 · %2 点 · %3 通道").arg(state).arg(m_rows.size()).arg(qMax(1, m_channelCount)));
 }
 
 void QuickPlotWindow::setPaused(bool paused)
@@ -380,7 +381,7 @@ void QuickPlotWindow::setPaused(bool paused)
     m_paused = paused;
     if (m_pauseButton) {
         m_pauseButton->setIcon(FluentQt::icon(paused ? FluentQt::FluentIcon::Play : FluentQt::FluentIcon::Pause));
-        m_pauseButton->setText(paused ? QStringLiteral("继续") : QStringLiteral("暂停"));
+        m_pauseButton->setText(paused ? AppI18n::text("继续") : AppI18n::text("暂停"));
     }
     updateStatus();
 }
@@ -399,15 +400,8 @@ void QuickPlotWindow::setProtocol(PlotProtocol protocol)
 
 void QuickPlotWindow::showProtocolHelp(QWidget *target)
 {
-    const QString content = QStringLiteral("全部数字：提取每行里的所有数字\n"
-                                           "  T=24.8 H=60.5  => CH1=24.8, CH2=60.5\n\n"
-                                           "分隔值：读取逗号、分号、空格分隔的纯数字\n"
-                                           "  24.8,60.5,101.3  => CH1, CH2, CH3\n\n"
-                                           "键值对：读取 name=value 或 name:value，字段名作为曲线名\n"
-                                           "  temp=24.8 hum=60.5  => temp, hum\n\n"
-                                           "JSON 对象：读取数值字段，数组字段会展开\n"
-                                           "  {\"temp\":24.8,\"hum\":60.5}  => temp, hum");
-    FluentQt::TeachingTip::create(QStringLiteral("绘图协议示例"), content,
+    const QString content = AppI18n::text("全部数字：提取每行里的所有数字\n  T=24.8 H=60.5  => CH1=24.8, CH2=60.5\n\n分隔值：读取逗号、分号、空格分隔的纯数字\n  24.8,60.5,101.3  => CH1, CH2, CH3\n\n键值对：读取 name=value 或 name:value，字段名作为曲线名\n  temp=24.8 hum=60.5  => temp, hum\n\nJSON 对象：读取数值字段，数组字段会展开\n  {\"temp\":24.8,\"hum\":60.5}  => temp, hum");
+    FluentQt::TeachingTip::create(AppI18n::text("绘图协议示例"), content,
                                   FluentQt::icon(FluentQt::FluentIcon::Question), QPixmap(), true, target,
                                   FluentQt::TeachingTipTailPosition::Bottom, -1, this);
 }
@@ -415,7 +409,7 @@ void QuickPlotWindow::showProtocolHelp(QWidget *target)
 void QuickPlotWindow::exportCsv()
 {
     if (m_rows.isEmpty()) {
-        FluentQt::InfoBar::warning(QStringLiteral("暂无曲线数据"), QStringLiteral("接收文本中还没有可导出的数字"),
+        FluentQt::InfoBar::warning(AppI18n::text("暂无曲线数据"), AppI18n::text("接收文本中还没有可导出的数字"),
                                    Qt::Horizontal, true, 2200, FluentQt::InfoBarPosition::TopRight, this);
         return;
     }
@@ -426,15 +420,15 @@ void QuickPlotWindow::exportCsv()
         QDir(initialFolder)
             .filePath(QStringLiteral("quick_plot_%1.csv")
                           .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"))));
-    const QString path = QFileDialog::getSaveFileName(this, QStringLiteral("导出曲线 CSV"), initialName,
-                                                      QStringLiteral("CSV 文件 (*.csv)"));
+    const QString path = QFileDialog::getSaveFileName(this, AppI18n::text("导出曲线 CSV"), initialName,
+                                                      AppI18n::text("CSV 文件 (*.csv)"));
     if (path.isEmpty()) {
         return;
     }
 
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        FluentQt::InfoBar::error(QStringLiteral("导出失败"), file.errorString(), Qt::Horizontal, true, 3500,
+        FluentQt::InfoBar::error(AppI18n::text("导出失败"), file.errorString(), Qt::Horizontal, true, 3500,
                                  FluentQt::InfoBarPosition::TopRight, this);
         return;
     }
@@ -462,12 +456,12 @@ void QuickPlotWindow::exportCsv()
     }
     out.flush();
     if (file.error() != QFile::NoError) {
-        FluentQt::InfoBar::error(QStringLiteral("导出失败"), file.errorString(), Qt::Horizontal, true, 3500,
+        FluentQt::InfoBar::error(AppI18n::text("导出失败"), file.errorString(), Qt::Horizontal, true, 3500,
                                  FluentQt::InfoBarPosition::TopRight, this);
         return;
     }
 
     settings.setValue(QStringLiteral("plot/exportFolder"), QFileInfo(path).absolutePath());
-    FluentQt::InfoBar::success(QStringLiteral("导出完成"), path, Qt::Horizontal, true, 2200,
+    FluentQt::InfoBar::success(AppI18n::text("导出完成"), path, Qt::Horizontal, true, 2200,
                                FluentQt::InfoBarPosition::TopRight, this);
 }

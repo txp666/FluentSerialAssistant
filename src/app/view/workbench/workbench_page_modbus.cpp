@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -11,7 +12,7 @@ QWidget *WorkbenchPage::createModbusSection()
     m_modbusSlaveSpin = new SpinBox(section);
     m_modbusSlaveSpin->setRange(1, 247);
     m_modbusSlaveSpin->setValue(1);
-    addFormRow(root, QStringLiteral("站号"), m_modbusSlaveSpin);
+    addFormRow(root, AppI18n::text("站号"), m_modbusSlaveSpin);
 
     m_modbusFunctionCombo = new ComboBox(section);
     addModbusFunctionOptions(m_modbusFunctionCombo);
@@ -20,20 +21,20 @@ QWidget *WorkbenchPage::createModbusSection()
     if (defaultFunctionIndex >= 0) {
         m_modbusFunctionCombo->setCurrentIndex(defaultFunctionIndex);
     }
-    addFormRow(root, QStringLiteral("功能"), m_modbusFunctionCombo);
+    addFormRow(root, AppI18n::text("功能"), m_modbusFunctionCombo);
 
     m_modbusAddressSpin = new SpinBox(section);
     m_modbusAddressSpin->setRange(0, 65535);
     m_modbusAddressSpin->setValue(0);
-    addFormRow(root, QStringLiteral("地址"), m_modbusAddressSpin);
+    addFormRow(root, AppI18n::text("地址"), m_modbusAddressSpin);
 
     m_modbusQuantitySpin = new SpinBox(section);
     m_modbusQuantitySpin->setRange(1, 2000);
     m_modbusQuantitySpin->setValue(1);
-    addFormRow(root, QStringLiteral("数量"), m_modbusQuantitySpin);
+    addFormRow(root, AppI18n::text("数量"), m_modbusQuantitySpin);
 
     m_modbusValuesEdit = new PlainTextEdit(section);
-    m_modbusValuesEdit->setPlaceholderText(QStringLiteral("写入值，例如：1 2 0x1234"));
+    m_modbusValuesEdit->setPlaceholderText(AppI18n::text("写入值，例如：1 2 0x1234"));
     m_modbusValuesEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     m_modbusValuesEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     m_modbusValuesEdit->setFixedHeight(60);
@@ -42,15 +43,15 @@ QWidget *WorkbenchPage::createModbusSection()
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
-    m_modbusFillButton = new PushButton(icon(FluentIcon::Edit), QStringLiteral("填入发送"), section);
-    m_modbusSendButton = new PrimaryPushButton(icon(FluentIcon::Send), QStringLiteral("发送"), section);
+    m_modbusFillButton = new PushButton(icon(FluentIcon::Edit), AppI18n::text("填入发送"), section);
+    m_modbusSendButton = new PrimaryPushButton(icon(FluentIcon::Send), AppI18n::text("发送"), section);
     setButtonRowControlPolicy(m_modbusFillButton);
     setButtonRowControlPolicy(m_modbusSendButton);
     actionRow->addWidget(m_modbusFillButton);
     actionRow->addWidget(m_modbusSendButton);
     root->addLayout(actionRow);
 
-    m_modbusStatusLabel = new CaptionLabel(QStringLiteral("生成帧会自动附加 CRC16-Modbus"), section);
+    m_modbusStatusLabel = new CaptionLabel(AppI18n::text("生成帧会自动附加 CRC16-Modbus"), section);
     m_modbusStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_modbusStatusLabel->setWordWrap(true);
     root->addWidget(m_modbusStatusLabel);
@@ -105,7 +106,7 @@ QByteArray WorkbenchPage::currentModbusFrame(bool *ok)
     const AppModbus::BuildResult result = AppModbus::buildRequest(currentModbusConfig());
     if (!result.ok) {
         setModbusStatusText(result.errorMessage);
-        showWarning(QStringLiteral("Modbus 帧生成失败"), result.errorMessage);
+        showWarning(AppI18n::text("Modbus 帧生成失败"), result.errorMessage);
         return {};
     }
 
@@ -133,13 +134,13 @@ void WorkbenchPage::fillModbusRequest()
         m_checksumAppendCheck->setChecked(false);
     }
     m_sendEdit->setPlainText(bytesToHex(frame));
-    setModbusStatusText(QStringLiteral("已填入发送区 · %1").arg(bytesToHex(frame)));
+    setModbusStatusText(AppI18n::text("已填入发送区 · %1").arg(bytesToHex(frame)));
 }
 
 void WorkbenchPage::sendModbusRequest()
 {
     if (!m_serial.isOpen()) {
-        showWarning(QStringLiteral("无法发送 Modbus 请求"), QStringLiteral("请先连接串口"));
+        showWarning(AppI18n::text("无法发送 Modbus 请求"), AppI18n::text("请先连接串口"));
         return;
     }
 
@@ -151,7 +152,7 @@ void WorkbenchPage::sendModbusRequest()
 
     QString error;
     if (!m_serial.writeData(frame, &error)) {
-        showError(QStringLiteral("Modbus 发送失败"), error);
+        showError(AppI18n::text("Modbus 发送失败"), error);
         return;
     }
 
@@ -161,7 +162,7 @@ void WorkbenchPage::sendModbusRequest()
     historyItem.lineEnding = QStringLiteral("none");
     addSendHistory(historyItem);
     appendRecord(RecordDirection::Tx, frame);
-    setModbusStatusText(QStringLiteral("已发送 · %1").arg(bytesToHex(frame)));
+    setModbusStatusText(AppI18n::text("已发送 · %1").arg(bytesToHex(frame)));
 }
 
 void WorkbenchPage::updateModbusUi()
@@ -184,14 +185,14 @@ void WorkbenchPage::updateModbusUi()
     if (m_modbusValuesEdit) {
         m_modbusValuesEdit->setEnabled(needsValues);
         if (!needsValues) {
-            m_modbusValuesEdit->setPlaceholderText(QStringLiteral("读取功能无需填写值"));
+            m_modbusValuesEdit->setPlaceholderText(AppI18n::text("读取功能无需填写值"));
         } else if (function.coil) {
             m_modbusValuesEdit->setPlaceholderText(function.multiple
-                                                       ? QStringLiteral("线圈值列表，例如：1 0 1 1")
-                                                       : QStringLiteral("线圈值：0/1、true/false 或 on/off"));
+                                                       ? AppI18n::text("线圈值列表，例如：1 0 1 1")
+                                                       : AppI18n::text("线圈值：0/1、true/false 或 on/off"));
         } else {
-            m_modbusValuesEdit->setPlaceholderText(function.multiple ? QStringLiteral("寄存器值列表，例如：1 2 0x1234")
-                                                                     : QStringLiteral("寄存器值：0-65535 或 0x1234"));
+            m_modbusValuesEdit->setPlaceholderText(function.multiple ? AppI18n::text("寄存器值列表，例如：1 2 0x1234")
+                                                                     : AppI18n::text("寄存器值：0-65535 或 0x1234"));
         }
     }
 }

@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -6,7 +7,7 @@ using namespace WorkbenchPagePrivate;
 void WorkbenchPage::exportRecords(ExportFormat format)
 {
     if (m_records.isEmpty()) {
-        showWarning(QStringLiteral("没有可导出的记录"), QStringLiteral("当前会话还没有收发数据"));
+        showWarning(AppI18n::text("没有可导出的记录"), AppI18n::text("当前会话还没有收发数据"));
         return;
     }
 
@@ -29,7 +30,7 @@ void WorkbenchPage::exportRecords(ExportFormat format)
     const QString path = QDir(folder).filePath(fileName);
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        showError(QStringLiteral("导出失败"), file.errorString());
+        showError(AppI18n::text("导出失败"), file.errorString());
         return;
     }
 
@@ -65,7 +66,7 @@ void WorkbenchPage::exportRecords(ExportFormat format)
     }
 
     file.close();
-    showSuccess(QStringLiteral("导出完成"), path);
+    showSuccess(AppI18n::text("导出完成"), path);
 }
 
 QString WorkbenchPage::autoLogFormatKey() const
@@ -170,7 +171,7 @@ bool WorkbenchPage::ensureAutoLogFile(ExportFormat format, qint64 nextBytes)
             m_autoLogCheck->setChecked(false);
         }
         settings.setValue(QStringLiteral("log/enabled"), false);
-        showError(QStringLiteral("自动日志失败"), QStringLiteral("无法创建目录：%1").arg(folderPath));
+        showError(AppI18n::text("自动日志失败"), AppI18n::text("无法创建目录：%1").arg(folderPath));
         updateAutoLogStatus();
         return false;
     }
@@ -201,7 +202,7 @@ bool WorkbenchPage::ensureAutoLogFile(ExportFormat format, qint64 nextBytes)
         }
         settings.setValue(QStringLiteral("log/enabled"), false);
         m_autoLogFile.setFileName(QString());
-        showError(QStringLiteral("自动日志失败"), error);
+        showError(AppI18n::text("自动日志失败"), error);
         updateAutoLogStatus();
         return false;
     }
@@ -238,7 +239,7 @@ void WorkbenchPage::writeAutoLogRecord(const SessionRecord &record)
         const QSignalBlocker blocker(m_autoLogCheck);
         m_autoLogCheck->setChecked(false);
         QSettings().setValue(QStringLiteral("log/enabled"), false);
-        showError(QStringLiteral("自动日志失败"), error.isEmpty() ? QStringLiteral("写入不完整") : error);
+        showError(AppI18n::text("自动日志失败"), error.isEmpty() ? AppI18n::text("写入不完整") : error);
         return;
     }
     m_autoLogFile.flush();
@@ -254,21 +255,21 @@ void WorkbenchPage::updateAutoLogStatus()
 
     m_autoLogStatusLabel->setToolTip(QString());
     if (!m_autoLogCheck || !m_autoLogCheck->isChecked()) {
-        m_autoLogStatusLabel->setText(QStringLiteral("自动日志未启用"));
+        m_autoLogStatusLabel->setText(AppI18n::text("自动日志未启用"));
         return;
     }
 
     if (m_autoLogFile.isOpen()) {
         const QString path = m_autoLogFile.fileName();
-        m_autoLogStatusLabel->setText(QStringLiteral("自动日志：%1 · %2 / %3")
+        m_autoLogStatusLabel->setText(AppI18n::text("自动日志：%1 · %2 / %3")
                                           .arg(QFileInfo(path).fileName(), formatBytes(m_autoLogCurrentSize),
                                                formatBytes(autoLogMaxFileBytes())));
         m_autoLogStatusLabel->setToolTip(path);
         return;
     }
 
-    m_autoLogStatusLabel->setText(m_serial.isOpen() ? QStringLiteral("自动日志已启用，等待数据写入")
-                                                    : QStringLiteral("自动日志已启用，连接后写入"));
+    m_autoLogStatusLabel->setText(m_serial.isOpen() ? AppI18n::text("自动日志已启用，等待数据写入")
+                                                    : AppI18n::text("自动日志已启用，连接后写入"));
 }
 
 void WorkbenchPage::updateReceiveCapture(bool enabled)
@@ -289,7 +290,7 @@ void WorkbenchPage::updateReceiveCapture(bool enabled)
     if (!folder.exists() && !folder.mkpath(QStringLiteral("."))) {
         const QSignalBlocker blocker(m_saveReceiveCheck);
         m_saveReceiveCheck->setChecked(false);
-        showError(QStringLiteral("接收保存失败"), QStringLiteral("无法创建目录：%1").arg(folderPath));
+        showError(AppI18n::text("接收保存失败"), AppI18n::text("无法创建目录：%1").arg(folderPath));
         return;
     }
 
@@ -300,11 +301,11 @@ void WorkbenchPage::updateReceiveCapture(bool enabled)
     if (!m_receiveCaptureFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         const QSignalBlocker blocker(m_saveReceiveCheck);
         m_saveReceiveCheck->setChecked(false);
-        showError(QStringLiteral("接收保存失败"), m_receiveCaptureFile.errorString());
+        showError(AppI18n::text("接收保存失败"), m_receiveCaptureFile.errorString());
         return;
     }
 
-    m_receiveCaptureLabel->setText(QStringLiteral("保存至：%1").arg(path));
+    m_receiveCaptureLabel->setText(AppI18n::text("保存至：%1").arg(path));
 }
 
 void WorkbenchPage::closeReceiveCapture()
@@ -314,8 +315,8 @@ void WorkbenchPage::closeReceiveCapture()
     }
     if (m_receiveCaptureLabel) {
         m_receiveCaptureLabel->setText(m_saveReceiveCheck && m_saveReceiveCheck->isChecked()
-                                           ? QStringLiteral("连接后继续保存接收")
-                                           : QStringLiteral("接收保存未启用"));
+                                           ? AppI18n::text("连接后继续保存接收")
+                                           : AppI18n::text("接收保存未启用"));
     }
 }
 
@@ -325,7 +326,7 @@ void WorkbenchPage::browseSendFile()
     const QString initialPath = m_filePathEdit && !m_filePathEdit->text().isEmpty()
                                     ? QFileInfo(m_filePathEdit->text()).absolutePath()
                                     : settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
-    const QString path = QFileDialog::getOpenFileName(window(), QStringLiteral("选择发送文件"), initialPath);
+    const QString path = QFileDialog::getOpenFileName(window(), AppI18n::text("选择发送文件"), initialPath);
     if (path.isEmpty()) {
         return;
     }
@@ -341,7 +342,7 @@ void WorkbenchPage::browseSendFile()
 void WorkbenchPage::startFileSend()
 {
     if (!m_serial.isOpen()) {
-        showWarning(QStringLiteral("无法发送文件"), QStringLiteral("请先连接串口"));
+        showWarning(AppI18n::text("无法发送文件"), AppI18n::text("请先连接串口"));
         return;
     }
     if (m_fileSendFile.isOpen()) {
@@ -350,23 +351,23 @@ void WorkbenchPage::startFileSend()
 
     const QString path = m_filePathEdit->text().trimmed();
     if (path.isEmpty()) {
-        showWarning(QStringLiteral("未选择文件"), QStringLiteral("请先选择待发送文件"));
+        showWarning(AppI18n::text("未选择文件"), AppI18n::text("请先选择待发送文件"));
         return;
     }
 
     QFileInfo info(path);
     if (!info.exists() || !info.isFile()) {
-        showError(QStringLiteral("文件不可用"), QStringLiteral("无法读取：%1").arg(path));
+        showError(AppI18n::text("文件不可用"), AppI18n::text("无法读取：%1").arg(path));
         return;
     }
     if (info.size() <= 0) {
-        showWarning(QStringLiteral("文件为空"), QStringLiteral("请选择包含数据的文件"));
+        showWarning(AppI18n::text("文件为空"), AppI18n::text("请选择包含数据的文件"));
         return;
     }
 
     m_fileSendFile.setFileName(path);
     if (!m_fileSendFile.open(QIODevice::ReadOnly)) {
-        showError(QStringLiteral("打开文件失败"), m_fileSendFile.errorString());
+        showError(AppI18n::text("打开文件失败"), m_fileSendFile.errorString());
         return;
     }
 
@@ -391,7 +392,7 @@ void WorkbenchPage::cancelFileSend()
     m_fileSendFile.close();
     updateFileSendUi(false);
     updateFileProgress();
-    showInfo(QStringLiteral("文件发送已取消"), QStringLiteral("已停止发送当前文件"));
+    showInfo(AppI18n::text("文件发送已取消"), AppI18n::text("已停止发送当前文件"));
 }
 
 void WorkbenchPage::sendNextFileChunk()
@@ -401,7 +402,7 @@ void WorkbenchPage::sendNextFileChunk()
     }
     if (!m_serial.isOpen()) {
         cancelFileSend();
-        showWarning(QStringLiteral("文件发送中止"), QStringLiteral("串口已断开"));
+        showWarning(AppI18n::text("文件发送中止"), AppI18n::text("串口已断开"));
         return;
     }
 
@@ -410,7 +411,7 @@ void WorkbenchPage::sendNextFileChunk()
         m_fileSendFile.close();
         updateFileSendUi(false);
         updateFileProgress();
-        showSuccess(QStringLiteral("文件发送完成"), name);
+        showSuccess(AppI18n::text("文件发送完成"), name);
         return;
     }
 
@@ -421,7 +422,7 @@ void WorkbenchPage::sendNextFileChunk()
         m_fileSendFile.close();
         updateFileSendUi(false);
         updateFileProgress();
-        showError(QStringLiteral("读取文件失败"), error);
+        showError(AppI18n::text("读取文件失败"), error);
         return;
     }
 
@@ -430,7 +431,7 @@ void WorkbenchPage::sendNextFileChunk()
         m_fileSendFile.close();
         updateFileSendUi(false);
         updateFileProgress();
-        showError(QStringLiteral("文件发送失败"), error);
+        showError(AppI18n::text("文件发送失败"), error);
         return;
     }
 
@@ -479,16 +480,16 @@ void WorkbenchPage::updateFileProgress()
 
     if (m_fileSendFile.isOpen()) {
         m_fileStatusLabel->setText(
-            QStringLiteral("发送中：%1 / %2").arg(formatBytes(m_fileSendSent), formatBytes(m_fileSendTotal)));
+            AppI18n::text("发送中：%1 / %2").arg(formatBytes(m_fileSendSent), formatBytes(m_fileSendTotal)));
         return;
     }
 
     const QString path = m_filePathEdit ? m_filePathEdit->text().trimmed() : QString();
     if (path.isEmpty()) {
-        m_fileStatusLabel->setText(QStringLiteral("未选择文件"));
+        m_fileStatusLabel->setText(AppI18n::text("未选择文件"));
         return;
     }
     const QFileInfo info(path);
     m_fileStatusLabel->setText(info.exists() ? QStringLiteral("%1 · %2").arg(info.fileName(), formatBytes(info.size()))
-                                             : QStringLiteral("文件不存在：%1").arg(path));
+                                             : AppI18n::text("文件不存在：%1").arg(path));
 }

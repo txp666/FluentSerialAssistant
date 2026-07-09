@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -11,7 +12,7 @@ void WorkbenchPage::scheduleReconnect()
     if (!m_reconnectTimer.isActive()) {
         m_reconnectTimer.start();
     }
-    showWarning(QStringLiteral("连接中断"), QStringLiteral("正在尝试自动重连"));
+    showWarning(AppI18n::text("连接中断"), AppI18n::text("正在尝试自动重连"));
 }
 
 void WorkbenchPage::attemptReconnect()
@@ -40,14 +41,14 @@ void WorkbenchPage::onConnectClicked()
 
     const SerialPortConfig config = currentSerialConfig();
     if (config.portName.isEmpty()) {
-        showWarning(QStringLiteral("未选择端口"), QStringLiteral("请先刷新并选择可用串口"));
+        showWarning(AppI18n::text("未选择端口"), AppI18n::text("请先刷新并选择可用串口"));
         return;
     }
 
     bool baudOk = false;
     const int baud = m_baudCombo->currentText().trimmed().toInt(&baudOk);
     if (!baudOk || baud <= 0) {
-        showWarning(QStringLiteral("波特率无效"), QStringLiteral("请输入大于 0 的波特率"));
+        showWarning(AppI18n::text("波特率无效"), AppI18n::text("请输入大于 0 的波特率"));
         return;
     }
 
@@ -65,7 +66,7 @@ void WorkbenchPage::onLoopChanged(bool checked)
     }
     if (!m_serial.isOpen()) {
         m_loopCheck->setChecked(false);
-        showWarning(QStringLiteral("无法循环发送"), QStringLiteral("请先连接串口"));
+        showWarning(AppI18n::text("无法循环发送"), AppI18n::text("请先连接串口"));
         return;
     }
     m_loopTimer.start(m_loopIntervalSpin->value());
@@ -74,7 +75,7 @@ void WorkbenchPage::onLoopChanged(bool checked)
 void WorkbenchPage::setControlsEnabledForConnection(bool connected)
 {
     if (!connected && m_macroRunning) {
-        stopMacroSequence(QStringLiteral("串口已断开"), false);
+        stopMacroSequence(AppI18n::text("串口已断开"), false);
     }
 
     m_sendButton->setEnabled(connected);

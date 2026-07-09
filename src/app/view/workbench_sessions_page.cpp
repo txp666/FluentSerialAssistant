@@ -1,4 +1,5 @@
 #include "app/view/workbench_sessions_page.h"
+#include "app/core/app_i18n.h"
 
 #include "app/view/workbench_page.h"
 
@@ -25,7 +26,7 @@ WorkbenchSessionsPage::WorkbenchSessionsPage(QWidget *parent) : QWidget(parent)
         m_tabs->tabBar()->setTabMaximumWidth(180);
         m_tabs->tabBar()->setTabShadowEnabled(false);
         if (m_tabs->tabBar()->addButton()) {
-            m_tabs->tabBar()->addButton()->setToolTip(QStringLiteral("复制当前会话"));
+            m_tabs->tabBar()->addButton()->setToolTip(AppI18n::text("复制当前会话"));
         }
     }
     layout->addWidget(m_tabs, 1);
@@ -150,4 +151,4 @@ void WorkbenchSessionsPage::closeSession(int index)
 
 QString WorkbenchSessionsPage::nextRouteKey() const { return QStringLiteral("session-%1").arg(m_nextSession); }
 
-QString WorkbenchSessionsPage::nextTitle() const { return QStringLiteral("会话 %1").arg(m_nextSession); }
+QString WorkbenchSessionsPage::nextTitle() const { return AppI18n::text("会话 %1").arg(m_nextSession); }

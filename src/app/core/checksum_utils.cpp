@@ -1,4 +1,5 @@
 #include "app/core/checksum_utils.h"
+#include "app/core/app_i18n.h"
 
 #include <QtCore/QtGlobal>
 
@@ -165,7 +166,7 @@ QString byteOrderKey(ByteOrder byteOrder)
 
 QString byteOrderLabel(ByteOrder byteOrder)
 {
-    return byteOrder == ByteOrder::BigEndian ? QStringLiteral("高字节在前") : QStringLiteral("低字节在前");
+    return byteOrder == ByteOrder::BigEndian ? AppI18n::text("高字节在前") : AppI18n::text("低字节在前");
 }
 
 ChecksumResult calculate(const QByteArray &data, const QString &algorithmKey, ByteOrder byteOrder)
@@ -187,7 +188,7 @@ ChecksumResult calculate(const QByteArray &data, const QString &algorithmKey, By
     } else if (key == QStringLiteral("sum8")) {
         result.value = sum8(data);
     } else {
-        result.errorMessage = QStringLiteral("不支持的校验算法");
+        result.errorMessage = AppI18n::text("不支持的校验算法");
         return result;
     }
 

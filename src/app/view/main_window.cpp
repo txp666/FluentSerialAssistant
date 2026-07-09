@@ -1,4 +1,5 @@
 #include "app/view/main_window.h"
+#include "app/core/app_i18n.h"
 
 #include "app/view/settings_page.h"
 #include "app/view/workbench_sessions_page.h"
@@ -12,7 +13,7 @@ using namespace FluentQt;
 
 MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
 {
-    setWindowTitle(QStringLiteral("Fluent 串口助手"));
+    setWindowTitle(AppI18n::text("Fluent 串口助手"));
     setWindowIcon(QIcon(QStringLiteral(":/app/logo.png")));
     setMinimumSize(1040, 700);
     resize(1120, 900);
@@ -45,7 +46,7 @@ void MainWindow::populateInterfaces()
 {
     m_workbenchPage = new WorkbenchSessionsPage(this);
     m_workbenchPage->setObjectName(QStringLiteral("workbench"));
-    addSubInterface(m_workbenchPage, icon(FluentIcon::CommandPrompt), QStringLiteral("终端"));
+    addSubInterface(m_workbenchPage, icon(FluentIcon::CommandPrompt), AppI18n::text("终端"));
     m_workbenchPage->installTitleBarTabs(titleBar());
     connect(m_workbenchPage, &WorkbenchSessionsPage::settingsRequested, this, [this]() {
         if (m_workbenchPage) {
@@ -56,7 +57,7 @@ void MainWindow::populateInterfaces()
 
     auto *settingsPage = new SettingsPage(this);
     settingsPage->setObjectName(QStringLiteral("settings"));
-    addSubInterface(settingsPage, icon(FluentIcon::Setting), QStringLiteral("设置"), QIcon(),
+    addSubInterface(settingsPage, icon(FluentIcon::Setting), AppI18n::text("设置"), QIcon(),
                     NavigationItemPosition::Bottom);
     connect(settingsPage, &SettingsPage::terminalRequested, this, [this]() {
         switchTo(QStringLiteral("workbench"));

@@ -1,4 +1,5 @@
 #include "app/core/modbus_utils.h"
+#include "app/core/app_i18n.h"
 
 #include "app/core/checksum_utils.h"
 #include "app/core/hex_utils.h"
@@ -13,14 +14,14 @@ using AppModbus::FunctionOption;
 const QList<FunctionOption> &modbusFunctionOptions()
 {
     static const QList<FunctionOption> options = {
-        {QStringLiteral("read-coils"), QStringLiteral("01 读线圈"), 0x01, false, false, true},
-        {QStringLiteral("read-discrete-inputs"), QStringLiteral("02 读离散输入"), 0x02, false, false, true},
-        {QStringLiteral("read-holding-registers"), QStringLiteral("03 读保持寄存器"), 0x03, false, false, false},
-        {QStringLiteral("read-input-registers"), QStringLiteral("04 读输入寄存器"), 0x04, false, false, false},
-        {QStringLiteral("write-single-coil"), QStringLiteral("05 写单线圈"), 0x05, true, false, true},
-        {QStringLiteral("write-single-register"), QStringLiteral("06 写单寄存器"), 0x06, true, false, false},
-        {QStringLiteral("write-multiple-coils"), QStringLiteral("0F 写多线圈"), 0x0F, true, true, true},
-        {QStringLiteral("write-multiple-registers"), QStringLiteral("10 写多寄存器"), 0x10, true, true, false},
+        {QStringLiteral("read-coils"), AppI18n::text("01 读线圈"), 0x01, false, false, true},
+        {QStringLiteral("read-discrete-inputs"), AppI18n::text("02 读离散输入"), 0x02, false, false, true},
+        {QStringLiteral("read-holding-registers"), AppI18n::text("03 读保持寄存器"), 0x03, false, false, false},
+        {QStringLiteral("read-input-registers"), AppI18n::text("04 读输入寄存器"), 0x04, false, false, false},
+        {QStringLiteral("write-single-coil"), AppI18n::text("05 写单线圈"), 0x05, true, false, true},
+        {QStringLiteral("write-single-register"), AppI18n::text("06 写单寄存器"), 0x06, true, false, false},
+        {QStringLiteral("write-multiple-coils"), AppI18n::text("0F 写多线圈"), 0x0F, true, true, true},
+        {QStringLiteral("write-multiple-registers"), AppI18n::text("10 写多寄存器"), 0x10, true, true, false},
     };
     return options;
 }
@@ -146,25 +147,25 @@ QString exceptionText(quint8 code)
 {
     switch (code) {
     case 0x01:
-        return QStringLiteral("非法功能");
+        return AppI18n::text("非法功能");
     case 0x02:
-        return QStringLiteral("非法数据地址");
+        return AppI18n::text("非法数据地址");
     case 0x03:
-        return QStringLiteral("非法数据值");
+        return AppI18n::text("非法数据值");
     case 0x04:
-        return QStringLiteral("从站设备故障");
+        return AppI18n::text("从站设备故障");
     case 0x05:
-        return QStringLiteral("确认");
+        return AppI18n::text("确认");
     case 0x06:
-        return QStringLiteral("从站设备忙");
+        return AppI18n::text("从站设备忙");
     case 0x08:
-        return QStringLiteral("存储奇偶性错误");
+        return AppI18n::text("存储奇偶性错误");
     case 0x0A:
-        return QStringLiteral("网关路径不可用");
+        return AppI18n::text("网关路径不可用");
     case 0x0B:
-        return QStringLiteral("目标设备响应失败");
+        return AppI18n::text("目标设备响应失败");
     default:
-        return QStringLiteral("未知异常");
+        return AppI18n::text("未知异常");
     }
 }
 
@@ -176,7 +177,7 @@ QByteArray appendModbusCrc(QByteArray frame)
     return frame;
 }
 
-QString crcText(bool valid) { return valid ? QStringLiteral("CRC 正确") : QStringLiteral("CRC 错误"); }
+QString crcText(bool valid) { return valid ? AppI18n::text("CRC 正确") : AppI18n::text("CRC 错误"); }
 
 } // namespace
 
@@ -237,11 +238,11 @@ BuildResult buildRequest(const RequestConfig &config)
     const FunctionOption function = functionForKey(config.functionKey);
     const quint16 quantity = function.write && !function.multiple ? 1 : config.quantity;
     if (config.slaveId == 0 || config.slaveId > 247) {
-        return fail(QStringLiteral("站号范围应为 1-247"));
+        return fail(AppI18n::text("站号范围应为 1-247"));
     }
     if (!quantityInRange(function, quantity)) {
-        return fail(function.coil ? QStringLiteral("线圈数量范围应为 1-2000")
-                                  : QStringLiteral("寄存器数量范围应为 1-125"));
+        return fail(function.coil ? AppI18n::text("线圈数量范围应为 1-2000")
+                                  : AppI18n::text("寄存器数量范围应为 1-125"));
     }
 
     QByteArray frame;
@@ -255,7 +256,7 @@ BuildResult buildRequest(const RequestConfig &config)
         BuildResult result;
         result.ok = true;
         result.frame = frame;
-        result.summary = QStringLiteral("%1 · 站号 %2 · 地址 %3 · 数量 %4")
+        result.summary = AppI18n::text("%1 · 站号 %2 · 地址 %3 · 数量 %4")
                              .arg(function.label)
                              .arg(config.slaveId)
                              .arg(config.address)
@@ -266,23 +267,23 @@ BuildResult buildRequest(const RequestConfig &config)
     if (!function.multiple && function.coil) {
         bool value = false;
         if (!parseCoilToken(config.valuesText, &value)) {
-            return fail(QStringLiteral("写单线圈值应为 0/1、true/false 或 on/off"));
+            return fail(AppI18n::text("写单线圈值应为 0/1、true/false 或 on/off"));
         }
         appendU16(frame, value ? 0xFF00 : 0x0000);
     } else if (!function.multiple) {
         quint16 value = 0;
         if (!parseUInt16Token(config.valuesText, &value)) {
-            return fail(QStringLiteral("写单寄存器值应为 0-65535 或 0x0000-0xFFFF"));
+            return fail(AppI18n::text("写单寄存器值应为 0-65535 或 0x0000-0xFFFF"));
         }
         appendU16(frame, value);
     } else if (function.coil) {
         bool ok = false;
         const QList<bool> values = parseCoils(config.valuesText, &ok);
         if (!ok) {
-            return fail(QStringLiteral("多线圈值应为 0/1 列表，例如：1 0 1 1"));
+            return fail(AppI18n::text("多线圈值应为 0/1 列表，例如：1 0 1 1"));
         }
         if (values.size() != quantity) {
-            return fail(QStringLiteral("线圈值数量需要等于数量字段"));
+            return fail(AppI18n::text("线圈值数量需要等于数量字段"));
         }
         const QByteArray coilBytes = packedCoils(values);
         appendU16(frame, quantity);
@@ -292,10 +293,10 @@ BuildResult buildRequest(const RequestConfig &config)
         bool ok = false;
         const QList<quint16> values = parseRegisters(config.valuesText, &ok);
         if (!ok) {
-            return fail(QStringLiteral("多寄存器值应为 0-65535 列表，例如：1 2 0x1234"));
+            return fail(AppI18n::text("多寄存器值应为 0-65535 列表，例如：1 2 0x1234"));
         }
         if (values.size() != quantity) {
-            return fail(QStringLiteral("寄存器值数量需要等于数量字段"));
+            return fail(AppI18n::text("寄存器值数量需要等于数量字段"));
         }
         appendU16(frame, quantity);
         frame.append(static_cast<char>(values.size() * 2));
@@ -309,7 +310,7 @@ BuildResult buildRequest(const RequestConfig &config)
     result.ok = true;
     result.frame = frame;
     result.summary =
-        QStringLiteral("%1 · 站号 %2 · 地址 %3").arg(function.label).arg(config.slaveId).arg(config.address);
+        AppI18n::text("%1 · 站号 %2 · 地址 %3").arg(function.label).arg(config.slaveId).arg(config.address);
     return result;
 }
 
@@ -338,7 +339,7 @@ ParseResult parseResponse(const QByteArray &frame)
     result.recognized = true;
     if ((function & 0x80) != 0) {
         const quint8 exceptionCode = frame.size() >= 5 ? static_cast<unsigned char>(frame.at(2)) : 0;
-        result.summary = QStringLiteral("Modbus 异常 · 站号 %1 · 功能 0x%2 · %3 · %4")
+        result.summary = AppI18n::text("Modbus 异常 · 站号 %1 · 功能 0x%2 · %3 · %4")
                              .arg(slave)
                              .arg(function, 2, 16, QLatin1Char('0'))
                              .arg(exceptionText(exceptionCode), crcText(result.crcValid))
@@ -357,7 +358,7 @@ ParseResult parseResponse(const QByteArray &frame)
             }
             detail = registers.join(QStringLiteral(", "));
         }
-        result.summary = QStringLiteral("Modbus 响应 · 站号 %1 · 功能 0x%2 · 数据 %3 · %4")
+        result.summary = AppI18n::text("Modbus 响应 · 站号 %1 · 功能 0x%2 · 数据 %3 · %4")
                              .arg(slave)
                              .arg(function, 2, 16, QLatin1Char('0'))
                              .arg(detail.isEmpty() ? QStringLiteral("-") : detail, crcText(result.crcValid))
@@ -368,7 +369,7 @@ ParseResult parseResponse(const QByteArray &frame)
     if ((function == 0x05 || function == 0x06 || function == 0x0F || function == 0x10) && frame.size() >= 8) {
         const quint16 address = readU16(frame, 2);
         const quint16 valueOrQuantity = readU16(frame, 4);
-        result.summary = QStringLiteral("Modbus 响应 · 站号 %1 · 功能 0x%2 · 地址 %3 · 值/数量 %4 · %5")
+        result.summary = AppI18n::text("Modbus 响应 · 站号 %1 · 功能 0x%2 · 地址 %3 · 值/数量 %4 · %5")
                              .arg(slave)
                              .arg(function, 2, 16, QLatin1Char('0'))
                              .arg(address)
@@ -378,7 +379,7 @@ ParseResult parseResponse(const QByteArray &frame)
         return result;
     }
 
-    result.summary = QStringLiteral("Modbus 响应 · 站号 %1 · 功能 0x%2 · %3")
+    result.summary = AppI18n::text("Modbus 响应 · 站号 %1 · 功能 0x%2 · %3")
                          .arg(slave)
                          .arg(function, 2, 16, QLatin1Char('0'))
                          .arg(crcText(result.crcValid))

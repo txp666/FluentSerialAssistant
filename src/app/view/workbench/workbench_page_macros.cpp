@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -9,7 +10,7 @@ const QString MacroStepSchemaName = QStringLiteral("fluent-serial-assistant.macr
 
 QString responseModeLabel(const QString &mode)
 {
-    return mode == QStringLiteral("hex") ? QStringLiteral("HEX") : QStringLiteral("文本");
+    return mode == QStringLiteral("hex") ? QStringLiteral("HEX") : AppI18n::text("文本");
 }
 
 QString normalizedLineEnding(QString value)
@@ -30,7 +31,7 @@ QString macroStepName(const QString &name, int row)
     if (!name.trimmed().isEmpty()) {
         return name.trimmed();
     }
-    return QStringLiteral("步骤 %1").arg(row + 1);
+    return AppI18n::text("步骤 %1").arg(row + 1);
 }
 } // namespace
 
@@ -52,19 +53,19 @@ void WorkbenchPage::updateMacroTable(int selectedRow)
         if (expected.size() > 18) {
             expected = expected.left(15) + QStringLiteral("...");
         }
-        const QString waitText = expected.isEmpty() ? QStringLiteral("不等待")
-                                                    : QStringLiteral("等待 %1 · %2 ms")
+        const QString waitText = expected.isEmpty() ? AppI18n::text("不等待")
+                                                    : AppI18n::text("等待 %1 · %2 ms")
                                                           .arg(responseModeLabel(step.responseMode))
                                                           .arg(qBound(1, step.timeoutMs, 600000));
 
         auto *item =
-            new QListWidgetItem(icon(FluentIcon::Play), QStringLiteral("%1. %2\n%3 · %4 · %5 · 延时 %6 ms")
+            new QListWidgetItem(icon(FluentIcon::Play), AppI18n::text("%1. %2\n%3 · %4 · %5 · 延时 %6 ms")
                                                             .arg(row + 1)
                                                             .arg(macroStepName(step.name, row), modeLabel(step.mode),
                                                                  lineEndingLabel(step.lineEnding), waitText)
                                                             .arg(qBound(0, step.delayMs, 600000)));
         item->setData(Qt::UserRole, row);
-        item->setToolTip(QStringLiteral("发送：%1\n期望响应：%2").arg(step.payload, step.expectedResponse));
+        item->setToolTip(AppI18n::text("发送：%1\n期望响应：%2").arg(step.payload, step.expectedResponse));
         item->setSizeHint(QSize(0, 58));
         m_macroList->addItem(item);
     }
@@ -172,7 +173,7 @@ void WorkbenchPage::saveCurrentMacroStep()
 {
     const QString payload = m_macroPayloadEdit->toPlainText();
     if (payload.trimmed().isEmpty()) {
-        showWarning(QStringLiteral("无法保存宏步骤"), QStringLiteral("发送内容为空"));
+        showWarning(AppI18n::text("无法保存宏步骤"), AppI18n::text("发送内容为空"));
         return;
     }
 
@@ -184,7 +185,7 @@ void WorkbenchPage::saveCurrentMacroStep()
             step.name = step.name.left(18) + QStringLiteral("...");
         }
         if (step.name.isEmpty()) {
-            step.name = QStringLiteral("未命名步骤");
+            step.name = AppI18n::text("未命名步骤");
         }
         m_macroNameEdit->setText(step.name);
     }
@@ -207,7 +208,7 @@ void WorkbenchPage::saveCurrentMacroStep()
     updateMacroTable(row);
     applyMacroStep(row);
     saveMacroSteps();
-    showSuccess(QStringLiteral("已保存宏步骤"), macroStepName(step.name, row));
+    showSuccess(AppI18n::text("已保存宏步骤"), macroStepName(step.name, row));
 }
 
 void WorkbenchPage::removeSelectedMacroStep()
@@ -221,7 +222,7 @@ void WorkbenchPage::removeSelectedMacroStep()
     m_macroSteps.removeAt(row);
     updateMacroTable(qMin(row, m_macroSteps.size() - 1));
     saveMacroSteps();
-    showInfo(QStringLiteral("已删除宏步骤"), name);
+    showInfo(AppI18n::text("已删除宏步骤"), name);
 }
 
 void WorkbenchPage::moveSelectedMacroStep(int direction)
@@ -240,11 +241,11 @@ void WorkbenchPage::moveSelectedMacroStep(int direction)
 void WorkbenchPage::startMacroSequence()
 {
     if (!m_serial.isOpen()) {
-        showWarning(QStringLiteral("无法运行宏命令"), QStringLiteral("请先连接串口"));
+        showWarning(AppI18n::text("无法运行宏命令"), AppI18n::text("请先连接串口"));
         return;
     }
     if (m_macroSteps.isEmpty()) {
-        showWarning(QStringLiteral("无法运行宏命令"), QStringLiteral("请先保存至少一个宏步骤"));
+        showWarning(AppI18n::text("无法运行宏命令"), AppI18n::text("请先保存至少一个宏步骤"));
         return;
     }
 
@@ -259,7 +260,7 @@ void WorkbenchPage::startMacroSequence()
     updateMacroActionState();
     if (m_macroStatusLabel) {
         m_macroStatusLabel->setText(
-            QStringLiteral("准备运行 %1 步 · %2 轮").arg(m_macroSteps.size()).arg(m_macroLoopTotal));
+            AppI18n::text("准备运行 %1 步 · %2 轮").arg(m_macroSteps.size()).arg(m_macroLoopTotal));
     }
     runMacroCurrentStep();
 }
@@ -272,16 +273,16 @@ void WorkbenchPage::stopMacroSequence(const QString &message, bool userRequested
 
     if (m_macroActiveResult >= 0 && m_macroActiveResult < m_macroResults.size()) {
         MacroRunResult &result = m_macroResults[m_macroActiveResult];
-        if (result.status == QStringLiteral("等待响应")) {
-            result.status = QStringLiteral("已取消");
-            result.message = message.isEmpty() ? QStringLiteral("已停止") : message;
+        if (result.status == AppI18n::text("等待响应")) {
+            result.status = AppI18n::text("已取消");
+            result.message = message.isEmpty() ? AppI18n::text("已停止") : message;
             result.rxBytes = m_macroWaitBuffer;
             result.elapsedMs = m_macroStepClock.isValid() ? static_cast<int>(m_macroStepClock.elapsed()) : 0;
         }
     }
 
     Q_UNUSED(userRequested)
-    finishMacroSequence(message.isEmpty() ? QStringLiteral("已停止") : message, false);
+    finishMacroSequence(message.isEmpty() ? AppI18n::text("已停止") : message, false);
 }
 
 void WorkbenchPage::runMacroCurrentStep()
@@ -290,7 +291,7 @@ void WorkbenchPage::runMacroCurrentStep()
         return;
     }
     if (!m_serial.isOpen()) {
-        finishMacroSequence(QStringLiteral("串口已断开"), false);
+        finishMacroSequence(AppI18n::text("串口已断开"), false);
         return;
     }
 
@@ -299,7 +300,7 @@ void WorkbenchPage::runMacroCurrentStep()
         m_macroCurrentStep = 0;
     }
     if (m_macroCurrentLoop > m_macroLoopTotal) {
-        finishMacroSequence(QStringLiteral("全部步骤已完成"), true);
+        finishMacroSequence(AppI18n::text("全部步骤已完成"), true);
         return;
     }
 
@@ -308,7 +309,7 @@ void WorkbenchPage::runMacroCurrentStep()
     m_macroStepClock.restart();
     if (m_macroStatusLabel) {
         m_macroStatusLabel->setText(
-            QStringLiteral("第 %1/%2 轮 · %3").arg(m_macroCurrentLoop).arg(m_macroLoopTotal).arg(stepName));
+            AppI18n::text("第 %1/%2 轮 · %3").arg(m_macroCurrentLoop).arg(m_macroLoopTotal).arg(stepName));
     }
 
     bool expectedOk = true;
@@ -321,7 +322,7 @@ void WorkbenchPage::runMacroCurrentStep()
             result.loop = m_macroCurrentLoop;
             result.step = m_macroCurrentStep + 1;
             result.stepName = stepName;
-            result.status = QStringLiteral("失败");
+            result.status = AppI18n::text("失败");
             result.message = expectedError;
             m_macroResults.append(result);
             m_macroActiveResult = m_macroResults.size() - 1;
@@ -335,15 +336,15 @@ void WorkbenchPage::runMacroCurrentStep()
     result.loop = m_macroCurrentLoop;
     result.step = m_macroCurrentStep + 1;
     result.stepName = stepName;
-    result.status = step.expectedResponse.trimmed().isEmpty() ? QStringLiteral("通过") : QStringLiteral("等待响应");
-    result.message = step.expectedResponse.trimmed().isEmpty() ? QStringLiteral("已发送") : QStringLiteral("等待响应");
+    result.status = step.expectedResponse.trimmed().isEmpty() ? AppI18n::text("通过") : AppI18n::text("等待响应");
+    result.message = step.expectedResponse.trimmed().isEmpty() ? AppI18n::text("已发送") : AppI18n::text("等待响应");
 
     bool ok = false;
     const QByteArray payload = payloadFromText(step.payload, step.mode, step.lineEnding, false, &ok);
     if (!ok || payload.isEmpty()) {
         m_macroResults.append(result);
         m_macroActiveResult = m_macroResults.size() - 1;
-        completeMacroStep(false, payload.isEmpty() ? QStringLiteral("发送内容为空") : QStringLiteral("发送内容无效"));
+        completeMacroStep(false, payload.isEmpty() ? AppI18n::text("发送内容为空") : AppI18n::text("发送内容无效"));
         return;
     }
 
@@ -352,7 +353,7 @@ void WorkbenchPage::runMacroCurrentStep()
     if (!checksumOk) {
         m_macroResults.append(result);
         m_macroActiveResult = m_macroResults.size() - 1;
-        completeMacroStep(false, QStringLiteral("校验码追加失败"));
+        completeMacroStep(false, AppI18n::text("校验码追加失败"));
         return;
     }
 
@@ -376,7 +377,7 @@ void WorkbenchPage::runMacroCurrentStep()
     m_macroActiveResult = m_macroResults.size() - 1;
 
     if (step.expectedResponse.trimmed().isEmpty()) {
-        completeMacroStep(true, QStringLiteral("已发送"));
+        completeMacroStep(true, AppI18n::text("已发送"));
         return;
     }
 
@@ -391,7 +392,7 @@ void WorkbenchPage::handleMacroTimer()
         return;
     }
     if (m_macroWaitingForResponse) {
-        completeMacroStep(false, QStringLiteral("等待响应超时"), m_macroWaitBuffer);
+        completeMacroStep(false, AppI18n::text("等待响应超时"), m_macroWaitBuffer);
         return;
     }
     runMacroCurrentStep();
@@ -409,7 +410,7 @@ void WorkbenchPage::handleMacroReceivedData(const QByteArray &data)
     }
 
     if (macroResponseMatches(m_macroSteps.at(m_macroCurrentStep), m_macroWaitBuffer)) {
-        completeMacroStep(true, QStringLiteral("响应匹配"), m_macroWaitBuffer);
+        completeMacroStep(true, AppI18n::text("响应匹配"), m_macroWaitBuffer);
     }
 }
 
@@ -423,7 +424,7 @@ void WorkbenchPage::completeMacroStep(bool passed, const QString &message, const
     const MacroStep step = stepIndex >= 0 && stepIndex < m_macroSteps.size() ? m_macroSteps.at(stepIndex) : MacroStep();
     if (m_macroActiveResult >= 0 && m_macroActiveResult < m_macroResults.size()) {
         MacroRunResult &result = m_macroResults[m_macroActiveResult];
-        result.status = passed ? QStringLiteral("通过") : QStringLiteral("失败");
+        result.status = passed ? AppI18n::text("通过") : AppI18n::text("失败");
         result.message = message;
         result.rxBytes = rxBytes;
         result.elapsedMs = m_macroStepClock.isValid() ? static_cast<int>(m_macroStepClock.elapsed()) : 0;
@@ -433,7 +434,7 @@ void WorkbenchPage::completeMacroStep(bool passed, const QString &message, const
     m_macroTimer.stop();
 
     if (!passed && m_macroAbortOnFailureCheck && m_macroAbortOnFailureCheck->isChecked()) {
-        finishMacroSequence(QStringLiteral("失败中止：%1").arg(message), false);
+        finishMacroSequence(AppI18n::text("失败中止：%1").arg(message), false);
         return;
     }
 
@@ -442,7 +443,7 @@ void WorkbenchPage::completeMacroStep(bool passed, const QString &message, const
     const int delayMs = qBound(0, step.delayMs, 600000);
     if (hasNext && delayMs > 0) {
         if (m_macroStatusLabel) {
-            m_macroStatusLabel->setText(QStringLiteral("步骤间延时 %1 ms").arg(delayMs));
+            m_macroStatusLabel->setText(AppI18n::text("步骤间延时 %1 ms").arg(delayMs));
         }
         m_macroTimer.start(delayMs);
         return;
@@ -461,23 +462,23 @@ void WorkbenchPage::finishMacroSequence(const QString &message, bool passed)
     int passedCount = 0;
     int failedCount = 0;
     for (const MacroRunResult &result : m_macroResults) {
-        if (result.status == QStringLiteral("通过")) {
+        if (result.status == AppI18n::text("通过")) {
             ++passedCount;
-        } else if (result.status == QStringLiteral("失败")) {
+        } else if (result.status == AppI18n::text("失败")) {
             ++failedCount;
         }
     }
 
-    const QString summary = QStringLiteral("%1 · 通过 %2，失败 %3").arg(message).arg(passedCount).arg(failedCount);
+    const QString summary = AppI18n::text("%1 · 通过 %2，失败 %3").arg(message).arg(passedCount).arg(failedCount);
     if (m_macroStatusLabel) {
         m_macroStatusLabel->setText(summary);
     }
     updateMacroActionState();
 
     if (passed) {
-        showSuccess(QStringLiteral("宏命令完成"), summary);
+        showSuccess(AppI18n::text("宏命令完成"), summary);
     } else {
-        showWarning(QStringLiteral("宏命令结束"), summary);
+        showWarning(AppI18n::text("宏命令结束"), summary);
     }
 }
 
@@ -506,7 +507,7 @@ QByteArray WorkbenchPage::expectedMacroResponseBytes(const MacroStep &step, bool
         *ok = false;
     }
     if (error) {
-        *error = result.errorMessage.isEmpty() ? QStringLiteral("期望 HEX 响应无效") : result.errorMessage;
+        *error = result.errorMessage.isEmpty() ? AppI18n::text("期望 HEX 响应无效") : result.errorMessage;
     }
     return {};
 }
@@ -604,7 +605,7 @@ void WorkbenchPage::saveMacroSteps() const
 void WorkbenchPage::exportMacroResults()
 {
     if (m_macroResults.isEmpty()) {
-        showWarning(QStringLiteral("没有可导出的结果"), QStringLiteral("请先运行宏命令"));
+        showWarning(AppI18n::text("没有可导出的结果"), AppI18n::text("请先运行宏命令"));
         return;
     }
 
@@ -614,7 +615,7 @@ void WorkbenchPage::exportMacroResults()
         QDir(initialFolder)
             .filePath(QStringLiteral("macro_results_%1.csv")
                           .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"))));
-    QString path = QFileDialog::getSaveFileName(window(), QStringLiteral("导出宏命令结果"), initialName,
+    QString path = QFileDialog::getSaveFileName(window(), AppI18n::text("导出宏命令结果"), initialName,
                                                 QStringLiteral("CSV (*.csv)"));
     if (path.isEmpty()) {
         return;
@@ -639,14 +640,14 @@ void WorkbenchPage::exportMacroResults()
 
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        showError(QStringLiteral("导出失败"), file.errorString());
+        showError(AppI18n::text("导出失败"), file.errorString());
         return;
     }
     if (file.write(output) < 0) {
-        showError(QStringLiteral("导出失败"), file.errorString());
+        showError(AppI18n::text("导出失败"), file.errorString());
         return;
     }
 
     settings.setValue(QStringLiteral("export/folder"), QFileInfo(path).absolutePath());
-    showSuccess(QStringLiteral("导出完成"), path);
+    showSuccess(AppI18n::text("导出完成"), path);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/view/workbench_page.h"
+#include "app/core/app_i18n.h"
 
 #include "app/core/checksum_utils.h"
 #include "app/core/font_preferences.h"
@@ -275,7 +276,7 @@ inline QString defaultExportFolder()
 
 inline QString modeLabel(const QString &mode)
 {
-    return mode == QStringLiteral("hex") ? QStringLiteral("HEX") : QStringLiteral("文本");
+    return mode == QStringLiteral("hex") ? QStringLiteral("HEX") : AppI18n::text("文本");
 }
 
 inline QString lineEndingLabel(const QString &lineEnding)
@@ -376,10 +377,10 @@ inline void selectEncodingOption(ComboBox *combo, const QString &key)
 
 inline void addFrameModeOptions(ComboBox *combo)
 {
-    combo->addItem(QStringLiteral("超时"), QIcon(), QStringLiteral("timeout"));
-    combo->addItem(QStringLiteral("帧头"), QIcon(), QStringLiteral("header"));
-    combo->addItem(QStringLiteral("帧尾"), QIcon(), QStringLiteral("tail"));
-    combo->addItem(QStringLiteral("固定长度"), QIcon(), QStringLiteral("length"));
+    combo->addItem(AppI18n::text("超时"), QIcon(), QStringLiteral("timeout"));
+    combo->addItem(AppI18n::text("帧头"), QIcon(), QStringLiteral("header"));
+    combo->addItem(AppI18n::text("帧尾"), QIcon(), QStringLiteral("tail"));
+    combo->addItem(AppI18n::text("固定长度"), QIcon(), QStringLiteral("length"));
 }
 
 inline void addChecksumAlgorithmOptions(ComboBox *combo)

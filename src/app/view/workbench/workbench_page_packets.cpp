@@ -1,4 +1,5 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/core/app_i18n.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -26,8 +27,8 @@ void WorkbenchPage::updatePacketTable(int selectedRow)
         if (note.size() > 22) {
             note = note.left(19) + QStringLiteral("...");
         }
-        const QString group = packet.group.isEmpty() ? QStringLiteral("默认") : packet.group;
-        const QString status = packet.enabled ? QString() : QStringLiteral(" [停用]");
+        const QString group = packet.group.isEmpty() ? AppI18n::text("默认") : packet.group;
+        const QString status = packet.enabled ? QString() : AppI18n::text(" [停用]");
         const QString suffix = note.isEmpty() ? QString() : QStringLiteral(" · %1").arg(note);
 
         auto *item = new QListWidgetItem(icon(packet.enabled ? FluentIcon::CommandPrompt : FluentIcon::Cancel),
@@ -35,7 +36,7 @@ void WorkbenchPage::updatePacketTable(int selectedRow)
                                              .arg(group, packet.name, status, modeLabel(packet.mode),
                                                   lineEndingLabel(packet.lineEnding), payload, suffix));
         item->setData(Qt::UserRole, row);
-        item->setToolTip(QStringLiteral("分组：%1\n名称：%2\n备注：%3\n内容：%4")
+        item->setToolTip(AppI18n::text("分组：%1\n名称：%2\n备注：%3\n内容：%4")
                              .arg(group, packet.name, packet.note, packet.payload));
         item->setSizeHint(QSize(0, 58));
         m_packetList->addItem(item);
@@ -156,7 +157,7 @@ void WorkbenchPage::saveCurrentPacket()
 {
     const QString payload = m_packetPayloadEdit->toPlainText();
     if (payload.trimmed().isEmpty()) {
-        showWarning(QStringLiteral("无法保存"), QStringLiteral("发送内容为空"));
+        showWarning(AppI18n::text("无法保存"), AppI18n::text("发送内容为空"));
         return;
     }
 
@@ -167,7 +168,7 @@ void WorkbenchPage::saveCurrentPacket()
             name = name.left(18) + QStringLiteral("...");
         }
         if (name.isEmpty()) {
-            name = QStringLiteral("未命名包");
+            name = AppI18n::text("未命名包");
         }
         m_packetNameEdit->setText(name);
     }
@@ -202,7 +203,7 @@ void WorkbenchPage::saveCurrentPacket()
     updatePacketTable(targetRow);
     applyPacket(targetRow);
     saveSendPackets();
-    showSuccess(QStringLiteral("已保存常用包"), packet.name);
+    showSuccess(AppI18n::text("已保存常用包"), packet.name);
 }
 
 void WorkbenchPage::removeSelectedPacket()
@@ -223,7 +224,7 @@ void WorkbenchPage::removeSelectedPacket()
 
     updatePacketTable(qMin(nextRow, m_sendPackets.size() - 1));
     saveSendPackets();
-    showInfo(QStringLiteral("已删除常用包"), name.isEmpty() ? QStringLiteral("%1 条").arg(rows.size()) : name);
+    showInfo(AppI18n::text("已删除常用包"), name.isEmpty() ? AppI18n::text("%1 条").arg(rows.size()) : name);
 }
 
 void WorkbenchPage::moveSelectedPacket(int direction)
@@ -248,13 +249,13 @@ void WorkbenchPage::sendSelectedPacket() { sendPacket(m_packetList ? m_packetLis
 void WorkbenchPage::sendSelectedPackets()
 {
     if (!m_serial.isOpen()) {
-        showWarning(QStringLiteral("无法批量发送"), QStringLiteral("请先连接串口"));
+        showWarning(AppI18n::text("无法批量发送"), AppI18n::text("请先连接串口"));
         return;
     }
 
     const QList<int> rows = selectedPacketRows();
     if (rows.isEmpty()) {
-        showWarning(QStringLiteral("无法批量发送"), QStringLiteral("请先选择常用包"));
+        showWarning(AppI18n::text("无法批量发送"), AppI18n::text("请先选择常用包"));
         return;
     }
 
@@ -270,20 +271,20 @@ void WorkbenchPage::sendSelectedPackets()
             continue;
         }
         if (!sendPacketPayload(packet)) {
-            showWarning(QStringLiteral("批量发送已中止"),
-                        sent > 0 ? QStringLiteral("已发送 %1 条，失败项：%2").arg(sent).arg(packet.name)
-                                 : QStringLiteral("失败项：%1").arg(packet.name));
+            showWarning(AppI18n::text("批量发送已中止"),
+                        sent > 0 ? AppI18n::text("已发送 %1 条，失败项：%2").arg(sent).arg(packet.name)
+                                 : AppI18n::text("失败项：%1").arg(packet.name));
             return;
         }
         ++sent;
     }
 
     if (sent == 0) {
-        showWarning(QStringLiteral("无法批量发送"), QStringLiteral("选中的常用包都已停用"));
+        showWarning(AppI18n::text("无法批量发送"), AppI18n::text("选中的常用包都已停用"));
         return;
     }
-    const QString skippedText = skipped > 0 ? QStringLiteral("，跳过停用 %1 条").arg(skipped) : QString();
-    showSuccess(QStringLiteral("批量发送完成"), QStringLiteral("已发送 %1 条%2").arg(sent).arg(skippedText));
+    const QString skippedText = skipped > 0 ? AppI18n::text("，跳过停用 %1 条").arg(skipped) : QString();
+    showSuccess(AppI18n::text("批量发送完成"), AppI18n::text("已发送 %1 条%2").arg(sent).arg(skippedText));
 }
 
 void WorkbenchPage::sendPacket(int row)
@@ -292,13 +293,13 @@ void WorkbenchPage::sendPacket(int row)
         return;
     }
     if (!m_serial.isOpen()) {
-        showWarning(QStringLiteral("无法发送"), QStringLiteral("请先连接串口"));
+        showWarning(AppI18n::text("无法发送"), AppI18n::text("请先连接串口"));
         return;
     }
 
     const SendPacket packet = m_sendPackets.at(row);
     if (!packet.enabled) {
-        showWarning(QStringLiteral("无法发送"), QStringLiteral("该常用包已停用"));
+        showWarning(AppI18n::text("无法发送"), AppI18n::text("该常用包已停用"));
         return;
     }
     sendPacketPayload(packet);
@@ -312,7 +313,7 @@ bool WorkbenchPage::sendPacketPayload(const SendPacket &packet)
         return false;
     }
     if (payload.isEmpty()) {
-        showWarning(QStringLiteral("无法发送"), QStringLiteral("常用包内容为空"));
+        showWarning(AppI18n::text("无法发送"), AppI18n::text("常用包内容为空"));
         return false;
     }
     bool checksumOk = false;
@@ -323,7 +324,7 @@ bool WorkbenchPage::sendPacketPayload(const SendPacket &packet)
 
     QString error;
     if (!m_serial.writeData(output, &error)) {
-        showError(QStringLiteral("发送失败"), error);
+        showError(AppI18n::text("发送失败"), error);
         return false;
     }
 
@@ -342,7 +343,7 @@ void WorkbenchPage::sendCurrentPayload()
         if (m_loopCheck->isChecked()) {
             m_loopCheck->setChecked(false);
         }
-        showWarning(QStringLiteral("无法发送"), QStringLiteral("请先连接串口"));
+        showWarning(AppI18n::text("无法发送"), AppI18n::text("请先连接串口"));
         return;
     }
 
@@ -352,7 +353,7 @@ void WorkbenchPage::sendCurrentPayload()
         return;
     }
     if (payload.isEmpty()) {
-        showWarning(QStringLiteral("无法发送"), QStringLiteral("发送内容为空"));
+        showWarning(AppI18n::text("无法发送"), AppI18n::text("发送内容为空"));
         return;
     }
     bool checksumOk = false;
@@ -363,7 +364,7 @@ void WorkbenchPage::sendCurrentPayload()
 
     QString error;
     if (!m_serial.writeData(output, &error)) {
-        showError(QStringLiteral("发送失败"), error);
+        showError(AppI18n::text("发送失败"), error);
         return;
     }
 
@@ -525,7 +526,7 @@ void WorkbenchPage::importSendPackets()
 {
     QSettings settings;
     const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
-    const QString path = QFileDialog::getOpenFileName(window(), QStringLiteral("导入常用包"), initialFolder,
+    const QString path = QFileDialog::getOpenFileName(window(), AppI18n::text("导入常用包"), initialFolder,
                                                       QStringLiteral("JSON (*.json)"));
     if (path.isEmpty()) {
         return;
@@ -533,21 +534,21 @@ void WorkbenchPage::importSendPackets()
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        showError(QStringLiteral("导入失败"), file.errorString());
+        showError(AppI18n::text("导入失败"), file.errorString());
         return;
     }
 
     QJsonParseError parseError;
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
     if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-        showError(QStringLiteral("导入失败"), QStringLiteral("JSON 格式无效"));
+        showError(AppI18n::text("导入失败"), AppI18n::text("JSON 格式无效"));
         return;
     }
 
     const QJsonObject root = document.object();
     if (root.value(QStringLiteral("version")).toInt() != SendPacketSchemaVersion ||
         !root.value(QStringLiteral("packets")).isArray()) {
-        showError(QStringLiteral("导入失败"), QStringLiteral("不是常用包 JSON v1 格式"));
+        showError(AppI18n::text("导入失败"), AppI18n::text("不是常用包 JSON v1 格式"));
         return;
     }
 
@@ -611,7 +612,7 @@ void WorkbenchPage::importSendPackets()
     }
 
     if (added == 0 && replaced == 0) {
-        showWarning(QStringLiteral("没有导入常用包"), QStringLiteral("文件中没有有效条目"));
+        showWarning(AppI18n::text("没有导入常用包"), AppI18n::text("文件中没有有效条目"));
         return;
     }
 
@@ -619,14 +620,14 @@ void WorkbenchPage::importSendPackets()
     updatePacketTable(selectedRow);
     applyPacket(selectedRow);
     saveSendPackets();
-    showSuccess(QStringLiteral("导入完成"),
-                QStringLiteral("新增 %1 条，更新 %2 条，跳过 %3 条").arg(added).arg(replaced).arg(skipped));
+    showSuccess(AppI18n::text("导入完成"),
+                AppI18n::text("新增 %1 条，更新 %2 条，跳过 %3 条").arg(added).arg(replaced).arg(skipped));
 }
 
 void WorkbenchPage::exportSendPackets()
 {
     if (m_sendPackets.isEmpty()) {
-        showWarning(QStringLiteral("没有可导出的常用包"), QStringLiteral("请先保存常用包"));
+        showWarning(AppI18n::text("没有可导出的常用包"), AppI18n::text("请先保存常用包"));
         return;
     }
 
@@ -636,7 +637,7 @@ void WorkbenchPage::exportSendPackets()
         QDir(initialFolder)
             .filePath(QStringLiteral("send_packets_%1.json")
                           .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"))));
-    QString path = QFileDialog::getSaveFileName(window(), QStringLiteral("导出常用包"), initialName,
+    QString path = QFileDialog::getSaveFileName(window(), AppI18n::text("导出常用包"), initialName,
                                                 QStringLiteral("JSON (*.json)"));
     if (path.isEmpty()) {
         return;
@@ -666,14 +667,14 @@ void WorkbenchPage::exportSendPackets()
 
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        showError(QStringLiteral("导出失败"), file.errorString());
+        showError(AppI18n::text("导出失败"), file.errorString());
         return;
     }
     if (file.write(QJsonDocument(root).toJson(QJsonDocument::Indented)) < 0) {
-        showError(QStringLiteral("导出失败"), file.errorString());
+        showError(AppI18n::text("导出失败"), file.errorString());
         return;
     }
 
     settings.setValue(QStringLiteral("export/folder"), QFileInfo(path).absolutePath());
-    showSuccess(QStringLiteral("导出完成"), path);
+    showSuccess(AppI18n::text("导出完成"), path);
 }

@@ -57,6 +57,8 @@ set(FQW_COMPACT_BUILD ON CACHE BOOL "" FORCE)
 add_subdirectory("${FLUENTQTWIDGETS_ROOT}" "${CMAKE_BINARY_DIR}/_deps/fluentqtwidgets")
 
 add_executable(FluentSerialAssistant
+    src/app/core/app_i18n.cpp
+    src/app/core/app_i18n.h
     src/app/core/font_preferences.cpp
     src/app/core/font_preferences.h
     src/app/core/checksum_utils.cpp

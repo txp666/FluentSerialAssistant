@@ -1,4 +1,5 @@
 #include "app/serial/serial_controller.h"
+#include "app/core/app_i18n.h"
 
 #include <QtSerialPort/QSerialPortInfo>
 
@@ -118,7 +119,7 @@ bool SerialController::writeData(const QByteArray &data, QString *error)
 {
     if (!m_port.isOpen()) {
         if (error) {
-            *error = QStringLiteral("串口未连接");
+            *error = AppI18n::text("串口未连接");
         }
         return false;
     }
