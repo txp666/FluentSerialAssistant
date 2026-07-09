@@ -467,6 +467,9 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     }
 
     trimRecords();
+    if (m_dataTableWindow) {
+        refreshDataTableWindow();
+    }
     updateCounters();
     flushPendingLines();
 }

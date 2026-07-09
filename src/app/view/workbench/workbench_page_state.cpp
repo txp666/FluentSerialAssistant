@@ -473,6 +473,7 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     m_lastStatsRxCount = 0;
     m_lastStatsTxCount = 0;
     m_terminalView->clear();
+    refreshDataTableWindow();
     updateCounters();
     updateRateStats();
 }

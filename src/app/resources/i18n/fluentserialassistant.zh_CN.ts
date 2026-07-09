@@ -1677,6 +1677,58 @@ JSON 对象：读取数值字段，数组字段会展开
         <source>显示 0 条</source>
         <translation>显示 0 条</translation>
     </message>
+    <message>
+        <source>数据表格</source>
+        <translation>数据表格</translation>
+    </message>
+    <message>
+        <source>过滤时间、HEX、文本或来源</source>
+        <translation>过滤时间、HEX、文本或来源</translation>
+    </message>
+    <message>
+        <source>刷新</source>
+        <translation>刷新</translation>
+    </message>
+    <message>
+        <source>复制帧</source>
+        <translation>复制帧</translation>
+    </message>
+    <message>
+        <source>复制 HEX</source>
+        <translation>复制 HEX</translation>
+    </message>
+    <message>
+        <source>定位终端</source>
+        <translation>定位终端</translation>
+    </message>
+    <message>
+        <source>时间</source>
+        <translation>时间</translation>
+    </message>
+    <message>
+        <source>方向</source>
+        <translation>方向</translation>
+    </message>
+    <message>
+        <source>来源</source>
+        <translation>来源</translation>
+    </message>
+    <message>
+        <source>显示 %1/%2 条</source>
+        <translation>显示 %1/%2 条</translation>
+    </message>
+    <message>
+        <source>无法定位</source>
+        <translation>无法定位</translation>
+    </message>
+    <message>
+        <source>记录已被清理或不存在</source>
+        <translation>记录已被清理或不存在</translation>
+    </message>
+    <message>
+        <source>记录已被过滤或不在当前终端范围内</source>
+        <translation>记录已被过滤或不在当前终端范围内</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

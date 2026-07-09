@@ -10,12 +10,15 @@
 #include <QtCore/QFile>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QTimer>
+#include <QtCore/QVector>
 #include <QtGui/QColor>
 
 class QEvent;
 class QTextCharFormat;
 class QTextCursor;
 class QWheelEvent;
+class DataTableWindow;
+struct DataTableRecord;
 class QuickPlotWindow;
 
 class WorkbenchPage : public AppPage
@@ -286,6 +289,11 @@ class WorkbenchPage : public AppPage
     void updateAutoLogStatus();
     void showQuickPlotWindow();
     void appendQuickPlotRecord(const SessionRecord &record, bool ignorePause = false);
+    void showDataTableWindow();
+    void refreshDataTableWindow();
+    QVector<DataTableRecord> dataTableRecords() const;
+    DataTableRecord dataTableRecord(int recordIndex, const SessionRecord &record) const;
+    void locateRecordInTerminal(int recordIndex);
     void browseSendFile();
     void startFileSend();
     void cancelFileSend();
@@ -389,6 +397,7 @@ class WorkbenchPage : public AppPage
     FluentQt::ListWidget *m_autoReplyList = nullptr;
     FluentQt::PlainTextEdit *m_sendEdit = nullptr;
     FluentQt::TextBrowser *m_terminalView = nullptr;
+    DataTableWindow *m_dataTableWindow = nullptr;
     QuickPlotWindow *m_quickPlotWindow = nullptr;
     FluentQt::PrimaryPushButton *m_connectButton = nullptr;
     FluentQt::PrimaryPushButton *m_sendButton = nullptr;

@@ -75,6 +75,8 @@ add_executable(FluentSerialAssistant
     src/app/serial/serial_controller.h
     src/app/view/app_page.cpp
     src/app/view/app_page.h
+    src/app/view/data_table_window.cpp
+    src/app/view/data_table_window.h
     src/app/view/main_window.cpp
     src/app/view/main_window.h
     src/app/view/quick_plot_window.cpp
@@ -88,6 +90,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench/workbench_page_checksum.cpp
     src/app/view/workbench/workbench_page_auto_reply.cpp
     src/app/view/workbench/workbench_page_connection.cpp
+    src/app/view/workbench/workbench_page_data_table.cpp
     src/app/view/workbench/workbench_page_files.cpp
     src/app/view/workbench/workbench_page_internal.h
     src/app/view/workbench/workbench_page_layout.cpp

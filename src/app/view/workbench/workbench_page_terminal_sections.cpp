@@ -51,6 +51,8 @@ QWidget *WorkbenchPage::createTerminalSection()
     searchButton->setToolTip(AppI18n::text("搜索"));
     auto *plotButton = new TransparentToolButton(icon(FluentIcon::PieSingle), section);
     plotButton->setToolTip(AppI18n::text("快速绘图"));
+    auto *dataTableButton = new TransparentToolButton(icon(FluentIcon::View), section);
+    dataTableButton->setToolTip(AppI18n::text("数据表格"));
     auto *themeButton = new TransparentToolButton(icon(FluentIcon::Constract), section);
     themeButton->setToolTip(AppI18n::text("切换主题"));
     auto *languageButton = new TransparentToolButton(icon(FluentIcon::Language), section);
@@ -58,7 +60,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_receiveModeButton = new TransparentToolButton(icon(FluentIcon::Font), section);
     auto *settingsButton = new TransparentToolButton(icon(FluentIcon::Setting), section);
     settingsButton->setToolTip(AppI18n::text("设置"));
-    for (ToolButton *button : {searchButton, plotButton, themeButton, languageButton, m_receiveModeButton,
+    for (ToolButton *button : {searchButton, plotButton, dataTableButton, themeButton, languageButton, m_receiveModeButton,
                                settingsButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
@@ -66,6 +68,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     section->headerLayout()->addSpacing(4);
     section->headerLayout()->addWidget(searchButton);
     section->headerLayout()->addWidget(plotButton);
+    section->headerLayout()->addWidget(dataTableButton);
     section->headerLayout()->addWidget(themeButton);
     section->headerLayout()->addWidget(languageButton);
     section->headerLayout()->addWidget(m_receiveModeButton);
@@ -147,6 +150,7 @@ QWidget *WorkbenchPage::createTerminalSection()
         }
     });
     connect(plotButton, &TransparentToolButton::clicked, this, &WorkbenchPage::showQuickPlotWindow);
+    connect(dataTableButton, &TransparentToolButton::clicked, this, &WorkbenchPage::showDataTableWindow);
     connect(themeButton, &TransparentToolButton::clicked, this, []() {
         const Theme current = ThemeManager::instance()->effectiveTheme();
         const Theme next = current == Theme::Dark ? Theme::Light : Theme::Dark;

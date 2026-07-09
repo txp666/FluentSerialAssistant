@@ -1677,6 +1677,58 @@ Content: %4</translation>
         <source>显示 0 条</source>
         <translation>Showing 0 items</translation>
     </message>
+    <message>
+        <source>数据表格</source>
+        <translation>Data Table</translation>
+    </message>
+    <message>
+        <source>过滤时间、HEX、文本或来源</source>
+        <translation>Filter time, HEX, text, or source</translation>
+    </message>
+    <message>
+        <source>刷新</source>
+        <translation>Refresh</translation>
+    </message>
+    <message>
+        <source>复制帧</source>
+        <translation>Copy Frame</translation>
+    </message>
+    <message>
+        <source>复制 HEX</source>
+        <translation>Copy HEX</translation>
+    </message>
+    <message>
+        <source>定位终端</source>
+        <translation>Locate Terminal</translation>
+    </message>
+    <message>
+        <source>时间</source>
+        <translation>Time</translation>
+    </message>
+    <message>
+        <source>方向</source>
+        <translation>Direction</translation>
+    </message>
+    <message>
+        <source>来源</source>
+        <translation>Source</translation>
+    </message>
+    <message>
+        <source>显示 %1/%2 条</source>
+        <translation>Showing %1/%2 items</translation>
+    </message>
+    <message>
+        <source>无法定位</source>
+        <translation>Unable to locate</translation>
+    </message>
+    <message>
+        <source>记录已被清理或不存在</source>
+        <translation>The record was cleared or no longer exists</translation>
+    </message>
+    <message>
+        <source>记录已被过滤或不在当前终端范围内</source>
+        <translation>The record is filtered out or outside the current terminal range</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>
