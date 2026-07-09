@@ -14,8 +14,10 @@ void WorkbenchPage::setupSerialSignals()
         m_lastStatsRxCount = m_rxCount;
         m_lastStatsTxCount = m_txCount;
         m_statsTimer.start();
+        resetAutoLogSession();
         updateConnectionUi(true);
         updateRateStats();
+        updateAutoLogStatus();
         if (m_saveReceiveCheck->isChecked()) {
             updateReceiveCapture(true);
         }
@@ -30,6 +32,7 @@ void WorkbenchPage::setupSerialSignals()
             updateFileProgress();
         }
         m_statsTimer.stop();
+        closeAutoLog();
         closeReceiveCapture();
         m_lastRxTimestamp = QDateTime();
         updateConnectionUi(false);
@@ -128,6 +131,8 @@ void WorkbenchPage::restoreSettings()
     const QString filePath = settings.value(QStringLiteral("fileSend/path")).toString();
     const int fileChunkSize = settings.value(QStringLiteral("fileSend/chunkSize"), DefaultFileChunkSize).toInt();
     const int fileInterval = settings.value(QStringLiteral("fileSend/intervalMs"), DefaultFileChunkIntervalMs).toInt();
+    const QString autoLogFormat = settings.value(QStringLiteral("log/format"), QStringLiteral("txt")).toString();
+    const int autoLogMaxFileSizeMb = settings.value(QStringLiteral("log/maxFileSizeMb"), 16).toInt();
 
     const int portIndex = m_portCombo->findData(portName);
     if (portIndex >= 0) {
@@ -179,6 +184,13 @@ void WorkbenchPage::restoreSettings()
     m_autoFrameBreakCheck->setChecked(settings.value(QStringLiteral("receive/autoFrameBreak"), false).toBool());
     m_frameBreakIntervalSpin->setValue(qBound(1, frameBreakMs, 60000));
     updateFrameControlState();
+    const int autoLogFormatIndex = m_autoLogFormatCombo->findData(autoLogFormat);
+    if (autoLogFormatIndex >= 0) {
+        m_autoLogFormatCombo->setCurrentIndex(autoLogFormatIndex);
+    }
+    m_autoLogMaxSizeSpin->setValue(qBound(1, autoLogMaxFileSizeMb, 4096));
+    m_autoLogCheck->setChecked(settings.value(QStringLiteral("log/enabled"), false).toBool());
+    updateAutoLogStatus();
     m_showTxCheck->setChecked(settings.value(QStringLiteral("send/showTx"), true).toBool());
     const QColor txColor(
         settings.value(QStringLiteral("send/txColor"), defaultTxColor().name(QColor::HexRgb)).toString());
@@ -245,6 +257,9 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("receive/frameFixedLength"), m_frameFixedLengthSpin->value());
     settings.setValue(QStringLiteral("receive/frameBreakMs"), m_frameBreakIntervalSpin->value());
     settings.setValue(QStringLiteral("receive/encoding"), receiveEncodingKey());
+    settings.setValue(QStringLiteral("log/enabled"), m_autoLogCheck->isChecked());
+    settings.setValue(QStringLiteral("log/format"), autoLogFormatKey());
+    settings.setValue(QStringLiteral("log/maxFileSizeMb"), m_autoLogMaxSizeSpin->value());
     settings.setValue(QStringLiteral("terminal/displayMode"), currentDisplayMode());
     settings.setValue(QStringLiteral("send/mode"),
                       m_hexSendCheck->isChecked() ? QStringLiteral("hex") : QStringLiteral("text"));

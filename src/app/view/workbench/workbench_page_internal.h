@@ -417,6 +417,17 @@ inline QString qssString(QString value)
     return QStringLiteral("\"%1\"").arg(value);
 }
 
+inline QString safeFileNamePart(QString value)
+{
+    value = value.trimmed();
+    if (value.isEmpty()) {
+        return QStringLiteral("unknown");
+    }
+    value.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9._-]+")), QStringLiteral("_"));
+    value = value.trimmed();
+    return value.isEmpty() ? QStringLiteral("unknown") : value;
+}
+
 inline QString csvEscape(QString text)
 {
     text.replace(QLatin1Char('"'), QStringLiteral("\"\""));

@@ -120,6 +120,22 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     receiveOptionsGrid->addWidget(m_pauseCheck, 1, 1);
     root->addWidget(receiveOptions);
 
+    m_autoLogFormatCombo = new ComboBox(section);
+    m_autoLogFormatCombo->addItem(QStringLiteral("TXT"), QIcon(), QStringLiteral("txt"));
+    m_autoLogFormatCombo->addItem(QStringLiteral("CSV"), QIcon(), QStringLiteral("csv"));
+    m_autoLogFormatCombo->addItem(QStringLiteral("BIN"), QIcon(), QStringLiteral("bin"));
+    makeCompactControl(m_autoLogFormatCombo);
+    m_autoLogCheck = new CheckBox(QStringLiteral("自动日志"), section);
+    m_autoLogCheck->setMinimumWidth(0);
+    m_autoLogCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    addFormRow(root, QStringLiteral("日志"), m_autoLogFormatCombo, m_autoLogCheck);
+
+    m_autoLogMaxSizeSpin = new SpinBox(section);
+    m_autoLogMaxSizeSpin->setRange(1, 4096);
+    m_autoLogMaxSizeSpin->setValue(16);
+    m_autoLogMaxSizeSpin->setSuffix(QStringLiteral(" MB"));
+    addFormRow(root, QStringLiteral("滚动"), m_autoLogMaxSizeSpin);
+
     m_frameModeCombo = new ComboBox(section);
     addFrameModeOptions(m_frameModeCombo);
     makeCompactControl(m_frameModeCombo);
@@ -178,6 +194,11 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     m_receiveCaptureLabel->setWordWrap(true);
     root->addWidget(m_receiveCaptureLabel);
 
+    m_autoLogStatusLabel = new CaptionLabel(QStringLiteral("自动日志未启用"), section);
+    m_autoLogStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_autoLogStatusLabel->setWordWrap(true);
+    root->addWidget(m_autoLogStatusLabel);
+
     connect(m_displayModeSegment, &SegmentedWidget::currentItemChanged, this, [this](const QString &routeKey) {
         QSettings settings;
         settings.setValue(QStringLiteral("terminal/displayMode"), routeKey);
@@ -205,6 +226,21 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
         settings.setValue(QStringLiteral("receive/frameFixedLength"), value);
     });
     connect(m_saveReceiveCheck, &CheckBox::toggled, this, &WorkbenchPage::updateReceiveCapture);
+    connect(m_autoLogCheck, &CheckBox::toggled, this, &WorkbenchPage::updateAutoLog);
+    connect(m_autoLogFormatCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("log/format"), autoLogFormatKey());
+        resetAutoLogSession();
+        updateAutoLogStatus();
+    });
+    connect(m_autoLogMaxSizeSpin, &SpinBox::valueChanged, this, [this](int value) {
+        QSettings settings;
+        settings.setValue(QStringLiteral("log/maxFileSizeMb"), value);
+        if (m_autoLogFile.isOpen() && m_autoLogCurrentSize >= autoLogMaxFileBytes()) {
+            resetAutoLogSession();
+        }
+        updateAutoLogStatus();
+    });
     connect(m_autoScrollCheck, &CheckBox::toggled, this, [this](bool checked) {
         QSettings settings;
         settings.setValue(QStringLiteral("receive/autoScroll"), checked);

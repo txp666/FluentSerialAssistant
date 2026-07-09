@@ -48,6 +48,7 @@ WorkbenchPage::~WorkbenchPage()
     }
     m_reconnectTimer.stop();
     m_macroTimer.stop();
+    closeAutoLog();
     closeReceiveCapture();
     m_serial.closePort();
 }

@@ -443,6 +443,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     record.sourceLabel = sourceLabel;
     m_records.append(record);
     m_pendingRecordIndexes.append(m_records.size() - 1);
+    writeAutoLogRecord(record);
     if (direction == RecordDirection::Rx) {
         updateModbusResponseStatus(data);
     }

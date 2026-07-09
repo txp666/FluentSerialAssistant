@@ -68,6 +68,209 @@ void WorkbenchPage::exportRecords(ExportFormat format)
     showSuccess(QStringLiteral("导出完成"), path);
 }
 
+QString WorkbenchPage::autoLogFormatKey() const
+{
+    return m_autoLogFormatCombo ? m_autoLogFormatCombo->currentData().toString() : QStringLiteral("txt");
+}
+
+WorkbenchPage::ExportFormat WorkbenchPage::autoLogFormat() const
+{
+    const QString format = autoLogFormatKey();
+    if (format == QStringLiteral("csv")) {
+        return ExportFormat::Csv;
+    }
+    if (format == QStringLiteral("bin")) {
+        return ExportFormat::Bin;
+    }
+    return ExportFormat::Txt;
+}
+
+qint64 WorkbenchPage::autoLogMaxFileBytes() const
+{
+    const qint64 megabytes = m_autoLogMaxSizeSpin ? qBound(1, m_autoLogMaxSizeSpin->value(), 4096) : 16;
+    return megabytes * 1024 * 1024;
+}
+
+void WorkbenchPage::updateAutoLog(bool enabled)
+{
+    QSettings settings;
+    settings.setValue(QStringLiteral("log/enabled"), enabled);
+
+    if (!enabled) {
+        closeAutoLog();
+        return;
+    }
+
+    resetAutoLogSession();
+    updateAutoLogStatus();
+}
+
+void WorkbenchPage::resetAutoLogSession()
+{
+    if (m_autoLogFile.isOpen()) {
+        m_autoLogFile.close();
+    }
+    m_autoLogFile.setFileName(QString());
+    m_autoLogSessionStamp.clear();
+    m_autoLogFileIndex = 1;
+    m_autoLogCurrentSize = 0;
+}
+
+void WorkbenchPage::closeAutoLog()
+{
+    if (m_autoLogFile.isOpen()) {
+        m_autoLogFile.close();
+    }
+    updateAutoLogStatus();
+}
+
+QByteArray WorkbenchPage::serializeLogRecord(const SessionRecord &record, ExportFormat format) const
+{
+    if (format == ExportFormat::Bin) {
+        return record.bytes;
+    }
+
+    if (format == ExportFormat::Csv) {
+        const QString line = QStringLiteral("%1,%2,%3,%4,%5,%6\n")
+                                 .arg(csvEscape(record.timestamp.toString(Qt::ISODateWithMs)),
+                                      csvEscape(directionText(record.direction)), csvEscape(record.sourceLabel))
+                                 .arg(record.bytes.size())
+                                 .arg(csvEscape(bytesToHex(record.bytes)), csvEscape(record.displayText));
+        return line.toUtf8();
+    }
+
+    const QString source =
+        record.sourceLabel.trimmed().isEmpty() ? QString() : QStringLiteral(" [%1]").arg(record.sourceLabel.trimmed());
+    const QString line = QStringLiteral("%1 %2%3 len=%4 hex=%5 text=%6\n")
+                             .arg(record.timestamp.toString(Qt::ISODateWithMs), directionText(record.direction), source)
+                             .arg(record.bytes.size())
+                             .arg(bytesToHex(record.bytes), record.displayText);
+    return line.toUtf8();
+}
+
+bool WorkbenchPage::ensureAutoLogFile(ExportFormat format, qint64 nextBytes)
+{
+    const qint64 maxBytes = autoLogMaxFileBytes();
+    if (m_autoLogFile.isOpen() && m_autoLogCurrentSize > 0 && m_autoLogCurrentSize + nextBytes > maxBytes) {
+        m_autoLogFile.close();
+        ++m_autoLogFileIndex;
+        m_autoLogCurrentSize = 0;
+    }
+
+    if (m_autoLogFile.isOpen()) {
+        return true;
+    }
+
+    QSettings settings;
+    const QString folderPath = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
+    QDir folder(folderPath);
+    if (!folder.exists() && !folder.mkpath(QStringLiteral("."))) {
+        const QSignalBlocker blocker(m_autoLogCheck);
+        if (m_autoLogCheck) {
+            m_autoLogCheck->setChecked(false);
+        }
+        settings.setValue(QStringLiteral("log/enabled"), false);
+        showError(QStringLiteral("自动日志失败"), QStringLiteral("无法创建目录：%1").arg(folderPath));
+        updateAutoLogStatus();
+        return false;
+    }
+
+    if (m_autoLogSessionStamp.isEmpty()) {
+        m_autoLogSessionStamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    }
+
+    QString portName = m_lastConfig.portName;
+    if (portName.isEmpty() && m_portCombo) {
+        portName = m_portCombo->currentData().toString();
+    }
+    const QString baudRate = m_lastConfig.baudRate > 0
+                                 ? QString::number(m_lastConfig.baudRate)
+                                 : (m_baudCombo ? m_baudCombo->currentText().trimmed() : QStringLiteral("baud"));
+    const QString fileName = QStringLiteral("serial_log_%1_%2_%3_%4.%5")
+                                 .arg(m_autoLogSessionStamp, safeFileNamePart(portName), safeFileNamePart(baudRate))
+                                 .arg(m_autoLogFileIndex, 3, 10, QLatin1Char('0'))
+                                 .arg(exportSuffix(format));
+    const QString path = folder.filePath(fileName);
+
+    m_autoLogFile.setFileName(path);
+    if (!m_autoLogFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        const QString error = m_autoLogFile.errorString();
+        const QSignalBlocker blocker(m_autoLogCheck);
+        if (m_autoLogCheck) {
+            m_autoLogCheck->setChecked(false);
+        }
+        settings.setValue(QStringLiteral("log/enabled"), false);
+        m_autoLogFile.setFileName(QString());
+        showError(QStringLiteral("自动日志失败"), error);
+        updateAutoLogStatus();
+        return false;
+    }
+
+    m_autoLogCurrentSize = 0;
+    if (format == ExportFormat::Csv) {
+        const QByteArray header("\xEF\xBB\xBFtimestamp,direction,source,length,hex,text\n");
+        m_autoLogFile.write(header);
+        m_autoLogCurrentSize += header.size();
+    }
+    updateAutoLogStatus();
+    return true;
+}
+
+void WorkbenchPage::writeAutoLogRecord(const SessionRecord &record)
+{
+    if (record.direction == RecordDirection::FrameBreak || !m_autoLogCheck || !m_autoLogCheck->isChecked()) {
+        return;
+    }
+
+    const ExportFormat format = autoLogFormat();
+    const QByteArray output = serializeLogRecord(record, format);
+    if (output.isEmpty() && format != ExportFormat::Bin) {
+        return;
+    }
+    if (!ensureAutoLogFile(format, output.size())) {
+        return;
+    }
+
+    const qint64 written = m_autoLogFile.write(output);
+    if (written != output.size()) {
+        const QString error = m_autoLogFile.errorString();
+        closeAutoLog();
+        const QSignalBlocker blocker(m_autoLogCheck);
+        m_autoLogCheck->setChecked(false);
+        QSettings().setValue(QStringLiteral("log/enabled"), false);
+        showError(QStringLiteral("自动日志失败"), error.isEmpty() ? QStringLiteral("写入不完整") : error);
+        return;
+    }
+    m_autoLogFile.flush();
+    m_autoLogCurrentSize += written;
+    updateAutoLogStatus();
+}
+
+void WorkbenchPage::updateAutoLogStatus()
+{
+    if (!m_autoLogStatusLabel) {
+        return;
+    }
+
+    m_autoLogStatusLabel->setToolTip(QString());
+    if (!m_autoLogCheck || !m_autoLogCheck->isChecked()) {
+        m_autoLogStatusLabel->setText(QStringLiteral("自动日志未启用"));
+        return;
+    }
+
+    if (m_autoLogFile.isOpen()) {
+        const QString path = m_autoLogFile.fileName();
+        m_autoLogStatusLabel->setText(QStringLiteral("自动日志：%1 · %2 / %3")
+                                          .arg(QFileInfo(path).fileName(), formatBytes(m_autoLogCurrentSize),
+                                               formatBytes(autoLogMaxFileBytes())));
+        m_autoLogStatusLabel->setToolTip(path);
+        return;
+    }
+
+    m_autoLogStatusLabel->setText(m_serial.isOpen() ? QStringLiteral("自动日志已启用，等待数据写入")
+                                                    : QStringLiteral("自动日志已启用，连接后写入"));
+}
+
 void WorkbenchPage::updateReceiveCapture(bool enabled)
 {
     QSettings settings;
