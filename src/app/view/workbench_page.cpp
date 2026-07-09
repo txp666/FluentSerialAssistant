@@ -1,5 +1,8 @@
 #include "app/view/workbench/workbench_page_internal.h"
 #include "app/core/app_i18n.h"
+#include "app/core/script_runner.h"
+
+#include <QtCore/QThread>
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -33,6 +36,7 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
         updateSendModeButton();
         updatePacketTable(m_packetList ? m_packetList->currentRow() : -1);
         updateMacroTable(m_macroList ? m_macroList->currentRow() : -1);
+        updateScriptActionState();
         updateAutoReplyTable(m_autoReplyList ? m_autoReplyList->currentRow() : -1);
         updateModbusUi();
         updateFrameControlState();
@@ -54,6 +58,7 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
         updateModbusUi();
         updatePacketTable();
         updateMacroTable();
+        updateScriptActionState();
         updateAutoReplyTable();
         updatePacketActionState();
         updateMacroActionState();
@@ -73,6 +78,16 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
 }
 WorkbenchPage::~WorkbenchPage()
 {
+    if (m_scriptRunner) {
+        m_scriptRunner->requestStop();
+    }
+    if (m_scriptThread) {
+        m_scriptThread->quit();
+        if (!m_scriptThread->wait(2000)) {
+            m_scriptThread->terminate();
+            m_scriptThread->wait();
+        }
+    }
     m_fileSendTimer.stop();
     if (m_fileSendFile.isOpen()) {
         m_fileSendFile.close();

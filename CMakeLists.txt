@@ -39,7 +39,7 @@ if(MINGW)
     string(APPEND CMAKE_EXE_LINKER_FLAGS_MINSIZEREL " -Wl,--gc-sections -s")
 endif()
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg Network Core5Compat)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg Network Core5Compat Qml)
 
 set(FLUENTQTWIDGETS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/FluentQtWidgets" CACHE PATH "Path to FluentQtWidgets checkout")
 if(NOT EXISTS "${FLUENTQTWIDGETS_ROOT}/CMakeLists.txt")
@@ -67,6 +67,8 @@ add_executable(FluentSerialAssistant
     src/app/core/hex_utils.h
     src/app/core/modbus_utils.cpp
     src/app/core/modbus_utils.h
+    src/app/core/script_runner.cpp
+    src/app/core/script_runner.h
     src/app/core/text_encoding.cpp
     src/app/core/text_encoding.h
     src/app/core/update_checker.cpp
@@ -98,6 +100,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench/workbench_page_modbus.cpp
     src/app/view/workbench/workbench_page_packets.cpp
     src/app/view/workbench/workbench_page_plot.cpp
+    src/app/view/workbench/workbench_page_scripts.cpp
     src/app/view/workbench/workbench_page_side_sections.cpp
     src/app/view/workbench/workbench_page_state.cpp
     src/app/view/workbench/workbench_page_terminal.cpp
@@ -132,6 +135,7 @@ target_link_libraries(FluentSerialAssistant
         Qt6::SerialPort
         Qt6::Network
         Qt6::Core5Compat
+        Qt6::Qml
         FluentQtWidgets::Widgets
 )
 

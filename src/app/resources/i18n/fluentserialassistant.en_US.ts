@@ -1729,6 +1729,122 @@ Content: %4</translation>
         <source>记录已被过滤或不在当前终端范围内</source>
         <translation>The record is filtered out or outside the current terminal range</translation>
     </message>
+    <message>
+        <source>脚本插件</source>
+        <translation>Script Plugin</translation>
+    </message>
+    <message>
+        <source>输入 JavaScript 脚本，使用 serial 对象发送、读取和记录日志</source>
+        <translation>Enter JavaScript and use the serial object to send, read, and log</translation>
+    </message>
+    <message>
+        <source>载入</source>
+        <translation>Load</translation>
+    </message>
+    <message>
+        <source>示例</source>
+        <translation>Example</translation>
+    </message>
+    <message>
+        <source>运行脚本</source>
+        <translation>Run Script</translation>
+    </message>
+    <message>
+        <source>清日志</source>
+        <translation>Clear Log</translation>
+    </message>
+    <message>
+        <source>脚本日志</source>
+        <translation>Script log</translation>
+    </message>
+    <message>
+        <source>脚本已停止</source>
+        <translation>Script stopped</translation>
+    </message>
+    <message>
+        <source>脚本发送接口不可用</source>
+        <translation>Script send API is unavailable</translation>
+    </message>
+    <message>
+        <source>脚本为空</source>
+        <translation>Script is empty</translation>
+    </message>
+    <message>
+        <source>第 %1 行：%2</source>
+        <translation>Line %1: %2</translation>
+    </message>
+    <message>
+        <source>JavaScript 文件 (*.js);;所有文件 (*)</source>
+        <translation>JavaScript files (*.js);;All files (*)</translation>
+    </message>
+    <message>
+        <source>载入脚本</source>
+        <translation>Load Script</translation>
+    </message>
+    <message>
+        <source>载入脚本失败</source>
+        <translation>Failed to load script</translation>
+    </message>
+    <message>
+        <source>已载入脚本：%1</source>
+        <translation>Loaded script: %1</translation>
+    </message>
+    <message>
+        <source>保存脚本</source>
+        <translation>Save Script</translation>
+    </message>
+    <message>
+        <source>保存脚本失败</source>
+        <translation>Failed to save script</translation>
+    </message>
+    <message>
+        <source>已保存脚本：%1</source>
+        <translation>Saved script: %1</translation>
+    </message>
+    <message>
+        <source>示例脚本</source>
+        <translation>Example script</translation>
+    </message>
+    <message>
+        <source>无法运行脚本</source>
+        <translation>Unable to run script</translation>
+    </message>
+    <message>
+        <source>脚本窗口已关闭</source>
+        <translation>The script window is closed</translation>
+    </message>
+    <message>
+        <source>脚本运行中</source>
+        <translation>Script running</translation>
+    </message>
+    <message>
+        <source>开始运行脚本</source>
+        <translation>Started script</translation>
+    </message>
+    <message>
+        <source>正在停止脚本...</source>
+        <translation>Stopping script...</translation>
+    </message>
+    <message>
+        <source>脚本完成：%1</source>
+        <translation>Script finished: %1</translation>
+    </message>
+    <message>
+        <source>脚本失败：%1</source>
+        <translation>Script failed: %1</translation>
+    </message>
+    <message>
+        <source>脚本执行失败</source>
+        <translation>Script execution failed</translation>
+    </message>
+    <message>
+        <source>脚本</source>
+        <translation>Script</translation>
+    </message>
+    <message>
+        <source>脚本发送 %1</source>
+        <translation>Script sent %1</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

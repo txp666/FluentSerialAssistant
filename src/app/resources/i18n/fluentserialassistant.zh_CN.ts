@@ -1729,6 +1729,122 @@ JSON 对象：读取数值字段，数组字段会展开
         <source>记录已被过滤或不在当前终端范围内</source>
         <translation>记录已被过滤或不在当前终端范围内</translation>
     </message>
+    <message>
+        <source>脚本插件</source>
+        <translation>脚本插件</translation>
+    </message>
+    <message>
+        <source>输入 JavaScript 脚本，使用 serial 对象发送、读取和记录日志</source>
+        <translation>输入 JavaScript 脚本，使用 serial 对象发送、读取和记录日志</translation>
+    </message>
+    <message>
+        <source>载入</source>
+        <translation>载入</translation>
+    </message>
+    <message>
+        <source>示例</source>
+        <translation>示例</translation>
+    </message>
+    <message>
+        <source>运行脚本</source>
+        <translation>运行脚本</translation>
+    </message>
+    <message>
+        <source>清日志</source>
+        <translation>清日志</translation>
+    </message>
+    <message>
+        <source>脚本日志</source>
+        <translation>脚本日志</translation>
+    </message>
+    <message>
+        <source>脚本已停止</source>
+        <translation>脚本已停止</translation>
+    </message>
+    <message>
+        <source>脚本发送接口不可用</source>
+        <translation>脚本发送接口不可用</translation>
+    </message>
+    <message>
+        <source>脚本为空</source>
+        <translation>脚本为空</translation>
+    </message>
+    <message>
+        <source>第 %1 行：%2</source>
+        <translation>第 %1 行：%2</translation>
+    </message>
+    <message>
+        <source>JavaScript 文件 (*.js);;所有文件 (*)</source>
+        <translation>JavaScript 文件 (*.js);;所有文件 (*)</translation>
+    </message>
+    <message>
+        <source>载入脚本</source>
+        <translation>载入脚本</translation>
+    </message>
+    <message>
+        <source>载入脚本失败</source>
+        <translation>载入脚本失败</translation>
+    </message>
+    <message>
+        <source>已载入脚本：%1</source>
+        <translation>已载入脚本：%1</translation>
+    </message>
+    <message>
+        <source>保存脚本</source>
+        <translation>保存脚本</translation>
+    </message>
+    <message>
+        <source>保存脚本失败</source>
+        <translation>保存脚本失败</translation>
+    </message>
+    <message>
+        <source>已保存脚本：%1</source>
+        <translation>已保存脚本：%1</translation>
+    </message>
+    <message>
+        <source>示例脚本</source>
+        <translation>示例脚本</translation>
+    </message>
+    <message>
+        <source>无法运行脚本</source>
+        <translation>无法运行脚本</translation>
+    </message>
+    <message>
+        <source>脚本窗口已关闭</source>
+        <translation>脚本窗口已关闭</translation>
+    </message>
+    <message>
+        <source>脚本运行中</source>
+        <translation>脚本运行中</translation>
+    </message>
+    <message>
+        <source>开始运行脚本</source>
+        <translation>开始运行脚本</translation>
+    </message>
+    <message>
+        <source>正在停止脚本...</source>
+        <translation>正在停止脚本...</translation>
+    </message>
+    <message>
+        <source>脚本完成：%1</source>
+        <translation>脚本完成：%1</translation>
+    </message>
+    <message>
+        <source>脚本失败：%1</source>
+        <translation>脚本失败：%1</translation>
+    </message>
+    <message>
+        <source>脚本执行失败</source>
+        <translation>脚本执行失败</translation>
+    </message>
+    <message>
+        <source>脚本</source>
+        <translation>脚本</translation>
+    </message>
+    <message>
+        <source>脚本发送 %1</source>
+        <translation>脚本发送 %1</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

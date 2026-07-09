@@ -10,14 +10,17 @@
 #include <QtCore/QFile>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QTimer>
+#include <QtCore/QVariantList>
 #include <QtCore/QVector>
 #include <QtGui/QColor>
 
 class QEvent;
 class QTextCharFormat;
 class QTextCursor;
+class QThread;
 class QWheelEvent;
 class DataTableWindow;
+class ScriptRunner;
 struct DataTableRecord;
 class QuickPlotWindow;
 
@@ -48,6 +51,7 @@ class WorkbenchPage : public AppPage
     QWidget *createModbusSection();
     QWidget *createPacketSection();
     QWidget *createMacroSection();
+    QWidget *createScriptSection();
     QWidget *createAutoReplySection();
     QWidget *createFileSendSection();
     QWidget *createTerminalSection();
@@ -266,6 +270,22 @@ class WorkbenchPage : public AppPage
     void loadMacroSteps();
     void saveMacroSteps() const;
     void exportMacroResults();
+    void updateScriptActionState();
+    void loadScriptFile();
+    void saveScriptFile();
+    void insertScriptExample();
+    void startScript();
+    void stopScript();
+    void appendScriptLog(const QString &message);
+    void clearScriptLog();
+    void finishScriptRun(bool ok, const QString &message);
+    bool sendScriptPayload(const QString &payloadText, const QString &mode, const QString &lineEndingKey,
+                           QString *error);
+    QString scriptReceivedTextSnapshot() const;
+    QString scriptReceivedHexSnapshot() const;
+    QString scriptLastRxTextSnapshot() const;
+    QString scriptLastRxHexSnapshot() const;
+    QVariantList scriptRecordSnapshot() const;
     void updateAutoReplyTable(int selectedRow = -1);
     void updateAutoReplyActionState();
     void applyAutoReplyRule(int row);
@@ -336,6 +356,8 @@ class WorkbenchPage : public AppPage
     QTimer m_statsTimer;
     QTimer m_fileSendTimer;
     QTimer m_macroTimer;
+    QThread *m_scriptThread = nullptr;
+    ScriptRunner *m_scriptRunner = nullptr;
     QFile m_receiveCaptureFile;
     QFile m_autoLogFile;
     QFile m_fileSendFile;
@@ -351,6 +373,7 @@ class WorkbenchPage : public AppPage
     bool m_manualDisconnect = false;
     bool m_macroRunning = false;
     bool m_macroWaitingForResponse = false;
+    bool m_scriptRunning = false;
 
     FluentQt::ScrollArea *m_sideScroll = nullptr;
     QWidget *m_sidePanel = nullptr;
@@ -383,6 +406,8 @@ class WorkbenchPage : public AppPage
     FluentQt::PlainTextEdit *m_modbusValuesEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
     FluentQt::PlainTextEdit *m_macroPayloadEdit = nullptr;
+    FluentQt::PlainTextEdit *m_scriptEdit = nullptr;
+    FluentQt::PlainTextEdit *m_scriptLogEdit = nullptr;
     FluentQt::PlainTextEdit *m_autoReplyPayloadEdit = nullptr;
     FluentQt::ComboBox *m_packetModeCombo = nullptr;
     FluentQt::ComboBox *m_packetLineEndingCombo = nullptr;
@@ -405,6 +430,7 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_sendModeButton = nullptr;
     FluentQt::PrimaryPushButton *m_packetSendButton = nullptr;
     FluentQt::PrimaryPushButton *m_macroRunButton = nullptr;
+    FluentQt::PrimaryPushButton *m_scriptRunButton = nullptr;
     FluentQt::PrimaryPushButton *m_fileSendButton = nullptr;
     FluentQt::ToolButton *m_refreshButton = nullptr;
     FluentQt::ToolButton *m_packetUpButton = nullptr;
@@ -429,6 +455,11 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_macroDeleteButton = nullptr;
     FluentQt::PushButton *m_macroStopButton = nullptr;
     FluentQt::PushButton *m_macroExportButton = nullptr;
+    FluentQt::PushButton *m_scriptLoadButton = nullptr;
+    FluentQt::PushButton *m_scriptSaveButton = nullptr;
+    FluentQt::PushButton *m_scriptExampleButton = nullptr;
+    FluentQt::PushButton *m_scriptStopButton = nullptr;
+    FluentQt::PushButton *m_scriptClearLogButton = nullptr;
     FluentQt::PushButton *m_autoReplySaveButton = nullptr;
     FluentQt::PushButton *m_autoReplyLoadButton = nullptr;
     FluentQt::PushButton *m_autoReplyDeleteButton = nullptr;
@@ -479,6 +510,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CaptionLabel *m_checksumResultLabel = nullptr;
     FluentQt::CaptionLabel *m_modbusStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_macroStatusLabel = nullptr;
+    FluentQt::CaptionLabel *m_scriptStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_autoReplyStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_terminalSummaryLabel = nullptr;
     FluentQt::CaptionLabel *m_connectionTimeLabel = nullptr;
@@ -487,4 +519,5 @@ class WorkbenchPage : public AppPage
     FluentQt::StrongBodyLabel *m_txCounterLabel = nullptr;
     FluentQt::StrongBodyLabel *m_rxRateLabel = nullptr;
     FluentQt::StrongBodyLabel *m_txRateLabel = nullptr;
+    QString m_scriptFilePath;
 };

@@ -129,6 +129,8 @@ void WorkbenchPage::restoreSettings()
     const QString modbusValues = settings.value(QStringLiteral("modbus/values")).toString();
     const int macroLoopCount = settings.value(QStringLiteral("macro/loopCount"), 1).toInt();
     const bool macroAbortOnFailure = settings.value(QStringLiteral("macro/abortOnFailure"), true).toBool();
+    const QString scriptText = settings.value(QStringLiteral("script/current")).toString();
+    const QString scriptPath = settings.value(QStringLiteral("script/path")).toString();
     const QString filePath = settings.value(QStringLiteral("fileSend/path")).toString();
     const int fileChunkSize = settings.value(QStringLiteral("fileSend/chunkSize"), DefaultFileChunkSize).toInt();
     const int fileInterval = settings.value(QStringLiteral("fileSend/intervalMs"), DefaultFileChunkIntervalMs).toInt();
@@ -224,6 +226,9 @@ void WorkbenchPage::restoreSettings()
     m_macroLoopCountSpin->setValue(qBound(1, macroLoopCount, 100000));
     m_macroAbortOnFailureCheck->setChecked(macroAbortOnFailure);
     updateMacroActionState();
+    m_scriptEdit->setPlainText(scriptText);
+    m_scriptFilePath = scriptPath;
+    updateScriptActionState();
     m_filePathEdit->setText(filePath);
     m_fileChunkSizeSpin->setValue(qBound(1, fileChunkSize, 65536));
     m_fileIntervalSpin->setValue(qBound(0, fileInterval, 60000));
@@ -288,6 +293,8 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("modbus/values"), m_modbusValuesEdit->toPlainText());
     settings.setValue(QStringLiteral("macro/loopCount"), m_macroLoopCountSpin->value());
     settings.setValue(QStringLiteral("macro/abortOnFailure"), m_macroAbortOnFailureCheck->isChecked());
+    settings.setValue(QStringLiteral("script/current"), m_scriptEdit->toPlainText());
+    settings.setValue(QStringLiteral("script/path"), m_scriptFilePath);
     settings.setValue(QStringLiteral("serial/autoReconnect"), m_autoReconnectCheck->isChecked());
     settings.setValue(QStringLiteral("fileSend/path"), m_filePathEdit->text());
     settings.setValue(QStringLiteral("fileSend/chunkSize"), m_fileChunkSizeSpin->value());
@@ -433,6 +440,11 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     m_macroLoopCountSpin->setValue(source.m_macroLoopCountSpin->value());
     m_macroAbortOnFailureCheck->setChecked(source.m_macroAbortOnFailureCheck->isChecked());
     updateMacroTable();
+
+    m_scriptEdit->setPlainText(source.m_scriptEdit->toPlainText());
+    m_scriptFilePath = source.m_scriptFilePath;
+    clearScriptLog();
+    updateScriptActionState();
 
     m_autoReplyRules = source.m_autoReplyRules;
     m_autoReplyNameEdit->setText(source.m_autoReplyNameEdit->text());

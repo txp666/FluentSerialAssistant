@@ -670,6 +670,70 @@ QWidget *WorkbenchPage::createMacroSection()
     return section;
 }
 
+QWidget *WorkbenchPage::createScriptSection()
+{
+    auto *section = new ExpandSettingCard(FluentIcon::DeveloperTools, AppI18n::text("脚本插件"), QString(), this);
+    auto *root = cardBody(section);
+
+    m_scriptEdit = new PlainTextEdit(section);
+    m_scriptEdit->setPlaceholderText(AppI18n::text("输入 JavaScript 脚本，使用 serial 对象发送、读取和记录日志"));
+    m_scriptEdit->setLineWrapMode(QPlainTextEdit::NoWrap);
+    m_scriptEdit->setFixedHeight(150);
+    m_scriptEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    root->addWidget(m_scriptEdit);
+
+    auto *fileRow = new QHBoxLayout;
+    fileRow->setSpacing(8);
+    m_scriptLoadButton = new PushButton(icon(FluentIcon::Folder), AppI18n::text("载入"), section);
+    m_scriptSaveButton = new PushButton(icon(FluentIcon::Save), AppI18n::text("保存"), section);
+    m_scriptExampleButton = new PushButton(icon(FluentIcon::Info), AppI18n::text("示例"), section);
+    setButtonRowControlPolicy(m_scriptLoadButton);
+    setButtonRowControlPolicy(m_scriptSaveButton);
+    setButtonRowControlPolicy(m_scriptExampleButton);
+    fileRow->addWidget(m_scriptLoadButton);
+    fileRow->addWidget(m_scriptSaveButton);
+    fileRow->addWidget(m_scriptExampleButton);
+    root->addLayout(fileRow);
+
+    auto *actionRow = new QHBoxLayout;
+    actionRow->setSpacing(8);
+    m_scriptRunButton = new PrimaryPushButton(icon(FluentIcon::Play), AppI18n::text("运行脚本"), section);
+    m_scriptStopButton = new PushButton(icon(FluentIcon::Cancel), AppI18n::text("停止"), section);
+    m_scriptClearLogButton = new PushButton(icon(FluentIcon::Broom), AppI18n::text("清日志"), section);
+    setButtonRowControlPolicy(m_scriptRunButton);
+    setButtonRowControlPolicy(m_scriptStopButton);
+    setButtonRowControlPolicy(m_scriptClearLogButton);
+    actionRow->addWidget(m_scriptRunButton);
+    actionRow->addWidget(m_scriptStopButton);
+    actionRow->addWidget(m_scriptClearLogButton);
+    root->addLayout(actionRow);
+
+    m_scriptLogEdit = new PlainTextEdit(section);
+    m_scriptLogEdit->setReadOnly(true);
+    m_scriptLogEdit->setPlaceholderText(AppI18n::text("脚本日志"));
+    m_scriptLogEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_scriptLogEdit->setFixedHeight(96);
+    m_scriptLogEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    root->addWidget(m_scriptLogEdit);
+
+    m_scriptStatusLabel = new CaptionLabel(AppI18n::text("未运行"), section);
+    m_scriptStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_scriptStatusLabel->setWordWrap(true);
+    root->addWidget(m_scriptStatusLabel);
+
+    connect(m_scriptLoadButton, &PushButton::clicked, this, &WorkbenchPage::loadScriptFile);
+    connect(m_scriptSaveButton, &PushButton::clicked, this, &WorkbenchPage::saveScriptFile);
+    connect(m_scriptExampleButton, &PushButton::clicked, this, &WorkbenchPage::insertScriptExample);
+    connect(m_scriptRunButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::startScript);
+    connect(m_scriptStopButton, &PushButton::clicked, this, &WorkbenchPage::stopScript);
+    connect(m_scriptClearLogButton, &PushButton::clicked, this, &WorkbenchPage::clearScriptLog);
+    connect(m_scriptEdit, &PlainTextEdit::textChanged, this, &WorkbenchPage::updateScriptActionState);
+
+    updateScriptActionState();
+    makeCollapsibleCard(section, QStringLiteral("scripts"));
+    return section;
+}
+
 QWidget *WorkbenchPage::createAutoReplySection()
 {
     auto *section = new ExpandSettingCard(FluentIcon::Feedback, AppI18n::text("自动应答"), QString(), this);
