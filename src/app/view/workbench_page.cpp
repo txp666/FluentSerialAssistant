@@ -29,6 +29,8 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
         updateConnectionUi(m_serial.isOpen());
         updateCounters();
         updateHistoryCombo();
+        updateReceiveModeButton();
+        updateSendModeButton();
         updatePacketTable(m_packetList ? m_packetList->currentRow() : -1);
         updateMacroTable(m_macroList ? m_macroList->currentRow() : -1);
         updateAutoReplyTable(m_autoReplyList ? m_autoReplyList->currentRow() : -1);

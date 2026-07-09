@@ -193,9 +193,6 @@ SettingsPage::SettingsPage(QWidget *parent)
     connect(languageCard, &ComboBoxSettingCard::currentIndexChanged, this, [this, languageCard](int index) {
         const QString localeName = AppI18n::applyLocale(AppI18n::localeNameForIndex(index));
         languageCard->setContent(AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(localeName)));
-        InfoBar::success(AppI18n::text("语言已切换"),
-                         AppI18n::text("当前窗口和已打开页面已刷新。"), Qt::Horizontal, true,
-                         2500, InfoBarPosition::Top, window());
     });
     connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this, [languageCard](const QString &localeName) {
         const int index = AppI18n::localeIndex(localeName);

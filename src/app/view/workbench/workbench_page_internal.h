@@ -61,6 +61,7 @@ constexpr int SidePanelWidth = 324;
 constexpr int TerminalPanelMinWidth = 560;
 constexpr int ReconnectIntervalMs = 2000;
 constexpr int CompactControlHeight = 32;
+constexpr int FormLabelWidth = 84;
 constexpr int DefaultFileChunkSize = 256;
 constexpr int DefaultFileChunkIntervalMs = 10;
 constexpr int MaxFrameBufferBytes = 1024 * 1024;
@@ -225,7 +226,8 @@ inline void addFormRow(QVBoxLayout *root, const QString &labelText, QWidget *con
     row->setSpacing(8);
 
     auto *label = new BodyLabel(labelText, parent);
-    setFixedControlWidth(label, 52);
+    setFixedControlWidth(label, FormLabelWidth);
+    label->setToolTip(labelText);
     row->addWidget(label, 0, Qt::AlignVCenter);
 
     control->setMinimumWidth(0);

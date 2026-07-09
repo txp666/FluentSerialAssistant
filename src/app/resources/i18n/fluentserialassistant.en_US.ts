@@ -464,8 +464,20 @@ JSON Object: reads numeric fields; array fields are expanded
         <translation>Current window and opened pages have been refreshed.</translation>
     </message>
     <message>
+        <source>当前接收显示为 %1，点击切换为 %2</source>
+        <translation>Receive display is %1; click to switch to %2</translation>
+    </message>
+    <message>
         <source>文本</source>
         <translation>Text</translation>
+    </message>
+    <message>
+        <source>当前为 HEX 发送，点击切换为文本</source>
+        <translation>Currently sending HEX; click to switch to text</translation>
+    </message>
+    <message>
+        <source>当前为文本发送，点击切换为 HEX</source>
+        <translation>Currently sending text; click to switch to HEX</translation>
     </message>
     <message>
         <source>混合</source>
@@ -769,7 +781,7 @@ Reply: %2</translation>
     </message>
     <message>
         <source>选择发送文件</source>
-        <translation>Select file to send</translation>
+        <translation>Select file</translation>
     </message>
     <message>
         <source>无法发送文件</source>
@@ -1009,7 +1021,7 @@ Expected response: %2</translation>
     </message>
     <message>
         <source>填入发送</source>
-        <translation>Fill Send</translation>
+        <translation>Fill TX</translation>
     </message>
     <message>
         <source>发送</source>
@@ -1259,15 +1271,15 @@ Content: %4</translation>
     </message>
     <message>
         <source>无流控</source>
-        <translation>No Flow Control</translation>
+        <translation>None</translation>
     </message>
     <message>
         <source>硬件流控</source>
-        <translation>Hardware Flow Control</translation>
+        <translation>Hardware</translation>
     </message>
     <message>
         <source>软件流控</source>
-        <translation>Software Flow Control</translation>
+        <translation>Software</translation>
     </message>
     <message>
         <source>流控</source>
@@ -1275,7 +1287,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>启动连接</source>
-        <translation>Connect on Startup</translation>
+        <translation>Auto Connect</translation>
     </message>
     <message>
         <source>接收设置</source>
@@ -1287,7 +1299,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>保存接收</source>
-        <translation>Save Received</translation>
+        <translation>Save RX</translation>
     </message>
     <message>
         <source>自动滚动</source>
@@ -1299,7 +1311,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>暂停显示</source>
-        <translation>Pause Display</translation>
+        <translation>Pause</translation>
     </message>
     <message>
         <source>自动日志</source>
@@ -1319,7 +1331,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>HEX 边界，如 AA 55 或 0D 0A</source>
-        <translation>HEX boundary, e.g. AA 55 or 0D 0A</translation>
+        <translation>HEX boundary: AA 55 / 0D 0A</translation>
     </message>
     <message>
         <source>边界</source>
@@ -1351,7 +1363,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>自动追加</source>
-        <translation>Auto Append</translation>
+        <translation>Append</translation>
     </message>
     <message>
         <source>字节序</source>
@@ -1367,7 +1379,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>显示发送字符串</source>
-        <translation>Show send string</translation>
+        <translation>Show TX</translation>
     </message>
     <message>
         <source>定时发送</source>
@@ -1375,7 +1387,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>自动重连</source>
-        <translation>Auto Reconnect</translation>
+        <translation>Reconnect</translation>
     </message>
     <message>
         <source>TX 颜色</source>
@@ -1435,7 +1447,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>批量发送</source>
-        <translation>Batch Send</translation>
+        <translation>Batch</translation>
     </message>
     <message>
         <source>删除</source>
@@ -1455,7 +1467,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>响应包含，留空不等待</source>
-        <translation>Response contains, leave empty to skip waiting</translation>
+        <translation>Expected response</translation>
     </message>
     <message>
         <source>文</source>
@@ -1475,7 +1487,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>失败中止</source>
-        <translation>Abort on Failure</translation>
+        <translation>Abort Fail</translation>
     </message>
     <message>
         <source>循环</source>
@@ -1491,7 +1503,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>导出结果</source>
-        <translation>Export Results</translation>
+        <translation>Export</translation>
     </message>
     <message>
         <source>未运行</source>
@@ -1527,7 +1539,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>选择待发送文件</source>
-        <translation>Select file to send</translation>
+        <translation>Select file</translation>
     </message>
     <message>
         <source>浏览</source>

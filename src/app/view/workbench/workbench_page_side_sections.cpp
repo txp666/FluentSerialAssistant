@@ -1,5 +1,5 @@
-#include "app/view/workbench/workbench_page_internal.h"
 #include "app/core/app_i18n.h"
+#include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -203,6 +203,7 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     connect(m_displayModeSegment, &SegmentedWidget::currentItemChanged, this, [this](const QString &routeKey) {
         QSettings settings;
         settings.setValue(QStringLiteral("terminal/displayMode"), routeKey);
+        updateReceiveModeButton();
         renderTerminal();
     });
     connect(m_receiveEncodingCombo, &ComboBox::currentIndexChanged, this, [this](int) {
@@ -383,9 +384,10 @@ QWidget *WorkbenchPage::createSendSettingsSection()
         settings.setValue(QStringLiteral("checksum/autoAppend"), checked);
     });
     connect(m_checksumCalcButton, &PushButton::clicked, this, &WorkbenchPage::calculateChecksumForCurrentPayload);
-    connect(m_hexSendCheck, &CheckBox::toggled, this, [](bool checked) {
+    connect(m_hexSendCheck, &CheckBox::toggled, this, [this](bool checked) {
         QSettings settings;
         settings.setValue(QStringLiteral("send/mode"), checked ? QStringLiteral("hex") : QStringLiteral("text"));
+        updateSendModeButton();
     });
     connect(m_showTxCheck, &CheckBox::toggled, this, [this](bool checked) {
         QSettings settings;

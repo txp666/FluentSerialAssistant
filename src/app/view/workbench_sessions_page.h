@@ -25,6 +25,7 @@ class WorkbenchSessionsPage : public QWidget
     WorkbenchPage *addSession(WorkbenchPage *source = nullptr, bool restoreSavedSession = false);
     WorkbenchPage *currentSession() const;
     void closeSession(int index);
+    void updateTitleBarTabMetrics();
     QString nextRouteKey() const;
     QString nextTitle() const;
 

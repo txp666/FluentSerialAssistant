@@ -5,6 +5,25 @@
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
+namespace {
+
+bool isReceiveHexMode(const QString &mode)
+{
+    return mode == QStringLiteral("hex");
+}
+
+QString shortcutReceiveDisplayModeLabel(bool hexMode)
+{
+    return hexMode ? QStringLiteral("HEX") : AppI18n::text("文本");
+}
+
+QString nextReceiveDisplayMode(bool hexMode)
+{
+    return hexMode ? QStringLiteral("text") : QStringLiteral("hex");
+}
+
+} // namespace
+
 QWidget *WorkbenchPage::createTerminalSection()
 {
     auto *section = new HeaderCardWidget(this);
@@ -12,7 +31,6 @@ QWidget *WorkbenchPage::createTerminalSection()
     auto *root = cardBody(section, 10);
     section->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    section->headerLayout()->addStretch(1);
     section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX"), section));
     m_rxCounterLabel = new StrongBodyLabel(QStringLiteral("0 B"), section);
     section->headerLayout()->addWidget(m_rxCounterLabel);
@@ -27,6 +45,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     section->headerLayout()->addWidget(m_txRateLabel);
     m_connectionTimeLabel = new CaptionLabel(AppI18n::text("未连接"), section);
     section->headerLayout()->addWidget(m_connectionTimeLabel);
+    section->headerLayout()->addStretch(1);
 
     auto *searchButton = new TransparentToolButton(icon(FluentIcon::Search), section);
     searchButton->setToolTip(AppI18n::text("搜索"));
@@ -36,9 +55,11 @@ QWidget *WorkbenchPage::createTerminalSection()
     themeButton->setToolTip(AppI18n::text("切换主题"));
     auto *languageButton = new TransparentToolButton(icon(FluentIcon::Language), section);
     languageButton->setToolTip(AppI18n::text("切换语言"));
+    m_receiveModeButton = new TransparentToolButton(icon(FluentIcon::Font), section);
     auto *settingsButton = new TransparentToolButton(icon(FluentIcon::Setting), section);
     settingsButton->setToolTip(AppI18n::text("设置"));
-    for (ToolButton *button : {searchButton, plotButton, themeButton, languageButton, settingsButton}) {
+    for (ToolButton *button : {searchButton, plotButton, themeButton, languageButton, m_receiveModeButton,
+                               settingsButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
     }
@@ -47,6 +68,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     section->headerLayout()->addWidget(plotButton);
     section->headerLayout()->addWidget(themeButton);
     section->headerLayout()->addWidget(languageButton);
+    section->headerLayout()->addWidget(m_receiveModeButton);
     section->headerLayout()->addWidget(settingsButton);
 
     auto *searchView = new FlyoutView(AppI18n::text("终端搜索"), QString(), icon(FluentIcon::Search), QPixmap(), true);
@@ -132,10 +154,12 @@ QWidget *WorkbenchPage::createTerminalSection()
         FluentConfig::instance()->save();
         ThemeManager::instance()->setTheme(next);
     });
-    connect(languageButton, &TransparentToolButton::clicked, this, [this]() {
-        const QString localeName = AppI18n::applyLocale(AppI18n::toggledChineseEnglishLocaleName());
-        showSuccess(AppI18n::text("语言已切换"),
-                    AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(localeName)));
+    connect(languageButton, &TransparentToolButton::clicked, this,
+            []() { AppI18n::applyLocale(AppI18n::toggledChineseEnglishLocaleName()); });
+    connect(m_receiveModeButton, &TransparentToolButton::clicked, this, [this]() {
+        if (m_displayModeSegment) {
+            m_displayModeSegment->setCurrentItem(nextReceiveDisplayMode(isReceiveHexMode(currentDisplayMode())));
+        }
     });
     connect(settingsButton, &TransparentToolButton::clicked, this, &WorkbenchPage::settingsRequested);
     connect(m_terminalSearchEdit, &SearchLineEdit::textChanged, this, [this]() {
@@ -159,8 +183,23 @@ QWidget *WorkbenchPage::createTerminalSection()
         renderTerminal();
     });
     connect(m_terminalFilterCombo, &ComboBox::currentIndexChanged, this, [this](int) { renderTerminal(); });
+    updateReceiveModeButton();
 
     return section;
+}
+
+void WorkbenchPage::updateReceiveModeButton()
+{
+    if (!m_receiveModeButton) {
+        return;
+    }
+
+    const bool hexMode = isReceiveHexMode(currentDisplayMode());
+    const QString currentLabel = shortcutReceiveDisplayModeLabel(hexMode);
+    const QString nextLabel = shortcutReceiveDisplayModeLabel(!hexMode);
+    m_receiveModeButton->setIcon(icon(hexMode ? FluentIcon::Code : FluentIcon::Font));
+    m_receiveModeButton->setToolTip(
+        AppI18n::text("当前接收显示为 %1，点击切换为 %2").arg(currentLabel, nextLabel));
 }
 
 QWidget *WorkbenchPage::createSendSection()
@@ -179,6 +218,12 @@ QWidget *WorkbenchPage::createSendSection()
     m_sendEdit->installEventFilter(this);
     sendRow->addWidget(m_sendEdit, 1);
 
+    m_sendModeButton = new PushButton(section);
+    setFixedControlWidth(m_sendModeButton, 72);
+    m_sendModeButton->setMinimumHeight(112);
+    m_sendModeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    sendRow->addWidget(m_sendModeButton);
+
     m_sendButton = new PrimaryPushButton(icon(FluentIcon::Send), QString(), section);
     m_sendButton->setToolTip(AppI18n::text("发送"));
     m_sendButton->setIconSize(QSize(40, 40));
@@ -188,7 +233,25 @@ QWidget *WorkbenchPage::createSendSection()
 
     root->addLayout(sendRow);
 
+    connect(m_sendModeButton, &PushButton::clicked, this, [this]() {
+        if (m_hexSendCheck) {
+            m_hexSendCheck->setChecked(!m_hexSendCheck->isChecked());
+        }
+    });
     connect(m_sendButton, &PrimaryPushButton::clicked, this, &WorkbenchPage::sendCurrentPayload);
+    updateSendModeButton();
 
     return section;
+}
+
+void WorkbenchPage::updateSendModeButton()
+{
+    if (!m_sendModeButton) {
+        return;
+    }
+
+    const bool hexMode = m_hexSendCheck && m_hexSendCheck->isChecked();
+    m_sendModeButton->setText(hexMode ? QStringLiteral("HEX") : AppI18n::text("文本"));
+    m_sendModeButton->setToolTip(hexMode ? AppI18n::text("当前为 HEX 发送，点击切换为文本")
+                                         : AppI18n::text("当前为文本发送，点击切换为 HEX"));
 }

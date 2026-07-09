@@ -161,6 +161,8 @@ class WorkbenchPage : public AppPage
     void updateConnectionUi(bool connected);
     void updateCounters();
     void updateRateStats();
+    void updateReceiveModeButton();
+    void updateSendModeButton();
     void updateHistoryCombo();
     void applyHistoryItem(int index);
     void updatePacketTable(int selectedRow = -1);
@@ -390,6 +392,8 @@ class WorkbenchPage : public AppPage
     QuickPlotWindow *m_quickPlotWindow = nullptr;
     FluentQt::PrimaryPushButton *m_connectButton = nullptr;
     FluentQt::PrimaryPushButton *m_sendButton = nullptr;
+    FluentQt::TransparentToolButton *m_receiveModeButton = nullptr;
+    FluentQt::PushButton *m_sendModeButton = nullptr;
     FluentQt::PrimaryPushButton *m_packetSendButton = nullptr;
     FluentQt::PrimaryPushButton *m_macroRunButton = nullptr;
     FluentQt::PrimaryPushButton *m_fileSendButton = nullptr;

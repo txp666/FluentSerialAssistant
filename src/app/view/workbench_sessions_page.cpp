@@ -57,6 +57,7 @@ void WorkbenchSessionsPage::installTitleBarTabs(FluentTitleBar *titleBar)
             sourceLayout->removeWidget(tabBar);
         }
         tabBar->setParent(titleBar);
+        tabBar->setObjectName(QStringLiteral("titleBarSessionTabs"));
         tabBar->setFixedHeight(40);
         tabBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
@@ -70,10 +71,13 @@ void WorkbenchSessionsPage::installTitleBarTabs(FluentTitleBar *titleBar)
                     }
                 }
             }
+            titleLayout->insertSpacing(insertIndex, 12);
+            ++insertIndex;
             titleLayout->insertWidget(insertIndex, tabBar, 100, Qt::AlignVCenter);
         }
     }
 
+    updateTitleBarTabMetrics();
     setTitleBarTabsVisible(true);
 }
 
@@ -117,11 +121,30 @@ WorkbenchPage *WorkbenchSessionsPage::addSession(WorkbenchPage *source, bool res
     if (index >= 0) {
         m_tabs->setCurrentIndex(index);
         ++m_nextSession;
+        updateTitleBarTabMetrics();
     } else {
         session->deleteLater();
         return nullptr;
     }
     return session;
+}
+
+void WorkbenchSessionsPage::updateTitleBarTabMetrics()
+{
+    if (!m_tabs || !m_tabs->tabBar()) {
+        return;
+    }
+
+    auto *tabBar = m_tabs->tabBar();
+    if (tabBar->parentWidget() == m_titleBar) {
+        tabBar->setFixedHeight(50);
+    }
+
+    if (auto *tabStrip = tabBar->findChild<QWidget *>(QStringLiteral("view"))) {
+        if (QLayout *stripLayout = tabStrip->layout()) {
+            stripLayout->setContentsMargins(5, 0, 5, 0);
+        }
+    }
 }
 
 WorkbenchPage *WorkbenchSessionsPage::currentSession() const

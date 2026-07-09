@@ -464,8 +464,20 @@ JSON 对象：读取数值字段，数组字段会展开
         <translation>当前窗口和已打开页面已刷新。</translation>
     </message>
     <message>
+        <source>当前接收显示为 %1，点击切换为 %2</source>
+        <translation>当前接收显示为 %1，点击切换为 %2</translation>
+    </message>
+    <message>
         <source>文本</source>
         <translation>文本</translation>
+    </message>
+    <message>
+        <source>当前为 HEX 发送，点击切换为文本</source>
+        <translation>当前为 HEX 发送，点击切换为文本</translation>
+    </message>
+    <message>
+        <source>当前为文本发送，点击切换为 HEX</source>
+        <translation>当前为文本发送，点击切换为 HEX</translation>
     </message>
     <message>
         <source>混合</source>
