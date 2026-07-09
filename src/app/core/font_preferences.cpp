@@ -8,7 +8,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
-#include <QtCore/QSettings>
+#include "app/core/app_settings.h"
 #include <QtCore/QStandardPaths>
 #include <QtCore/QtGlobal>
 #include <QtGui/QFontDatabase>
@@ -245,14 +245,14 @@ QString currentUiFontFamily()
 
 QString currentTerminalFontFamily()
 {
-    QSettings settings;
+    AppSettings settings;
     return resolvedFontFamily(settings.value(QStringLiteral("terminal/fontFamily")).toString(),
                               defaultTerminalFontFamily());
 }
 
 int currentTerminalFontPointSize()
 {
-    QSettings settings;
+    AppSettings settings;
     return qBound(MinTerminalFontPointSize,
                   settings.value(QStringLiteral("terminal/fontPointSize"), DefaultTerminalFontPointSize).toInt(),
                   MaxTerminalFontPointSize);
@@ -336,13 +336,13 @@ void setUiFontFamily(const QString &family)
 
 void setTerminalFontFamily(const QString &family)
 {
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("terminal/fontFamily"), resolvedFontFamily(family, defaultTerminalFontFamily()));
 }
 
 void setTerminalFontPointSize(int pointSize)
 {
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("terminal/fontPointSize"),
                       qBound(MinTerminalFontPointSize, pointSize, MaxTerminalFontPointSize));
 }

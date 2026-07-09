@@ -11,7 +11,7 @@ void WorkbenchPage::exportRecords(ExportFormat format)
         return;
     }
 
-    QSettings settings;
+    AppSettings settings;
     const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
     FolderPickerDialog dialog(initialFolder, window());
     if (dialog.exec() != QDialog::Accepted) {
@@ -88,13 +88,13 @@ WorkbenchPage::ExportFormat WorkbenchPage::autoLogFormat() const
 
 qint64 WorkbenchPage::autoLogMaxFileBytes() const
 {
-    const qint64 megabytes = m_autoLogMaxSizeSpin ? qBound(1, m_autoLogMaxSizeSpin->value(), 4096) : 16;
+    const qint64 megabytes = numberEditValue(m_autoLogMaxSizeEdit, 16, 1, 4096);
     return megabytes * 1024 * 1024;
 }
 
 void WorkbenchPage::updateAutoLog(bool enabled)
 {
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("log/enabled"), enabled);
 
     if (!enabled) {
@@ -162,7 +162,7 @@ bool WorkbenchPage::ensureAutoLogFile(ExportFormat format, qint64 nextBytes)
         return true;
     }
 
-    QSettings settings;
+    AppSettings settings;
     const QString folderPath = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
     QDir folder(folderPath);
     if (!folder.exists() && !folder.mkpath(QStringLiteral("."))) {
@@ -238,7 +238,7 @@ void WorkbenchPage::writeAutoLogRecord(const SessionRecord &record)
         closeAutoLog();
         const QSignalBlocker blocker(m_autoLogCheck);
         m_autoLogCheck->setChecked(false);
-        QSettings().setValue(QStringLiteral("log/enabled"), false);
+        AppSettings().setValue(QStringLiteral("log/enabled"), false);
         showError(AppI18n::text("自动日志失败"), error.isEmpty() ? AppI18n::text("写入不完整") : error);
         return;
     }
@@ -274,7 +274,7 @@ void WorkbenchPage::updateAutoLogStatus()
 
 void WorkbenchPage::updateReceiveCapture(bool enabled)
 {
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("receive/saveToFile"), enabled);
 
     if (!enabled) {
@@ -322,7 +322,7 @@ void WorkbenchPage::closeReceiveCapture()
 
 void WorkbenchPage::browseSendFile()
 {
-    QSettings settings;
+    AppSettings settings;
     const QString initialPath = m_filePathEdit && !m_filePathEdit->text().isEmpty()
                                     ? QFileInfo(m_filePathEdit->text()).absolutePath()
                                     : settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
@@ -371,10 +371,11 @@ void WorkbenchPage::startFileSend()
         return;
     }
 
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("fileSend/path"), path);
-    settings.setValue(QStringLiteral("fileSend/chunkSize"), m_fileChunkSizeSpin->value());
-    settings.setValue(QStringLiteral("fileSend/intervalMs"), m_fileIntervalSpin->value());
+    settings.setValue(QStringLiteral("fileSend/chunkSize"), numberEditValue(m_fileChunkSizeEdit, DefaultFileChunkSize, 1, 65536));
+    settings.setValue(QStringLiteral("fileSend/intervalMs"),
+                      numberEditValue(m_fileIntervalEdit, DefaultFileChunkIntervalMs, 0, 60000));
 
     m_fileSendTotal = m_fileSendFile.size();
     m_fileSendSent = 0;
@@ -415,7 +416,7 @@ void WorkbenchPage::sendNextFileChunk()
         return;
     }
 
-    const int chunkSize = qBound(1, m_fileChunkSizeSpin->value(), 65536);
+    const int chunkSize = numberEditValue(m_fileChunkSizeEdit, DefaultFileChunkSize, 1, 65536);
     const QByteArray data = m_fileSendFile.read(chunkSize);
     if (data.isEmpty()) {
         const QString error = m_fileSendFile.errorString();
@@ -443,7 +444,7 @@ void WorkbenchPage::sendNextFileChunk()
         sendNextFileChunk();
         return;
     }
-    m_fileSendTimer.start(qBound(0, m_fileIntervalSpin->value(), 60000));
+    m_fileSendTimer.start(numberEditValue(m_fileIntervalEdit, DefaultFileChunkIntervalMs, 0, 60000));
 }
 
 void WorkbenchPage::updateFileSendUi(bool sending)
@@ -454,11 +455,11 @@ void WorkbenchPage::updateFileSendUi(bool sending)
     if (m_filePathEdit) {
         m_filePathEdit->setEnabled(!sending);
     }
-    if (m_fileChunkSizeSpin) {
-        m_fileChunkSizeSpin->setEnabled(!sending);
+    if (m_fileChunkSizeEdit) {
+        m_fileChunkSizeEdit->setEnabled(!sending);
     }
-    if (m_fileIntervalSpin) {
-        m_fileIntervalSpin->setEnabled(!sending);
+    if (m_fileIntervalEdit) {
+        m_fileIntervalEdit->setEnabled(!sending);
     }
     if (m_fileSendButton) {
         m_fileSendButton->setEnabled(!sending && m_serial.isOpen());

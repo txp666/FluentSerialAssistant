@@ -399,7 +399,7 @@ void WorkbenchPage::addSendHistory(const SendHistoryItem &item)
 void WorkbenchPage::loadSendHistory()
 {
     m_sendHistory.clear();
-    QSettings settings;
+    AppSettings settings;
     const QByteArray json = settings.value(QStringLiteral("send/history")).toString().toUtf8();
     const QJsonDocument document = QJsonDocument::fromJson(json);
     if (!document.isArray()) {
@@ -436,7 +436,7 @@ void WorkbenchPage::saveSendHistory() const
         array.append(object);
     }
 
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("send/history"),
                       QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact)));
 }
@@ -444,7 +444,7 @@ void WorkbenchPage::saveSendHistory() const
 void WorkbenchPage::loadSendPackets()
 {
     m_sendPackets.clear();
-    QSettings settings;
+    AppSettings settings;
     const QByteArray json = settings.value(QStringLiteral("send/packets")).toString().toUtf8();
     if (json.isEmpty()) {
         updatePacketTable();
@@ -517,14 +517,14 @@ void WorkbenchPage::saveSendPackets() const
     root.insert(QStringLiteral("version"), SendPacketSchemaVersion);
     root.insert(QStringLiteral("packets"), array);
 
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("send/packets"),
                       QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact)));
 }
 
 void WorkbenchPage::importSendPackets()
 {
-    QSettings settings;
+    AppSettings settings;
     const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
     const QString path = QFileDialog::getOpenFileName(window(), AppI18n::text("导入常用包"), initialFolder,
                                                       QStringLiteral("JSON (*.json)"));
@@ -631,7 +631,7 @@ void WorkbenchPage::exportSendPackets()
         return;
     }
 
-    QSettings settings;
+    AppSettings settings;
     const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
     const QString initialName =
         QDir(initialFolder)

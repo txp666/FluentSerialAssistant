@@ -2,6 +2,7 @@
 
 #include "app/core/checksum_utils.h"
 #include "app/core/modbus_utils.h"
+#include "app/core/protocol_template.h"
 #include "app/serial/serial_controller.h"
 #include "app/view/app_page.h"
 
@@ -47,6 +48,7 @@ class WorkbenchPage : public AppPage
     QWidget *createWorkbench();
     QWidget *createConnectionSection();
     QWidget *createReceiveSettingsSection();
+    QWidget *createProtocolTemplateSection();
     QWidget *createSendSettingsSection();
     QWidget *createModbusSection();
     QWidget *createPacketSection();
@@ -234,6 +236,17 @@ class WorkbenchPage : public AppPage
     void processBufferedFrameData(const QByteArray &data);
     void flushRxFrameBuffer();
     void updateFrameControlState();
+    void loadProtocolTemplates();
+    void saveProtocolTemplates() const;
+    void updateProtocolTemplateCombo(int selectedIndex = -1);
+    void updateProtocolTemplateUi();
+    void updateProtocolTemplateActionState();
+    AppProtocol::ProtocolTemplate currentProtocolTemplateFromUi() const;
+    void applyProtocolTemplate(int index);
+    void saveCurrentProtocolTemplate();
+    void deleteCurrentProtocolTemplate();
+    void insertProtocolTemplateExample();
+    QString protocolParseSourceLabel(const QByteArray &data);
     void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true,
                       const QString &sourceLabel = QString());
     void trimRecords();
@@ -336,6 +349,7 @@ class WorkbenchPage : public AppPage
     QList<MacroStep> m_macroSteps;
     QList<MacroRunResult> m_macroResults;
     QList<AutoReplyRule> m_autoReplyRules;
+    QList<AppProtocol::ProtocolTemplate> m_protocolTemplates;
     QList<TerminalSearchMatch> m_terminalSearchMatches;
     SerialPortConfig m_lastConfig;
     QByteArray m_rxFrameBuffer;
@@ -374,6 +388,7 @@ class WorkbenchPage : public AppPage
     bool m_macroRunning = false;
     bool m_macroWaitingForResponse = false;
     bool m_scriptRunning = false;
+    bool m_updatingProtocolTemplateUi = false;
 
     FluentQt::ScrollArea *m_sideScroll = nullptr;
     QWidget *m_sidePanel = nullptr;
@@ -388,6 +403,12 @@ class WorkbenchPage : public AppPage
     FluentQt::ComboBox *m_terminalFilterCombo = nullptr;
     FluentQt::ComboBox *m_receiveEncodingCombo = nullptr;
     FluentQt::ComboBox *m_frameModeCombo = nullptr;
+    FluentQt::ComboBox *m_protocolTemplateCombo = nullptr;
+    FluentQt::ComboBox *m_protocolLengthSizeCombo = nullptr;
+    FluentQt::ComboBox *m_protocolLengthModeCombo = nullptr;
+    FluentQt::ComboBox *m_protocolLengthByteOrderCombo = nullptr;
+    FluentQt::ComboBox *m_protocolChecksumAlgorithmCombo = nullptr;
+    FluentQt::ComboBox *m_protocolChecksumByteOrderCombo = nullptr;
     FluentQt::ComboBox *m_lineEndingCombo = nullptr;
     FluentQt::ComboBox *m_sendEncodingCombo = nullptr;
     FluentQt::ComboBox *m_checksumAlgorithmCombo = nullptr;
@@ -403,6 +424,8 @@ class WorkbenchPage : public AppPage
     FluentQt::LineEdit *m_autoReplyNameEdit = nullptr;
     FluentQt::LineEdit *m_autoReplyPatternEdit = nullptr;
     FluentQt::LineEdit *m_framePatternEdit = nullptr;
+    FluentQt::LineEdit *m_protocolNameEdit = nullptr;
+    FluentQt::LineEdit *m_protocolHeaderEdit = nullptr;
     FluentQt::PlainTextEdit *m_modbusValuesEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
     FluentQt::PlainTextEdit *m_macroPayloadEdit = nullptr;
@@ -444,6 +467,9 @@ class WorkbenchPage : public AppPage
     FluentQt::PushButton *m_exportTxtButton = nullptr;
     FluentQt::PushButton *m_exportCsvButton = nullptr;
     FluentQt::PushButton *m_exportBinButton = nullptr;
+    FluentQt::PushButton *m_protocolSaveButton = nullptr;
+    FluentQt::PushButton *m_protocolDeleteButton = nullptr;
+    FluentQt::PushButton *m_protocolExampleButton = nullptr;
     FluentQt::PushButton *m_packetSaveButton = nullptr;
     FluentQt::PushButton *m_packetLoadButton = nullptr;
     FluentQt::PushButton *m_packetDeleteButton = nullptr;
@@ -476,6 +502,7 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_timestampCheck = nullptr;
     FluentQt::CheckBox *m_pauseCheck = nullptr;
     FluentQt::CheckBox *m_autoFrameBreakCheck = nullptr;
+    FluentQt::CheckBox *m_protocolEnabledCheck = nullptr;
     FluentQt::CheckBox *m_hexSendCheck = nullptr;
     FluentQt::CheckBox *m_showTxCheck = nullptr;
     FluentQt::CheckBox *m_loopCheck = nullptr;
@@ -489,24 +516,30 @@ class WorkbenchPage : public AppPage
     FluentQt::CheckBox *m_autoOpenCheck = nullptr;
     FluentQt::CheckBox *m_rtsCheck = nullptr;
     FluentQt::CheckBox *m_dtrCheck = nullptr;
-    FluentQt::SpinBox *m_frameBreakIntervalSpin = nullptr;
-    FluentQt::SpinBox *m_frameFixedLengthSpin = nullptr;
-    FluentQt::SpinBox *m_modbusSlaveSpin = nullptr;
-    FluentQt::SpinBox *m_modbusAddressSpin = nullptr;
-    FluentQt::SpinBox *m_modbusQuantitySpin = nullptr;
-    FluentQt::SpinBox *m_loopIntervalSpin = nullptr;
-    FluentQt::SpinBox *m_macroTimeoutSpin = nullptr;
-    FluentQt::SpinBox *m_macroDelaySpin = nullptr;
-    FluentQt::SpinBox *m_macroLoopCountSpin = nullptr;
-    FluentQt::SpinBox *m_autoReplyDelaySpin = nullptr;
-    FluentQt::SpinBox *m_fileChunkSizeSpin = nullptr;
-    FluentQt::SpinBox *m_fileIntervalSpin = nullptr;
-    FluentQt::SpinBox *m_autoLogMaxSizeSpin = nullptr;
+    FluentQt::LineEdit *m_frameBreakIntervalEdit = nullptr;
+    FluentQt::LineEdit *m_frameFixedLengthEdit = nullptr;
+    FluentQt::LineEdit *m_protocolLengthOffsetEdit = nullptr;
+    FluentQt::LineEdit *m_protocolCommandOffsetEdit = nullptr;
+    FluentQt::LineEdit *m_protocolCommandSizeEdit = nullptr;
+    FluentQt::LineEdit *m_protocolPayloadOffsetEdit = nullptr;
+    FluentQt::LineEdit *m_protocolPayloadLengthEdit = nullptr;
+    FluentQt::LineEdit *m_modbusSlaveEdit = nullptr;
+    FluentQt::LineEdit *m_modbusAddressEdit = nullptr;
+    FluentQt::LineEdit *m_modbusQuantityEdit = nullptr;
+    FluentQt::LineEdit *m_loopIntervalEdit = nullptr;
+    FluentQt::LineEdit *m_macroTimeoutEdit = nullptr;
+    FluentQt::LineEdit *m_macroDelayEdit = nullptr;
+    FluentQt::LineEdit *m_macroLoopCountEdit = nullptr;
+    FluentQt::LineEdit *m_autoReplyDelayEdit = nullptr;
+    FluentQt::LineEdit *m_fileChunkSizeEdit = nullptr;
+    FluentQt::LineEdit *m_fileIntervalEdit = nullptr;
+    FluentQt::LineEdit *m_autoLogMaxSizeEdit = nullptr;
     FluentQt::ColorPickerButton *m_txColorButton = nullptr;
     FluentQt::LineEdit *m_filePathEdit = nullptr;
     FluentQt::ProgressBar *m_fileProgressBar = nullptr;
     FluentQt::CaptionLabel *m_receiveCaptureLabel = nullptr;
     FluentQt::CaptionLabel *m_autoLogStatusLabel = nullptr;
+    FluentQt::CaptionLabel *m_protocolStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_checksumResultLabel = nullptr;
     FluentQt::CaptionLabel *m_modbusStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_macroStatusLabel = nullptr;

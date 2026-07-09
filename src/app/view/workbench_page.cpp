@@ -36,6 +36,8 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
         updateSendModeButton();
         updatePacketTable(m_packetList ? m_packetList->currentRow() : -1);
         updateMacroTable(m_macroList ? m_macroList->currentRow() : -1);
+        updateProtocolTemplateCombo(m_protocolTemplateCombo ? m_protocolTemplateCombo->currentIndex() : -1);
+        updateProtocolTemplateActionState();
         updateScriptActionState();
         updateAutoReplyTable(m_autoReplyList ? m_autoReplyList->currentRow() : -1);
         updateModbusUi();
@@ -51,13 +53,16 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
         loadSendHistory();
         loadSendPackets();
         loadMacroSteps();
+        loadProtocolTemplates();
         loadAutoReplyRules();
         restoreSettings();
     } else {
+        loadProtocolTemplates();
         updateFrameControlState();
         updateModbusUi();
         updatePacketTable();
         updateMacroTable();
+        updateProtocolTemplateActionState();
         updateScriptActionState();
         updateAutoReplyTable();
         updatePacketActionState();

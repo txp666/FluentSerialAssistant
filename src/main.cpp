@@ -6,6 +6,8 @@
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
 #include <QtCore/QCoreApplication>
+#include <QtCore/QDir>
+#include <QtCore/QSettings>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QStyleFactory>
 
@@ -22,7 +24,14 @@ int main(int argc, char *argv[])
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QCoreApplication::setOrganizationName(QStringLiteral("txp"));
     QCoreApplication::setApplicationName(QStringLiteral("FluentSerialAssistant"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.8"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.9"));
+
+    const QString appDir = QCoreApplication::applicationDirPath();
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, appDir);
+    QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, appDir);
+    FluentQt::FluentConfig::instance()->setFileName(
+        QDir(appDir).filePath(QStringLiteral("FluentSerialAssistant.fluent.json")));
 
     AppFontPreferences::loadCustomFonts();
     FluentQt::FluentConfig::instance()->load();

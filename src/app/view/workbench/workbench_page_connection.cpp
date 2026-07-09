@@ -59,7 +59,7 @@ void WorkbenchPage::onConnectClicked()
 
 void WorkbenchPage::onLoopChanged(bool checked)
 {
-    m_loopIntervalSpin->setEnabled(checked);
+    m_loopIntervalEdit->setEnabled(checked);
     if (!checked) {
         m_loopTimer.stop();
         return;
@@ -69,7 +69,7 @@ void WorkbenchPage::onLoopChanged(bool checked)
         showWarning(AppI18n::text("无法循环发送"), AppI18n::text("请先连接串口"));
         return;
     }
-    m_loopTimer.start(m_loopIntervalSpin->value());
+    m_loopTimer.start(numberEditValue(m_loopIntervalEdit, 1000, 10, 600000));
 }
 
 void WorkbenchPage::setControlsEnabledForConnection(bool connected)
@@ -81,7 +81,7 @@ void WorkbenchPage::setControlsEnabledForConnection(bool connected)
     m_sendButton->setEnabled(connected);
     m_sendEdit->setEnabled(connected);
     m_loopCheck->setEnabled(connected);
-    m_loopIntervalSpin->setEnabled(connected && m_loopCheck->isChecked());
+    m_loopIntervalEdit->setEnabled(connected && m_loopCheck->isChecked());
     updatePacketActionState();
     if (m_fileSendButton) {
         m_fileSendButton->setEnabled(connected && !m_fileSendFile.isOpen());
@@ -109,7 +109,7 @@ void WorkbenchPage::setControlsEnabledForConnection(bool connected)
 
 int WorkbenchPage::maxRecordCount() const
 {
-    QSettings settings;
+    AppSettings settings;
     return qBound(1000, settings.value(QStringLiteral("terminal/maxRecords"), DefaultMaxTerminalRecords).toInt(),
                   50000);
 }

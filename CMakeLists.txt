@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.8
+    VERSION 0.1.9
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -59,6 +59,8 @@ add_subdirectory("${FLUENTQTWIDGETS_ROOT}" "${CMAKE_BINARY_DIR}/_deps/fluentqtwi
 add_executable(FluentSerialAssistant
     src/app/core/app_i18n.cpp
     src/app/core/app_i18n.h
+    src/app/core/app_settings.cpp
+    src/app/core/app_settings.h
     src/app/core/font_preferences.cpp
     src/app/core/font_preferences.h
     src/app/core/checksum_utils.cpp
@@ -67,6 +69,8 @@ add_executable(FluentSerialAssistant
     src/app/core/hex_utils.h
     src/app/core/modbus_utils.cpp
     src/app/core/modbus_utils.h
+    src/app/core/protocol_template.cpp
+    src/app/core/protocol_template.h
     src/app/core/script_runner.cpp
     src/app/core/script_runner.h
     src/app/core/text_encoding.cpp
@@ -100,6 +104,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench/workbench_page_modbus.cpp
     src/app/view/workbench/workbench_page_packets.cpp
     src/app/view/workbench/workbench_page_plot.cpp
+    src/app/view/workbench/workbench_page_protocol_templates.cpp
     src/app/view/workbench/workbench_page_scripts.cpp
     src/app/view/workbench/workbench_page_side_sections.cpp
     src/app/view/workbench/workbench_page_state.cpp

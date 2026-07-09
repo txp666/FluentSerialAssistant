@@ -48,18 +48,19 @@ QWidget *WorkbenchPage::createTerminalSection()
     section->headerLayout()->addStretch(1);
 
     auto *searchButton = new TransparentToolButton(icon(FluentIcon::Search), section);
-    searchButton->setToolTip(AppI18n::text("搜索"));
+    AppUi::setFluentToolTip(searchButton, AppI18n::text("搜索"));
     auto *plotButton = new TransparentToolButton(icon(FluentIcon::PieSingle), section);
-    plotButton->setToolTip(AppI18n::text("快速绘图"));
+    AppUi::setFluentToolTip(plotButton, AppI18n::text("快速绘图"));
     auto *dataTableButton = new TransparentToolButton(icon(FluentIcon::View), section);
-    dataTableButton->setToolTip(AppI18n::text("数据表格"));
+    AppUi::setFluentToolTip(dataTableButton, AppI18n::text("数据表格"));
     auto *themeButton = new TransparentToolButton(icon(FluentIcon::Constract), section);
-    themeButton->setToolTip(AppI18n::text("切换主题"));
+    AppUi::setFluentToolTip(themeButton, AppI18n::text("切换主题"));
     auto *languageButton = new TransparentToolButton(icon(FluentIcon::Language), section);
-    languageButton->setToolTip(AppI18n::text("切换语言"));
+    AppUi::setFluentToolTip(languageButton, AppI18n::text("切换语言"));
     m_receiveModeButton = new TransparentToolButton(icon(FluentIcon::Font), section);
+    AppUi::installFluentToolTip(m_receiveModeButton);
     auto *settingsButton = new TransparentToolButton(icon(FluentIcon::Setting), section);
-    settingsButton->setToolTip(AppI18n::text("设置"));
+    AppUi::setFluentToolTip(settingsButton, AppI18n::text("设置"));
     for (ToolButton *button : {searchButton, plotButton, dataTableButton, themeButton, languageButton, m_receiveModeButton,
                                settingsButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
@@ -89,9 +90,9 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_terminalSearchEdit->setFixedHeight(CompactControlHeight);
     m_terminalSearchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_terminalSearchPrevButton = new TransparentToolButton(icon(FluentIcon::Up), searchPanel);
-    m_terminalSearchPrevButton->setToolTip(AppI18n::text("上一个匹配"));
+    AppUi::setFluentToolTip(m_terminalSearchPrevButton, AppI18n::text("上一个匹配"));
     m_terminalSearchNextButton = new TransparentToolButton(icon(FluentIcon::Down), searchPanel);
-    m_terminalSearchNextButton->setToolTip(AppI18n::text("下一个匹配"));
+    AppUi::setFluentToolTip(m_terminalSearchNextButton, AppI18n::text("下一个匹配"));
     for (ToolButton *button : {m_terminalSearchPrevButton, m_terminalSearchNextButton}) {
         button->setEnabled(false);
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
@@ -105,11 +106,11 @@ QWidget *WorkbenchPage::createTerminalSection()
     auto *searchOptionsRow = new QHBoxLayout;
     searchOptionsRow->setSpacing(8);
     m_terminalSearchCaseCheck = new CheckBox(QStringLiteral("Aa"), searchPanel);
-    m_terminalSearchCaseCheck->setToolTip(AppI18n::text("大小写敏感"));
+    AppUi::setFluentToolTip(m_terminalSearchCaseCheck, AppI18n::text("大小写敏感"));
     m_terminalSearchCaseCheck->setFixedHeight(CompactControlHeight);
     setFixedControlWidth(m_terminalSearchCaseCheck, 54);
     m_terminalSearchRegexCheck = new CheckBox(QStringLiteral(".*"), searchPanel);
-    m_terminalSearchRegexCheck->setToolTip(AppI18n::text("正则搜索"));
+    AppUi::setFluentToolTip(m_terminalSearchRegexCheck, AppI18n::text("正则搜索"));
     m_terminalSearchRegexCheck->setFixedHeight(CompactControlHeight);
     setFixedControlWidth(m_terminalSearchRegexCheck, 54);
     m_terminalFilterCombo = new ComboBox(searchPanel);
@@ -123,6 +124,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_terminalSummaryLabel->setFixedHeight(CompactControlHeight);
     m_terminalSummaryLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     setFixedControlWidth(m_terminalSummaryLabel, 148);
+    AppUi::installFluentToolTip(m_terminalSummaryLabel, ToolTipPosition::BottomRight);
     searchOptionsRow->addWidget(m_terminalSearchCaseCheck);
     searchOptionsRow->addWidget(m_terminalSearchRegexCheck);
     searchOptionsRow->addWidget(m_terminalFilterCombo);
@@ -226,10 +228,11 @@ QWidget *WorkbenchPage::createSendSection()
     setFixedControlWidth(m_sendModeButton, 72);
     m_sendModeButton->setMinimumHeight(112);
     m_sendModeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    AppUi::installFluentToolTip(m_sendModeButton, ToolTipPosition::Left);
     sendRow->addWidget(m_sendModeButton);
 
     m_sendButton = new PrimaryPushButton(icon(FluentIcon::Send), QString(), section);
-    m_sendButton->setToolTip(AppI18n::text("发送"));
+    AppUi::setFluentToolTip(m_sendButton, AppI18n::text("发送"), ToolTipPosition::Left);
     m_sendButton->setIconSize(QSize(40, 40));
     setFixedControlWidth(m_sendButton, 112);
     m_sendButton->setMinimumHeight(112);

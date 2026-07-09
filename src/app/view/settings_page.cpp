@@ -3,7 +3,9 @@
 #include "app/core/app_i18n.h"
 #include "app/core/font_preferences.h"
 #include "app/core/update_checker.h"
+#include "app/view/fluent_tooltip_helper.h"
 
+#include <FluentQtWidgets/Dialogs/Dialog.h>
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
 #include <FluentQtWidgets/Widgets/Button.h>
@@ -12,13 +14,12 @@
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
-#include <QtCore/QSettings>
+#include "app/core/app_settings.h"
 #include <QtCore/QStandardPaths>
 #include <QtGui/QColor>
 #include <QtGui/QDesktopServices>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QLabel>
-#include <QtWidgets/QMessageBox>
 
 using namespace FluentQt;
 
@@ -141,10 +142,10 @@ QString currentVersionText()
 SettingsPage::SettingsPage(QWidget *parent)
     : AppPage(AppI18n::text("设置"), AppI18n::text("配置应用外观、终端显示和会话导出行为。"), parent)
 {
-    QSettings settings;
+    AppSettings settings;
 
     auto *backButton = new TransparentToolButton(icon(FluentIcon::Return), this);
-    backButton->setToolTip(AppI18n::text("返回终端"));
+    AppUi::setFluentToolTip(backButton, AppI18n::text("返回终端"));
     addHeaderAction(backButton);
     connect(backButton, &TransparentToolButton::clicked, this, &SettingsPage::terminalRequested);
 
@@ -255,15 +256,15 @@ SettingsPage::SettingsPage(QWidget *parent)
                                                  AppI18n::text("默认导出目录"), exportFolder, terminalGroup);
 
     connect(displayModeCard, &ComboBoxSettingCard::currentIndexChanged, this, [](int index) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("terminal/displayMode"), indexToDisplayMode(index));
     });
     connect(lineEndingCard, &ComboBoxSettingCard::currentIndexChanged, this, [](int index) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("send/lineEnding"), indexToLineEnding(index));
     });
     connect(maxRecordsCard, &RangeSettingCard::valueChanged, this, [](int value) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("terminal/maxRecords"), value);
     });
     connect(terminalFontCard, &ComboBoxSettingCard::currentTextChanged, this, [this](const QString &family) {
@@ -284,9 +285,14 @@ SettingsPage::SettingsPage(QWidget *parent)
 
         const AppFontPreferences::FontImportResult result = AppFontPreferences::importFontFile(filePath);
         if (!result.ok || result.families.isEmpty()) {
-            QMessageBox::warning(importFontCard->window(), AppI18n::text("导入字体失败"),
-                                 result.errorMessage.isEmpty() ? AppI18n::text("无法加载该字体文件。")
-                                                               : result.errorMessage);
+            MessageBox dialog(AppI18n::text("导入字体失败"),
+                              result.errorMessage.isEmpty() ? AppI18n::text("无法加载该字体文件。")
+                                                            : result.errorMessage,
+                              importFontCard->window());
+            dialog.hideCancelButton();
+            dialog.setClosableOnMaskClicked(true);
+            dialog.setDraggable(true);
+            dialog.exec();
             return;
         }
 
@@ -297,7 +303,7 @@ SettingsPage::SettingsPage(QWidget *parent)
         emit terminalFontChanged(family);
     });
     connect(exportFolderCard, &PushSettingCard::clicked, this, [exportFolderCard]() {
-        QSettings settings;
+        AppSettings settings;
         const QString current = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
         FolderPickerDialog dialog(current, exportFolderCard->window());
         if (dialog.exec() != QDialog::Accepted) {

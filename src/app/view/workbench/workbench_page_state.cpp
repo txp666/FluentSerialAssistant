@@ -83,7 +83,7 @@ void WorkbenchPage::refreshPorts()
 
 void WorkbenchPage::restoreSettings()
 {
-    QSettings settings;
+    AppSettings settings;
     const QString portName = settings.value(QStringLiteral("serial/portName")).toString();
     const QString baudRate = settings.value(QStringLiteral("serial/baudRate"), QStringLiteral("115200")).toString();
     const QString dataBits = settings.value(QStringLiteral("serial/dataBits"), QStringLiteral("8")).toString();
@@ -172,7 +172,7 @@ void WorkbenchPage::restoreSettings()
     if (eolIndex >= 0) {
         m_lineEndingCombo->setCurrentIndex(eolIndex);
     }
-    m_loopIntervalSpin->setValue(qBound(10, loopInterval, 600000));
+    setNumberEditValue(m_loopIntervalEdit, loopInterval, 10, 600000);
     m_rtsCheck->setChecked(settings.value(QStringLiteral("serial/rts"), false).toBool());
     m_dtrCheck->setChecked(settings.value(QStringLiteral("serial/dtr"), false).toBool());
     m_autoOpenCheck->setChecked(settings.value(QStringLiteral("serial/autoOpen"), false).toBool());
@@ -183,15 +183,15 @@ void WorkbenchPage::restoreSettings()
     m_frameModeCombo->setCurrentIndex(frameModeIndex >= 0 ? frameModeIndex
                                                           : m_frameModeCombo->findData(QStringLiteral("timeout")));
     m_framePatternEdit->setText(framePattern);
-    m_frameFixedLengthSpin->setValue(qBound(1, frameFixedLength, 65536));
+    setNumberEditValue(m_frameFixedLengthEdit, frameFixedLength, 1, 65536);
     m_autoFrameBreakCheck->setChecked(settings.value(QStringLiteral("receive/autoFrameBreak"), false).toBool());
-    m_frameBreakIntervalSpin->setValue(qBound(1, frameBreakMs, 60000));
+    setNumberEditValue(m_frameBreakIntervalEdit, frameBreakMs, 1, 60000);
     updateFrameControlState();
     const int autoLogFormatIndex = m_autoLogFormatCombo->findData(autoLogFormat);
     if (autoLogFormatIndex >= 0) {
         m_autoLogFormatCombo->setCurrentIndex(autoLogFormatIndex);
     }
-    m_autoLogMaxSizeSpin->setValue(qBound(1, autoLogMaxFileSizeMb, 4096));
+    setNumberEditValue(m_autoLogMaxSizeEdit, autoLogMaxFileSizeMb, 1, 4096);
     m_autoLogCheck->setChecked(settings.value(QStringLiteral("log/enabled"), false).toBool());
     updateAutoLogStatus();
     m_showTxCheck->setChecked(settings.value(QStringLiteral("send/showTx"), true).toBool());
@@ -218,20 +218,20 @@ void WorkbenchPage::restoreSettings()
     if (modbusFunctionIndex >= 0) {
         m_modbusFunctionCombo->setCurrentIndex(modbusFunctionIndex);
     }
-    m_modbusSlaveSpin->setValue(qBound(1, modbusSlave, 247));
-    m_modbusAddressSpin->setValue(qBound(0, modbusAddress, 65535));
-    m_modbusQuantitySpin->setValue(qBound(1, modbusQuantity, 2000));
+    setNumberEditValue(m_modbusSlaveEdit, modbusSlave, 1, 247);
+    setNumberEditValue(m_modbusAddressEdit, modbusAddress, 0, 65535);
+    setNumberEditValue(m_modbusQuantityEdit, modbusQuantity, 1, 2000);
     m_modbusValuesEdit->setPlainText(modbusValues);
     updateModbusUi();
-    m_macroLoopCountSpin->setValue(qBound(1, macroLoopCount, 100000));
+    setNumberEditValue(m_macroLoopCountEdit, macroLoopCount, 1, 100000);
     m_macroAbortOnFailureCheck->setChecked(macroAbortOnFailure);
     updateMacroActionState();
     m_scriptEdit->setPlainText(scriptText);
     m_scriptFilePath = scriptPath;
     updateScriptActionState();
     m_filePathEdit->setText(filePath);
-    m_fileChunkSizeSpin->setValue(qBound(1, fileChunkSize, 65536));
-    m_fileIntervalSpin->setValue(qBound(0, fileInterval, 60000));
+    setNumberEditValue(m_fileChunkSizeEdit, fileChunkSize, 1, 65536);
+    setNumberEditValue(m_fileIntervalEdit, fileInterval, 0, 60000);
     if (!filePath.isEmpty()) {
         const QFileInfo info(filePath);
         m_fileStatusLabel->setText(info.exists()
@@ -244,7 +244,7 @@ void WorkbenchPage::restoreSettings()
 
 void WorkbenchPage::saveSettings() const
 {
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("serial/portName"), m_portCombo->currentData().toString());
     settings.setValue(QStringLiteral("serial/baudRate"), m_baudCombo->currentText());
     settings.setValue(QStringLiteral("serial/dataBits"), m_dataBitsCombo->currentText());
@@ -260,12 +260,12 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("receive/autoFrameBreak"), m_autoFrameBreakCheck->isChecked());
     settings.setValue(QStringLiteral("receive/frameMode"), frameBreakModeKey());
     settings.setValue(QStringLiteral("receive/framePattern"), m_framePatternEdit->text());
-    settings.setValue(QStringLiteral("receive/frameFixedLength"), m_frameFixedLengthSpin->value());
-    settings.setValue(QStringLiteral("receive/frameBreakMs"), m_frameBreakIntervalSpin->value());
+    settings.setValue(QStringLiteral("receive/frameFixedLength"), numberEditValue(m_frameFixedLengthEdit, 8, 1, 65536));
+    settings.setValue(QStringLiteral("receive/frameBreakMs"), numberEditValue(m_frameBreakIntervalEdit, 20, 1, 60000));
     settings.setValue(QStringLiteral("receive/encoding"), receiveEncodingKey());
     settings.setValue(QStringLiteral("log/enabled"), m_autoLogCheck->isChecked());
     settings.setValue(QStringLiteral("log/format"), autoLogFormatKey());
-    settings.setValue(QStringLiteral("log/maxFileSizeMb"), m_autoLogMaxSizeSpin->value());
+    settings.setValue(QStringLiteral("log/maxFileSizeMb"), numberEditValue(m_autoLogMaxSizeEdit, 16, 1, 4096));
     settings.setValue(QStringLiteral("terminal/displayMode"), currentDisplayMode());
     settings.setValue(QStringLiteral("send/mode"),
                       m_hexSendCheck->isChecked() ? QStringLiteral("hex") : QStringLiteral("text"));
@@ -276,7 +276,7 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("send/lineEnding"), selectedLineEndingKey());
     settings.setValue(QStringLiteral("send/showTx"), m_showTxCheck->isChecked());
     settings.setValue(QStringLiteral("send/txColor"), selectedTxColor().name(QColor::HexRgb));
-    settings.setValue(QStringLiteral("send/loopIntervalMs"), m_loopIntervalSpin->value());
+    settings.setValue(QStringLiteral("send/loopIntervalMs"), numberEditValue(m_loopIntervalEdit, 1000, 10, 600000));
     settings.setValue(QStringLiteral("send/currentPayload"), m_sendEdit->toPlainText());
     settings.setValue(QStringLiteral("send/currentPacketGroup"), m_packetGroupEdit->text());
     settings.setValue(QStringLiteral("send/currentPacketName"), m_packetNameEdit->text());
@@ -287,18 +287,21 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("send/currentPacketLineEnding"),
                       m_packetLineEndingCombo->currentData().toString());
     settings.setValue(QStringLiteral("modbus/function"), m_modbusFunctionCombo->currentData().toString());
-    settings.setValue(QStringLiteral("modbus/slave"), m_modbusSlaveSpin->value());
-    settings.setValue(QStringLiteral("modbus/address"), m_modbusAddressSpin->value());
-    settings.setValue(QStringLiteral("modbus/quantity"), m_modbusQuantitySpin->value());
+    settings.setValue(QStringLiteral("modbus/slave"), numberEditValue(m_modbusSlaveEdit, 1, 1, 247));
+    settings.setValue(QStringLiteral("modbus/address"), numberEditValue(m_modbusAddressEdit, 0, 0, 65535));
+    settings.setValue(QStringLiteral("modbus/quantity"), numberEditValue(m_modbusQuantityEdit, 1, 1, 2000));
     settings.setValue(QStringLiteral("modbus/values"), m_modbusValuesEdit->toPlainText());
-    settings.setValue(QStringLiteral("macro/loopCount"), m_macroLoopCountSpin->value());
+    settings.setValue(QStringLiteral("macro/loopCount"), numberEditValue(m_macroLoopCountEdit, 1, 1, 100000));
     settings.setValue(QStringLiteral("macro/abortOnFailure"), m_macroAbortOnFailureCheck->isChecked());
+    saveProtocolTemplates();
     settings.setValue(QStringLiteral("script/current"), m_scriptEdit->toPlainText());
     settings.setValue(QStringLiteral("script/path"), m_scriptFilePath);
     settings.setValue(QStringLiteral("serial/autoReconnect"), m_autoReconnectCheck->isChecked());
     settings.setValue(QStringLiteral("fileSend/path"), m_filePathEdit->text());
-    settings.setValue(QStringLiteral("fileSend/chunkSize"), m_fileChunkSizeSpin->value());
-    settings.setValue(QStringLiteral("fileSend/intervalMs"), m_fileIntervalSpin->value());
+    settings.setValue(QStringLiteral("fileSend/chunkSize"),
+                      numberEditValue(m_fileChunkSizeEdit, DefaultFileChunkSize, 1, 65536));
+    settings.setValue(QStringLiteral("fileSend/intervalMs"),
+                      numberEditValue(m_fileIntervalEdit, DefaultFileChunkIntervalMs, 0, 60000));
     saveSendHistory();
     saveSendPackets();
     saveMacroSteps();
@@ -348,8 +351,9 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
         m_frameModeCombo->setCurrentIndex(frameModeIndex);
     }
     m_framePatternEdit->setText(source.m_framePatternEdit->text());
-    m_frameFixedLengthSpin->setValue(source.m_frameFixedLengthSpin->value());
-    m_frameBreakIntervalSpin->setValue(source.m_frameBreakIntervalSpin->value());
+    setNumberEditValue(m_frameFixedLengthEdit, numberEditValue(source.m_frameFixedLengthEdit, 8, 1, 65536), 1, 65536);
+    setNumberEditValue(m_frameBreakIntervalEdit, numberEditValue(source.m_frameBreakIntervalEdit, 20, 1, 60000), 1,
+                       60000);
     m_autoFrameBreakCheck->setChecked(source.m_autoFrameBreakCheck->isChecked());
     updateFrameControlState();
 
@@ -357,7 +361,7 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     if (autoLogFormatIndex >= 0) {
         m_autoLogFormatCombo->setCurrentIndex(autoLogFormatIndex);
     }
-    m_autoLogMaxSizeSpin->setValue(source.m_autoLogMaxSizeSpin->value());
+    setNumberEditValue(m_autoLogMaxSizeEdit, numberEditValue(source.m_autoLogMaxSizeEdit, 16, 1, 4096), 1, 4096);
     {
         const QSignalBlocker blocker(m_autoLogCheck);
         m_autoLogCheck->setChecked(source.m_autoLogCheck->isChecked());
@@ -371,7 +375,7 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     m_txColorButton->setEnabled(m_showTxCheck->isChecked());
     m_loopCheck->setChecked(false);
     m_autoReconnectCheck->setChecked(source.m_autoReconnectCheck->isChecked());
-    m_loopIntervalSpin->setValue(source.m_loopIntervalSpin->value());
+    setNumberEditValue(m_loopIntervalEdit, numberEditValue(source.m_loopIntervalEdit, 1000, 10, 600000), 10, 600000);
     selectEncodingOption(m_sendEncodingCombo, source.sendEncodingKey());
     const int checksumAlgorithmIndex = m_checksumAlgorithmCombo->findData(source.checksumAlgorithmKey());
     if (checksumAlgorithmIndex >= 0) {
@@ -412,9 +416,9 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     if (modbusFunctionIndex >= 0) {
         m_modbusFunctionCombo->setCurrentIndex(modbusFunctionIndex);
     }
-    m_modbusSlaveSpin->setValue(source.m_modbusSlaveSpin->value());
-    m_modbusAddressSpin->setValue(source.m_modbusAddressSpin->value());
-    m_modbusQuantitySpin->setValue(source.m_modbusQuantitySpin->value());
+    setNumberEditValue(m_modbusSlaveEdit, numberEditValue(source.m_modbusSlaveEdit, 1, 1, 247), 1, 247);
+    setNumberEditValue(m_modbusAddressEdit, numberEditValue(source.m_modbusAddressEdit, 0, 0, 65535), 0, 65535);
+    setNumberEditValue(m_modbusQuantityEdit, numberEditValue(source.m_modbusQuantityEdit, 1, 1, 2000), 1, 2000);
     m_modbusValuesEdit->setPlainText(source.m_modbusValuesEdit->toPlainText());
     updateModbusUi();
 
@@ -435,11 +439,18 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     if (macroResponseModeIndex >= 0) {
         m_macroResponseModeCombo->setCurrentIndex(macroResponseModeIndex);
     }
-    m_macroTimeoutSpin->setValue(source.m_macroTimeoutSpin->value());
-    m_macroDelaySpin->setValue(source.m_macroDelaySpin->value());
-    m_macroLoopCountSpin->setValue(source.m_macroLoopCountSpin->value());
+    setNumberEditValue(m_macroTimeoutEdit, numberEditValue(source.m_macroTimeoutEdit, 1000, 1, 600000), 1, 600000);
+    setNumberEditValue(m_macroDelayEdit, numberEditValue(source.m_macroDelayEdit, 0, 0, 600000), 0, 600000);
+    setNumberEditValue(m_macroLoopCountEdit, numberEditValue(source.m_macroLoopCountEdit, 1, 1, 100000), 1, 100000);
     m_macroAbortOnFailureCheck->setChecked(source.m_macroAbortOnFailureCheck->isChecked());
     updateMacroTable();
+
+    m_protocolTemplates = source.m_protocolTemplates;
+    updateProtocolTemplateCombo(source.m_protocolTemplateCombo ? source.m_protocolTemplateCombo->currentIndex() : -1);
+    if (m_protocolEnabledCheck && source.m_protocolEnabledCheck) {
+        m_protocolEnabledCheck->setChecked(source.m_protocolEnabledCheck->isChecked());
+    }
+    updateProtocolTemplateActionState();
 
     m_scriptEdit->setPlainText(source.m_scriptEdit->toPlainText());
     m_scriptFilePath = source.m_scriptFilePath;
@@ -465,13 +476,15 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     if (autoReplyLineEndingIndex >= 0) {
         m_autoReplyLineEndingCombo->setCurrentIndex(autoReplyLineEndingIndex);
     }
-    m_autoReplyDelaySpin->setValue(source.m_autoReplyDelaySpin->value());
+    setNumberEditValue(m_autoReplyDelayEdit, numberEditValue(source.m_autoReplyDelayEdit, 0, 0, 600000), 0, 600000);
     m_autoReplyEnabledCheck->setChecked(source.m_autoReplyEnabledCheck->isChecked());
     updateAutoReplyTable();
 
     m_filePathEdit->setText(source.m_filePathEdit->text());
-    m_fileChunkSizeSpin->setValue(source.m_fileChunkSizeSpin->value());
-    m_fileIntervalSpin->setValue(source.m_fileIntervalSpin->value());
+    setNumberEditValue(m_fileChunkSizeEdit, numberEditValue(source.m_fileChunkSizeEdit, DefaultFileChunkSize, 1, 65536),
+                       1, 65536);
+    setNumberEditValue(m_fileIntervalEdit,
+                       numberEditValue(source.m_fileIntervalEdit, DefaultFileChunkIntervalMs, 0, 60000), 0, 60000);
     updateFileSendUi(false);
     updateFileProgress();
 

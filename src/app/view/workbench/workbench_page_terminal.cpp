@@ -327,7 +327,7 @@ void WorkbenchPage::processBufferedFrameData(const QByteArray &data)
 {
     const QString mode = frameBreakModeKey();
     if (mode == QStringLiteral("length")) {
-        const int frameLength = m_frameFixedLengthSpin ? qBound(1, m_frameFixedLengthSpin->value(), 65536) : 1;
+        const int frameLength = numberEditValue(m_frameFixedLengthEdit, 1, 1, 65536);
         m_rxFrameBuffer.append(data);
         while (m_rxFrameBuffer.size() >= frameLength) {
             appendRecord(RecordDirection::Rx, m_rxFrameBuffer.left(frameLength), false);
@@ -405,11 +405,11 @@ void WorkbenchPage::updateFrameControlState()
     if (m_framePatternEdit) {
         m_framePatternEdit->setEnabled(enabled && (mode == QStringLiteral("header") || mode == QStringLiteral("tail")));
     }
-    if (m_frameFixedLengthSpin) {
-        m_frameFixedLengthSpin->setEnabled(enabled && mode == QStringLiteral("length"));
+    if (m_frameFixedLengthEdit) {
+        m_frameFixedLengthEdit->setEnabled(enabled && mode == QStringLiteral("length"));
     }
-    if (m_frameBreakIntervalSpin) {
-        m_frameBreakIntervalSpin->setEnabled(enabled && mode == QStringLiteral("timeout"));
+    if (m_frameBreakIntervalEdit) {
+        m_frameBreakIntervalEdit->setEnabled(enabled && mode == QStringLiteral("timeout"));
     }
 }
 
@@ -423,7 +423,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     const QDateTime now = QDateTime::currentDateTime();
     if (direction == RecordDirection::Rx && m_autoFrameBreakCheck && m_autoFrameBreakCheck->isChecked() &&
         frameBreakModeKey() == QStringLiteral("timeout") && m_lastRxTimestamp.isValid()) {
-        const int thresholdMs = m_frameBreakIntervalSpin ? m_frameBreakIntervalSpin->value() : 20;
+        const int thresholdMs = numberEditValue(m_frameBreakIntervalEdit, 20, 1, 60000);
         if (m_lastRxTimestamp.msecsTo(now) >= thresholdMs) {
             SessionRecord separator;
             separator.timestamp = now;
@@ -442,6 +442,14 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     record.terminalText = AppTextEncoding::toTerminalText(decoded);
     record.displayText = AppTextEncoding::toSingleLineText(decoded);
     record.sourceLabel = sourceLabel;
+    if (direction == RecordDirection::Rx) {
+        const QString protocolLabel = protocolParseSourceLabel(data);
+        if (!protocolLabel.isEmpty()) {
+            record.sourceLabel = record.sourceLabel.trimmed().isEmpty()
+                                     ? protocolLabel
+                                     : QStringLiteral("%1 · %2").arg(record.sourceLabel, protocolLabel);
+        }
+    }
     m_records.append(record);
     m_pendingRecordIndexes.append(m_records.size() - 1);
     writeAutoLogRecord(record);

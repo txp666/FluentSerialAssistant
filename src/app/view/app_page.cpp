@@ -1,5 +1,6 @@
 #include "app/view/app_page.h"
 #include "app/core/app_i18n.h"
+#include "app/view/fluent_tooltip_helper.h"
 
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
@@ -29,7 +30,7 @@ AppPage::AppPage(const QString &title, const QString &subtitle, QWidget *parent,
         m_headerCard->setBorderRadius(8);
         m_headerCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         auto *themeButton = new TransparentToolButton(icon(FluentIcon::Constract), m_headerCard);
-        themeButton->setToolTip(AppI18n::text("切换主题"));
+        AppUi::setFluentToolTip(themeButton, AppI18n::text("切换主题"));
         m_headerCard->headerLayout()->addStretch(1);
         m_headerCard->headerLayout()->addWidget(themeButton);
 

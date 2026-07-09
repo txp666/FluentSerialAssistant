@@ -1845,6 +1845,238 @@ Content: %4</translation>
         <source>脚本发送 %1</source>
         <translation>Script sent %1</translation>
     </message>
+    <message>
+        <source>协议模板</source>
+        <translation>Protocol Template</translation>
+    </message>
+    <message>
+        <source>模板</source>
+        <translation>Template</translation>
+    </message>
+    <message>
+        <source>模板名称</source>
+        <translation>Template name</translation>
+    </message>
+    <message>
+        <source>长度序</source>
+        <translation>Length order</translation>
+    </message>
+    <message>
+        <source>校验序</source>
+        <translation>Checksum order</translation>
+    </message>
+    <message>
+        <source>0 表示按长度字段自动计算</source>
+        <translation>0 uses the length field</translation>
+    </message>
+    <message>
+        <source>含义</source>
+        <translation>Meaning</translation>
+    </message>
+    <message>
+        <source>载荷</source>
+        <translation>Payload</translation>
+    </message>
+    <message>
+        <source>命令</source>
+        <translation>Command</translation>
+    </message>
+    <message>
+        <source>命令偏移</source>
+        <translation>Command off</translation>
+    </message>
+    <message>
+        <source>命令长度</source>
+        <translation>Command len</translation>
+    </message>
+    <message>
+        <source>载荷偏移</source>
+        <translation>Payload off</translation>
+    </message>
+    <message>
+        <source>示例模板</source>
+        <translation>Example Template</translation>
+    </message>
+    <message>
+        <source>协议模板未启用</source>
+        <translation>Protocol template is disabled</translation>
+    </message>
+    <message>
+        <source>未命名模板</source>
+        <translation>Untitled template</translation>
+    </message>
+    <message>
+        <source>无法保存协议模板</source>
+        <translation>Unable to save protocol template</translation>
+    </message>
+    <message>
+        <source>模板名称为空</source>
+        <translation>Template name is empty</translation>
+    </message>
+    <message>
+        <source>帧头无效</source>
+        <translation>Invalid frame header</translation>
+    </message>
+    <message>
+        <source>已保存协议模板</source>
+        <translation>Saved protocol template</translation>
+    </message>
+    <message>
+        <source>无法删除协议模板</source>
+        <translation>Unable to delete protocol template</translation>
+    </message>
+    <message>
+        <source>至少保留一个协议模板</source>
+        <translation>Keep at least one protocol template</translation>
+    </message>
+    <message>
+        <source>已删除协议模板</source>
+        <translation>Deleted protocol template</translation>
+    </message>
+    <message>
+        <source>已添加示例模板</source>
+        <translation>Added example template</translation>
+    </message>
+    <message>
+        <source>已添加示例模板：%1</source>
+        <translation>Added example template: %1</translation>
+    </message>
+    <message>
+        <source>协议模板示例说明</source>
+        <translation>Protocol Template Example</translation>
+    </message>
+    <message>
+        <source>示例帧：</source>
+        <translation>Example frame:</translation>
+    </message>
+    <message>
+        <source>字节位置从 0 开始：</source>
+        <translation>Byte positions start at 0:</translation>
+    </message>
+    <message>
+        <source>0-1：帧头 AA 55</source>
+        <translation>0-1: header AA 55</translation>
+    </message>
+    <message>
+        <source>2：长度字段 03，表示载荷长度 3 B</source>
+        <translation>2: length field 03 means payload length 3 B</translation>
+    </message>
+    <message>
+        <source>3：命令字 10</source>
+        <translation>3: command 10</translation>
+    </message>
+    <message>
+        <source>4-6：载荷 01 02 03</source>
+        <translation>4-6: payload 01 02 03</translation>
+    </message>
+    <message>
+        <source>7-8：CRC16-Modbus，低字节在前 4D 6E</source>
+        <translation>7-8: CRC16-Modbus, low byte first 4D 6E</translation>
+    </message>
+    <message>
+        <source>对应配置：</source>
+        <translation>Matching configuration:</translation>
+    </message>
+    <message>
+        <source>帧头 = AA 55</source>
+        <translation>Header = AA 55</translation>
+    </message>
+    <message>
+        <source>长度偏移 = 2，长度 = 1 B，含义 = 载荷长度</source>
+        <translation>Length offset = 2, size = 1 B, meaning = payload length</translation>
+    </message>
+    <message>
+        <source>命令偏移 = 3，命令长度 = 1</source>
+        <translation>Command offset = 3, command length = 1</translation>
+    </message>
+    <message>
+        <source>载荷偏移 = 4，载荷长度 = 0</source>
+        <translation>Payload offset = 4, payload length = 0</translation>
+    </message>
+    <message>
+        <source>校验 = CRC16-Modbus，校验序 = 低字节在前</source>
+        <translation>Checksum = CRC16-Modbus, order = low byte first</translation>
+    </message>
+    <message>
+        <source>载荷长度填 0 表示按长度字段自动计算。</source>
+        <translation>Set payload length to 0 to calculate it from the length field.</translation>
+    </message>
+    <message>
+        <source>没有长度字段时，长度选择 0 B，并填写固定载荷长度。</source>
+        <translation>If there is no length field, choose 0 B for length and enter a fixed payload length.</translation>
+    </message>
+    <message>
+        <source>长度字段表示整帧总长时，含义选择整帧长度。</source>
+        <translation>If the length field stores total frame length, set meaning to frame length.</translation>
+    </message>
+    <message>
+        <source>协议解析失败：%1</source>
+        <translation>Protocol parse failed: %1</translation>
+    </message>
+    <message>
+        <source>协议 CMD %1</source>
+        <translation>Protocol CMD %1</translation>
+    </message>
+    <message>
+        <source>校验正确</source>
+        <translation>Checksum OK</translation>
+    </message>
+    <message>
+        <source>校验错误</source>
+        <translation>Checksum error</translation>
+    </message>
+    <message>
+        <source>整帧长度</source>
+        <translation>Frame length</translation>
+    </message>
+    <message>
+        <source>载荷长度</source>
+        <translation>Payload length</translation>
+    </message>
+    <message>
+        <source>帧为空</source>
+        <translation>Frame is empty</translation>
+    </message>
+    <message>
+        <source>帧头不匹配</source>
+        <translation>Header mismatch</translation>
+    </message>
+    <message>
+        <source>长度字段字节数应为 0、1、2 或 4</source>
+        <translation>Length field size must be 0, 1, 2, or 4 bytes</translation>
+    </message>
+    <message>
+        <source>长度字段超出帧范围</source>
+        <translation>Length field is outside the frame</translation>
+    </message>
+    <message>
+        <source>解析出的帧长度无效</source>
+        <translation>Parsed frame length is invalid</translation>
+    </message>
+    <message>
+        <source>帧长度不足：需要 %1 B，当前 %2 B</source>
+        <translation>Frame too short: need %1 B, current %2 B</translation>
+    </message>
+    <message>
+        <source>命令字字段超出帧范围</source>
+        <translation>Command field is outside the frame</translation>
+    </message>
+    <message>
+        <source>载荷字段超出帧范围</source>
+        <translation>Payload field is outside the frame</translation>
+    </message>
+    <message>
+        <source>校验字段超出帧范围</source>
+        <translation>Checksum field is outside the frame</translation>
+    </message>
+    <message>
+        <source>%1 · CMD %2 · LEN %3 · PAYLOAD %4 B · %5</source>
+        <translation>%1 · CMD %2 · LEN %3 · PAYLOAD %4 B · %5</translation>
+    </message>
+    <message>
+        <source> · 余 %1 B</source>
+        <translation> · extra %1 B</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

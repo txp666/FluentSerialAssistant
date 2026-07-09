@@ -2,6 +2,7 @@
 
 #include "app/view/workbench_page.h"
 #include "app/core/app_i18n.h"
+#include "app/view/fluent_tooltip_helper.h"
 
 #include "app/core/checksum_utils.h"
 #include "app/core/font_preferences.h"
@@ -9,6 +10,7 @@
 #include "app/core/modbus_utils.h"
 #include "app/core/text_encoding.h"
 
+#include <FluentQtWidgets/Dialogs/Dialog.h>
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
 #include <FluentQtWidgets/StyleSheet.h>
@@ -23,12 +25,13 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonParseError>
-#include <QtCore/QSettings>
+#include "app/core/app_settings.h"
 #include <QtCore/QSignalBlocker>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QTimer>
 #include <QtCore/QVariant>
 #include <QtGui/QIcon>
+#include <QtGui/QIntValidator>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QTextCharFormat>
 #include <QtGui/QTextCursor>
@@ -162,17 +165,18 @@ inline void normalizeCollapsedCardHeight(ExpandSettingCard *card)
     card->updateGeometry();
 }
 
-inline void makeCollapsibleCard(ExpandSettingCard *card, const QString &settingsName)
+inline void makeCollapsibleCard(ExpandSettingCard *card, const QString &settingsName, bool defaultExpanded = false)
 {
     if (!card) {
         return;
     }
 
     const QString key = QStringLiteral("workbench/leftCards/%1Collapsed").arg(settingsName);
-    card->setExpanded(!QSettings().value(key, false).toBool());
+    AppSettings settings;
+    card->setExpanded(!settings.value(key, !defaultExpanded).toBool());
     normalizeCollapsedCardHeight(card);
     QObject::connect(card, &ExpandSettingCard::expandedChanged, card, [card, key](bool expanded) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(key, !expanded);
         if (!expanded) {
             QTimer::singleShot(240, card, [card]() { normalizeCollapsedCardHeight(card); });
@@ -213,6 +217,42 @@ inline void makeCompactControl(QWidget *control)
     control->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
 }
 
+inline LineEdit *createNumberEdit(QWidget *parent, int value, int minimum, int maximum)
+{
+    auto *edit = new LineEdit(parent);
+    edit->setValidator(new QIntValidator(minimum, maximum, edit));
+    edit->setText(QString::number(qBound(minimum, value, maximum)));
+    makeCompactControl(edit);
+    return edit;
+}
+
+inline int numberEditValue(const LineEdit *edit, int fallback, int minimum, int maximum)
+{
+    if (!edit) {
+        return fallback;
+    }
+
+    bool ok = false;
+    const int value = edit->text().trimmed().toInt(&ok);
+    return ok ? qBound(minimum, value, maximum) : fallback;
+}
+
+inline void setNumberEditValue(LineEdit *edit, int value, int minimum, int maximum)
+{
+    if (edit) {
+        edit->setText(QString::number(qBound(minimum, value, maximum)));
+    }
+}
+
+inline CaptionLabel *unitLabel(const QString &text, QWidget *parent, int width = 30)
+{
+    auto *label = new CaptionLabel(text, parent);
+    label->setFixedHeight(CompactControlHeight);
+    label->setFixedWidth(width);
+    label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    return label;
+}
+
 inline void setButtonRowControlPolicy(QWidget *control)
 {
     control->setMinimumWidth(0);
@@ -227,7 +267,7 @@ inline void addFormRow(QVBoxLayout *root, const QString &labelText, QWidget *con
 
     auto *label = new BodyLabel(labelText, parent);
     setFixedControlWidth(label, FormLabelWidth);
-    label->setToolTip(labelText);
+    AppUi::setFluentToolTip(label, labelText);
     row->addWidget(label, 0, Qt::AlignVCenter);
 
     control->setMinimumWidth(0);

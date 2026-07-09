@@ -130,7 +130,7 @@ void WorkbenchPage::applyAutoReplyRule(int row)
         m_autoReplyLineEndingCombo->setCurrentIndex(lineEndingIndex);
     }
     m_autoReplyPayloadEdit->setPlainText(rule.responsePayload);
-    m_autoReplyDelaySpin->setValue(qBound(0, rule.delayMs, 600000));
+    setNumberEditValue(m_autoReplyDelayEdit, rule.delayMs, 0, 600000);
 }
 
 void WorkbenchPage::saveCurrentAutoReplyRule()
@@ -143,7 +143,7 @@ void WorkbenchPage::saveCurrentAutoReplyRule()
     rule.responseMode = normalizedMode(m_autoReplyResponseModeCombo->currentData().toString());
     rule.responsePayload = m_autoReplyPayloadEdit->toPlainText();
     rule.lineEnding = normalizedLineEnding(m_autoReplyLineEndingCombo->currentData().toString());
-    rule.delayMs = qBound(0, m_autoReplyDelaySpin->value(), 600000);
+    rule.delayMs = numberEditValue(m_autoReplyDelayEdit, 0, 0, 600000);
 
     if (rule.pattern.isEmpty()) {
         showWarning(AppI18n::text("无法保存自动应答"), AppI18n::text("匹配内容为空"));
@@ -324,7 +324,7 @@ void WorkbenchPage::sendAutoReplyRule(const AutoReplyRule &rule)
 void WorkbenchPage::loadAutoReplyRules()
 {
     m_autoReplyRules.clear();
-    QSettings settings;
+    AppSettings settings;
     const QByteArray json = settings.value(QStringLiteral("autoReply/rules")).toString().toUtf8();
     if (json.isEmpty()) {
         updateAutoReplyTable();
@@ -392,7 +392,7 @@ void WorkbenchPage::saveAutoReplyRules() const
     root.insert(QStringLiteral("version"), AutoReplyRuleSchemaVersion);
     root.insert(QStringLiteral("rules"), array);
 
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("autoReply/rules"),
                       QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact)));
 }

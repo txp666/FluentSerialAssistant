@@ -13,7 +13,7 @@ QWidget *WorkbenchPage::createConnectionSection()
     makeCompactControl(m_portCombo);
     m_portCombo->setPlaceholderText(AppI18n::text("选择端口"));
     m_refreshButton = new TransparentToolButton(icon(FluentIcon::Sync), section);
-    m_refreshButton->setToolTip(AppI18n::text("刷新端口"));
+    AppUi::setFluentToolTip(m_refreshButton, AppI18n::text("刷新端口"));
     m_refreshButton->setIconSize(QSize(16, 16));
     m_refreshButton->setFixedSize(CompactControlHeight, CompactControlHeight);
     addFormRow(root, AppI18n::text("端口"), m_portCombo, m_refreshButton);
@@ -75,11 +75,11 @@ QWidget *WorkbenchPage::createConnectionSection()
         }
     });
     connect(m_autoOpenCheck, &CheckBox::toggled, this, [](bool checked) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("serial/autoOpen"), checked);
     });
 
-    makeCollapsibleCard(section, QStringLiteral("connection"));
+    makeCollapsibleCard(section, QStringLiteral("connection"), true);
     return section;
 }
 
@@ -131,11 +131,8 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     m_autoLogCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     addFormRow(root, AppI18n::text("日志"), m_autoLogFormatCombo, m_autoLogCheck);
 
-    m_autoLogMaxSizeSpin = new SpinBox(section);
-    m_autoLogMaxSizeSpin->setRange(1, 4096);
-    m_autoLogMaxSizeSpin->setValue(16);
-    m_autoLogMaxSizeSpin->setSuffix(QStringLiteral(" MB"));
-    addFormRow(root, AppI18n::text("滚动"), m_autoLogMaxSizeSpin);
+    m_autoLogMaxSizeEdit = createNumberEdit(section, 16, 1, 4096);
+    addFormRow(root, AppI18n::text("滚动"), m_autoLogMaxSizeEdit, unitLabel(QStringLiteral("MB"), section));
 
     m_frameModeCombo = new ComboBox(section);
     addFrameModeOptions(m_frameModeCombo);
@@ -150,22 +147,11 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     makeCompactControl(m_framePatternEdit);
     addFormRow(root, AppI18n::text("边界"), m_framePatternEdit);
 
-    m_frameFixedLengthSpin = new SpinBox(section);
-    m_frameFixedLengthSpin->setRange(1, 65536);
-    m_frameFixedLengthSpin->setValue(8);
-    m_frameFixedLengthSpin->setSuffix(QStringLiteral(" B"));
-    addFormRow(root, AppI18n::text("长度"), m_frameFixedLengthSpin);
+    m_frameFixedLengthEdit = createNumberEdit(section, 8, 1, 65536);
+    addFormRow(root, AppI18n::text("长度"), m_frameFixedLengthEdit, unitLabel(QStringLiteral("B"), section));
 
-    m_frameBreakIntervalSpin = new SpinBox(section);
-    m_frameBreakIntervalSpin->setRange(1, 60000);
-    m_frameBreakIntervalSpin->setValue(20);
-    m_frameBreakIntervalSpin->setSymbolVisible(false);
-    m_frameBreakIntervalSpin->setFixedHeight(CompactControlHeight);
-    auto *frameBreakUnitLabel = new CaptionLabel(QStringLiteral("ms"), section);
-    frameBreakUnitLabel->setFixedHeight(CompactControlHeight);
-    frameBreakUnitLabel->setFixedWidth(22);
-    frameBreakUnitLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    addFormRow(root, AppI18n::text("超时"), m_frameBreakIntervalSpin, frameBreakUnitLabel);
+    m_frameBreakIntervalEdit = createNumberEdit(section, 20, 1, 60000);
+    addFormRow(root, AppI18n::text("超时"), m_frameBreakIntervalEdit, unitLabel(QStringLiteral("ms"), section));
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
@@ -198,60 +184,62 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     m_autoLogStatusLabel = new CaptionLabel(AppI18n::text("自动日志未启用"), section);
     m_autoLogStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_autoLogStatusLabel->setWordWrap(true);
+    AppUi::installFluentToolTip(m_autoLogStatusLabel);
     root->addWidget(m_autoLogStatusLabel);
 
     connect(m_displayModeSegment, &SegmentedWidget::currentItemChanged, this, [this](const QString &routeKey) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("terminal/displayMode"), routeKey);
         updateReceiveModeButton();
         renderTerminal();
     });
     connect(m_receiveEncodingCombo, &ComboBox::currentIndexChanged, this, [this](int) {
         flushRxFrameBuffer();
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("receive/encoding"), receiveEncodingKey());
     });
     connect(m_frameModeCombo, &ComboBox::currentIndexChanged, this, [this](int) {
         flushRxFrameBuffer();
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("receive/frameMode"), frameBreakModeKey());
         updateFrameControlState();
     });
     connect(m_framePatternEdit, &LineEdit::textChanged, this, [this](const QString &text) {
         flushRxFrameBuffer();
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("receive/framePattern"), text);
     });
-    connect(m_frameFixedLengthSpin, &SpinBox::valueChanged, this, [this](int value) {
+    connect(m_frameFixedLengthEdit, &LineEdit::textChanged, this, [this](const QString &) {
         flushRxFrameBuffer();
-        QSettings settings;
-        settings.setValue(QStringLiteral("receive/frameFixedLength"), value);
+        AppSettings settings;
+        settings.setValue(QStringLiteral("receive/frameFixedLength"),
+                          numberEditValue(m_frameFixedLengthEdit, 8, 1, 65536));
     });
     connect(m_saveReceiveCheck, &CheckBox::toggled, this, &WorkbenchPage::updateReceiveCapture);
     connect(m_autoLogCheck, &CheckBox::toggled, this, &WorkbenchPage::updateAutoLog);
     connect(m_autoLogFormatCombo, &ComboBox::currentIndexChanged, this, [this](int) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("log/format"), autoLogFormatKey());
         resetAutoLogSession();
         updateAutoLogStatus();
     });
-    connect(m_autoLogMaxSizeSpin, &SpinBox::valueChanged, this, [this](int value) {
-        QSettings settings;
-        settings.setValue(QStringLiteral("log/maxFileSizeMb"), value);
+    connect(m_autoLogMaxSizeEdit, &LineEdit::textChanged, this, [this](const QString &) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("log/maxFileSizeMb"), numberEditValue(m_autoLogMaxSizeEdit, 16, 1, 4096));
         if (m_autoLogFile.isOpen() && m_autoLogCurrentSize >= autoLogMaxFileBytes()) {
             resetAutoLogSession();
         }
         updateAutoLogStatus();
     });
     connect(m_autoScrollCheck, &CheckBox::toggled, this, [this](bool checked) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("receive/autoScroll"), checked);
         if (checked) {
             renderTerminal();
         }
     });
     connect(m_timestampCheck, &CheckBox::toggled, this, [this](bool checked) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("receive/timestamp"), checked);
         renderTerminal();
     });
@@ -262,16 +250,17 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     });
     connect(m_autoFrameBreakCheck, &CheckBox::toggled, this, [this](bool checked) {
         flushRxFrameBuffer();
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("receive/autoFrameBreak"), checked);
         if (!checked) {
             m_lastRxTimestamp = QDateTime();
         }
         updateFrameControlState();
     });
-    connect(m_frameBreakIntervalSpin, &SpinBox::valueChanged, this, [](int value) {
-        QSettings settings;
-        settings.setValue(QStringLiteral("receive/frameBreakMs"), value);
+    connect(m_frameBreakIntervalEdit, &LineEdit::textChanged, this, [this](const QString &) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("receive/frameBreakMs"),
+                          numberEditValue(m_frameBreakIntervalEdit, 20, 1, 60000));
     });
     connect(m_clearButton, &PushButton::clicked, this, [this]() {
         m_rxFrameBuffer.clear();
@@ -289,6 +278,117 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     connect(m_exportBinButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Bin); });
 
     makeCollapsibleCard(section, QStringLiteral("receive"));
+    return section;
+}
+
+QWidget *WorkbenchPage::createProtocolTemplateSection()
+{
+    auto *section = new ExpandSettingCard(FluentIcon::Code, AppI18n::text("协议模板"), QString(), this);
+    auto *root = cardBody(section);
+
+    m_protocolTemplateCombo = new ComboBox(section);
+    makeCompactControl(m_protocolTemplateCombo);
+    m_protocolEnabledCheck = new CheckBox(AppI18n::text("启用"), section);
+    m_protocolEnabledCheck->setMinimumWidth(0);
+    m_protocolEnabledCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    addFormRow(root, AppI18n::text("模板"), m_protocolTemplateCombo, m_protocolEnabledCheck);
+
+    m_protocolNameEdit = new LineEdit(section);
+    m_protocolNameEdit->setPlaceholderText(AppI18n::text("模板名称"));
+    makeCompactControl(m_protocolNameEdit);
+    addFormRow(root, AppI18n::text("名称"), m_protocolNameEdit);
+
+    m_protocolHeaderEdit = new LineEdit(section);
+    m_protocolHeaderEdit->setPlaceholderText(AppI18n::text("帧头 HEX，如 AA 55"));
+    makeCompactControl(m_protocolHeaderEdit);
+    addFormRow(root, AppI18n::text("帧头"), m_protocolHeaderEdit);
+
+    m_protocolLengthOffsetEdit = createNumberEdit(section, 2, 0, 65535);
+    m_protocolLengthSizeCombo = new ComboBox(section);
+    for (int size : {0, 1, 2, 4}) {
+        m_protocolLengthSizeCombo->addItem(QStringLiteral("%1 B").arg(size), QIcon(), size);
+    }
+    m_protocolLengthSizeCombo->setFixedSize(76, CompactControlHeight);
+    addFormRow(root, AppI18n::text("长度"), m_protocolLengthOffsetEdit, m_protocolLengthSizeCombo);
+
+    m_protocolLengthModeCombo = new ComboBox(section);
+    m_protocolLengthModeCombo->addItem(AppProtocol::lengthModeLabel(AppProtocol::LengthMode::PayloadLength), QIcon(),
+                                       AppProtocol::lengthModeKey(AppProtocol::LengthMode::PayloadLength));
+    m_protocolLengthModeCombo->addItem(AppProtocol::lengthModeLabel(AppProtocol::LengthMode::FrameLength), QIcon(),
+                                       AppProtocol::lengthModeKey(AppProtocol::LengthMode::FrameLength));
+    makeCompactControl(m_protocolLengthModeCombo);
+    addFormRow(root, AppI18n::text("含义"), m_protocolLengthModeCombo);
+
+    m_protocolLengthByteOrderCombo = new ComboBox(section);
+    addChecksumByteOrderOptions(m_protocolLengthByteOrderCombo);
+    makeCompactControl(m_protocolLengthByteOrderCombo);
+    addFormRow(root, AppI18n::text("长度序"), m_protocolLengthByteOrderCombo);
+
+    m_protocolCommandOffsetEdit = createNumberEdit(section, 3, 0, 65535);
+    m_protocolCommandSizeEdit = createNumberEdit(section, 1, 0, 256);
+    addFormRow(root, AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit);
+    addFormRow(root, AppI18n::text("命令长度"), m_protocolCommandSizeEdit);
+
+    m_protocolPayloadOffsetEdit = createNumberEdit(section, 4, 0, 65535);
+    m_protocolPayloadLengthEdit = createNumberEdit(section, 0, 0, 65535);
+    AppUi::setFluentToolTip(m_protocolPayloadLengthEdit, AppI18n::text("0 表示按长度字段自动计算"));
+    addFormRow(root, AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit);
+    addFormRow(root, AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit);
+
+    m_protocolChecksumAlgorithmCombo = new ComboBox(section);
+    m_protocolChecksumAlgorithmCombo->addItem(AppI18n::text("无校验"), QIcon(), AppProtocol::checksumNoneKey());
+    addChecksumAlgorithmOptions(m_protocolChecksumAlgorithmCombo);
+    makeCompactControl(m_protocolChecksumAlgorithmCombo);
+    addFormRow(root, AppI18n::text("校验"), m_protocolChecksumAlgorithmCombo);
+
+    m_protocolChecksumByteOrderCombo = new ComboBox(section);
+    addChecksumByteOrderOptions(m_protocolChecksumByteOrderCombo);
+    makeCompactControl(m_protocolChecksumByteOrderCombo);
+    addFormRow(root, AppI18n::text("校验序"), m_protocolChecksumByteOrderCombo);
+
+    auto *buttonRow = new QHBoxLayout;
+    buttonRow->setSpacing(8);
+    m_protocolSaveButton = new PushButton(icon(FluentIcon::Save), AppI18n::text("保存"), section);
+    m_protocolDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), section);
+    m_protocolExampleButton = new PushButton(icon(FluentIcon::Info), AppI18n::text("示例"), section);
+    setButtonRowControlPolicy(m_protocolSaveButton);
+    setButtonRowControlPolicy(m_protocolDeleteButton);
+    setButtonRowControlPolicy(m_protocolExampleButton);
+    buttonRow->addWidget(m_protocolSaveButton);
+    buttonRow->addWidget(m_protocolDeleteButton);
+    buttonRow->addWidget(m_protocolExampleButton);
+    root->addLayout(buttonRow);
+
+    m_protocolStatusLabel = new CaptionLabel(AppI18n::text("协议模板未启用"), section);
+    m_protocolStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_protocolStatusLabel->setWordWrap(true);
+    root->addWidget(m_protocolStatusLabel);
+
+    const auto markDirty = [this]() { updateProtocolTemplateActionState(); };
+    connect(m_protocolTemplateCombo, &ComboBox::currentIndexChanged, this, &WorkbenchPage::applyProtocolTemplate);
+    connect(m_protocolEnabledCheck, &CheckBox::toggled, this, [this](bool) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("protocolTemplate/enabled"), m_protocolEnabledCheck->isChecked());
+        updateProtocolTemplateActionState();
+    });
+    connect(m_protocolNameEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolHeaderEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolLengthOffsetEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolLengthSizeCombo, &ComboBox::currentIndexChanged, this, markDirty);
+    connect(m_protocolLengthModeCombo, &ComboBox::currentIndexChanged, this, markDirty);
+    connect(m_protocolLengthByteOrderCombo, &ComboBox::currentIndexChanged, this, markDirty);
+    connect(m_protocolCommandOffsetEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolCommandSizeEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolPayloadOffsetEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolPayloadLengthEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolChecksumAlgorithmCombo, &ComboBox::currentIndexChanged, this, markDirty);
+    connect(m_protocolChecksumByteOrderCombo, &ComboBox::currentIndexChanged, this, markDirty);
+    connect(m_protocolSaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentProtocolTemplate);
+    connect(m_protocolDeleteButton, &PushButton::clicked, this, &WorkbenchPage::deleteCurrentProtocolTemplate);
+    connect(m_protocolExampleButton, &PushButton::clicked, this, &WorkbenchPage::insertProtocolTemplateExample);
+
+    updateProtocolTemplateActionState();
+    makeCollapsibleCard(section, QStringLiteral("protocolTemplates"));
     return section;
 }
 
@@ -359,55 +459,52 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     makeCompactControl(m_historyCombo);
     addFormRow(root, AppI18n::text("历史"), m_historyCombo);
 
-    m_loopIntervalSpin = new SpinBox(section);
-    m_loopIntervalSpin->setRange(10, 600000);
-    m_loopIntervalSpin->setValue(1000);
-    m_loopIntervalSpin->setSuffix(QStringLiteral(" ms"));
-    m_loopIntervalSpin->setEnabled(false);
-    addFormRow(root, AppI18n::text("间隔"), m_loopIntervalSpin);
+    m_loopIntervalEdit = createNumberEdit(section, 1000, 10, 600000);
+    m_loopIntervalEdit->setEnabled(false);
+    addFormRow(root, AppI18n::text("间隔"), m_loopIntervalEdit, unitLabel(QStringLiteral("ms"), section));
 
     connect(m_historyCombo, &ComboBox::currentIndexChanged, this, &WorkbenchPage::applyHistoryItem);
     connect(m_sendEncodingCombo, &ComboBox::currentIndexChanged, this, [this](int) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("send/encoding"), sendEncodingKey());
     });
     connect(m_checksumAlgorithmCombo, &ComboBox::currentIndexChanged, this, [this](int) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("checksum/algorithm"), checksumAlgorithmKey());
     });
     connect(m_checksumByteOrderCombo, &ComboBox::currentIndexChanged, this, [this](int) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("checksum/byteOrder"), AppChecksum::byteOrderKey(checksumByteOrder()));
     });
     connect(m_checksumAppendCheck, &CheckBox::toggled, this, [](bool checked) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("checksum/autoAppend"), checked);
     });
     connect(m_checksumCalcButton, &PushButton::clicked, this, &WorkbenchPage::calculateChecksumForCurrentPayload);
     connect(m_hexSendCheck, &CheckBox::toggled, this, [this](bool checked) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("send/mode"), checked ? QStringLiteral("hex") : QStringLiteral("text"));
         updateSendModeButton();
     });
     connect(m_showTxCheck, &CheckBox::toggled, this, [this](bool checked) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("send/showTx"), checked);
         m_txColorButton->setEnabled(checked);
         renderTerminal();
     });
     connect(m_txColorButton, &ColorPickerButton::colorChanged, this, [this](const QColor &color) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("send/txColor"), color.name(QColor::HexRgb));
         renderTerminal();
     });
     connect(m_loopCheck, &CheckBox::toggled, this, &WorkbenchPage::onLoopChanged);
     connect(m_autoReconnectCheck, &CheckBox::toggled, this, [](bool checked) {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("serial/autoReconnect"), checked);
     });
-    connect(m_loopIntervalSpin, &SpinBox::valueChanged, this, [this](int value) {
+    connect(m_loopIntervalEdit, &LineEdit::textChanged, this, [this](const QString &) {
         if (m_loopTimer.isActive()) {
-            m_loopTimer.start(value);
+            m_loopTimer.start(numberEditValue(m_loopIntervalEdit, 1000, 10, 600000));
         }
     });
 
@@ -475,9 +572,9 @@ QWidget *WorkbenchPage::createPacketSection()
     auto *moveRow = new QHBoxLayout;
     moveRow->setSpacing(8);
     m_packetUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
-    m_packetUpButton->setToolTip(AppI18n::text("上移"));
+    AppUi::setFluentToolTip(m_packetUpButton, AppI18n::text("上移"));
     m_packetDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
-    m_packetDownButton->setToolTip(AppI18n::text("下移"));
+    AppUi::setFluentToolTip(m_packetDownButton, AppI18n::text("下移"));
     for (ToolButton *button : {m_packetUpButton, m_packetDownButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
@@ -576,19 +673,11 @@ QWidget *WorkbenchPage::createMacroSection()
     m_macroResponseModeCombo->setFixedWidth(78);
     addFormRow(root, AppI18n::text("响应"), m_macroExpectedEdit, m_macroResponseModeCombo);
 
-    m_macroTimeoutSpin = new SpinBox(section);
-    m_macroTimeoutSpin->setRange(1, 600000);
-    m_macroTimeoutSpin->setValue(1000);
-    m_macroTimeoutSpin->setSuffix(QStringLiteral(" ms"));
-    m_macroTimeoutSpin->setFixedHeight(CompactControlHeight);
-    addFormRow(root, AppI18n::text("超时"), m_macroTimeoutSpin);
+    m_macroTimeoutEdit = createNumberEdit(section, 1000, 1, 600000);
+    addFormRow(root, AppI18n::text("超时"), m_macroTimeoutEdit, unitLabel(QStringLiteral("ms"), section));
 
-    m_macroDelaySpin = new SpinBox(section);
-    m_macroDelaySpin->setRange(0, 600000);
-    m_macroDelaySpin->setValue(0);
-    m_macroDelaySpin->setSuffix(QStringLiteral(" ms"));
-    m_macroDelaySpin->setFixedHeight(CompactControlHeight);
-    addFormRow(root, AppI18n::text("延时"), m_macroDelaySpin);
+    m_macroDelayEdit = createNumberEdit(section, 0, 0, 600000);
+    addFormRow(root, AppI18n::text("延时"), m_macroDelayEdit, unitLabel(QStringLiteral("ms"), section));
 
     m_macroList = new ListWidget(section);
     m_macroList->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -601,9 +690,9 @@ QWidget *WorkbenchPage::createMacroSection()
     auto *stepRow = new QHBoxLayout;
     stepRow->setSpacing(8);
     m_macroUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
-    m_macroUpButton->setToolTip(AppI18n::text("上移"));
+    AppUi::setFluentToolTip(m_macroUpButton, AppI18n::text("上移"));
     m_macroDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
-    m_macroDownButton->setToolTip(AppI18n::text("下移"));
+    AppUi::setFluentToolTip(m_macroDownButton, AppI18n::text("下移"));
     for (ToolButton *button : {m_macroUpButton, m_macroDownButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
@@ -625,14 +714,11 @@ QWidget *WorkbenchPage::createMacroSection()
     editRow->addWidget(m_macroDeleteButton);
     root->addLayout(editRow);
 
-    m_macroLoopCountSpin = new SpinBox(section);
-    m_macroLoopCountSpin->setRange(1, 100000);
-    m_macroLoopCountSpin->setValue(1);
-    m_macroLoopCountSpin->setFixedHeight(CompactControlHeight);
+    m_macroLoopCountEdit = createNumberEdit(section, 1, 1, 100000);
     m_macroAbortOnFailureCheck = new CheckBox(AppI18n::text("失败中止"), section);
     m_macroAbortOnFailureCheck->setChecked(true);
     m_macroAbortOnFailureCheck->setFixedHeight(CompactControlHeight);
-    addFormRow(root, AppI18n::text("循环"), m_macroLoopCountSpin, m_macroAbortOnFailureCheck);
+    addFormRow(root, AppI18n::text("循环"), m_macroLoopCountEdit, m_macroAbortOnFailureCheck);
 
     auto *actionRow = new QHBoxLayout;
     actionRow->setSpacing(8);
@@ -782,12 +868,8 @@ QWidget *WorkbenchPage::createAutoReplySection()
     m_autoReplyPayloadEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     root->addWidget(m_autoReplyPayloadEdit);
 
-    m_autoReplyDelaySpin = new SpinBox(section);
-    m_autoReplyDelaySpin->setRange(0, 600000);
-    m_autoReplyDelaySpin->setValue(0);
-    m_autoReplyDelaySpin->setSuffix(QStringLiteral(" ms"));
-    m_autoReplyDelaySpin->setFixedHeight(CompactControlHeight);
-    addFormRow(root, AppI18n::text("延时"), m_autoReplyDelaySpin);
+    m_autoReplyDelayEdit = createNumberEdit(section, 0, 0, 600000);
+    addFormRow(root, AppI18n::text("延时"), m_autoReplyDelayEdit, unitLabel(QStringLiteral("ms"), section));
 
     m_autoReplyList = new ListWidget(section);
     m_autoReplyList->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -800,9 +882,9 @@ QWidget *WorkbenchPage::createAutoReplySection()
     auto *saveRow = new QHBoxLayout;
     saveRow->setSpacing(8);
     m_autoReplyUpButton = new TransparentToolButton(icon(FluentIcon::Up), section);
-    m_autoReplyUpButton->setToolTip(AppI18n::text("上移"));
+    AppUi::setFluentToolTip(m_autoReplyUpButton, AppI18n::text("上移"));
     m_autoReplyDownButton = new TransparentToolButton(icon(FluentIcon::Download), section);
-    m_autoReplyDownButton->setToolTip(AppI18n::text("下移"));
+    AppUi::setFluentToolTip(m_autoReplyDownButton, AppI18n::text("下移"));
     for (ToolButton *button : {m_autoReplyUpButton, m_autoReplyDownButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
@@ -858,17 +940,11 @@ QWidget *WorkbenchPage::createFileSendSection()
     m_fileBrowseButton->setFixedHeight(CompactControlHeight);
     addFormRow(root, AppI18n::text("文件"), m_filePathEdit, m_fileBrowseButton);
 
-    m_fileChunkSizeSpin = new SpinBox(section);
-    m_fileChunkSizeSpin->setRange(1, 65536);
-    m_fileChunkSizeSpin->setValue(DefaultFileChunkSize);
-    m_fileChunkSizeSpin->setSuffix(QStringLiteral(" B"));
-    addFormRow(root, AppI18n::text("块长"), m_fileChunkSizeSpin);
+    m_fileChunkSizeEdit = createNumberEdit(section, DefaultFileChunkSize, 1, 65536);
+    addFormRow(root, AppI18n::text("块长"), m_fileChunkSizeEdit, unitLabel(QStringLiteral("B"), section));
 
-    m_fileIntervalSpin = new SpinBox(section);
-    m_fileIntervalSpin->setRange(0, 60000);
-    m_fileIntervalSpin->setValue(DefaultFileChunkIntervalMs);
-    m_fileIntervalSpin->setSuffix(QStringLiteral(" ms"));
-    addFormRow(root, AppI18n::text("间隔"), m_fileIntervalSpin);
+    m_fileIntervalEdit = createNumberEdit(section, DefaultFileChunkIntervalMs, 0, 60000);
+    addFormRow(root, AppI18n::text("间隔"), m_fileIntervalEdit, unitLabel(QStringLiteral("ms"), section));
 
     m_fileProgressBar = new ProgressBar(section);
     m_fileProgressBar->setRange(0, 100);

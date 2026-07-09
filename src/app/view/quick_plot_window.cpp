@@ -1,5 +1,6 @@
 #include "app/view/quick_plot_window.h"
 #include "app/core/app_i18n.h"
+#include "app/view/fluent_tooltip_helper.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
@@ -12,7 +13,7 @@
 #include <QtCore/QJsonParseError>
 #include <QtCore/QJsonValue>
 #include <QtCore/QRegularExpression>
-#include <QtCore/QSettings>
+#include "app/core/app_settings.h"
 #include <QtCore/QTextStream>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QHBoxLayout>
@@ -75,14 +76,14 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_protocolCombo->addItem(AppI18n::text("键值对"), QIcon(), QStringLiteral("keyValue"));
     m_protocolCombo->addItem(AppI18n::text("JSON 对象"), QIcon(), QStringLiteral("json"));
     m_protocolCombo->setFixedSize(132, 32);
-    m_protocolCombo->setToolTip(AppI18n::text("选择接收文本如何转换为曲线数据"));
+    AppUi::setFluentToolTip(m_protocolCombo, AppI18n::text("选择接收文本如何转换为曲线数据"));
     const QString savedProtocol =
-        QSettings().value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
+        AppSettings().value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
     const int protocolIndex = m_protocolCombo->findData(savedProtocol);
     m_protocolCombo->setCurrentIndex(protocolIndex >= 0 ? protocolIndex : 0);
     m_protocol = protocolFromKey(m_protocolCombo->currentData().toString());
     auto *protocolHelpButton = new TransparentToolButton(icon(FluentIcon::Question), this);
-    protocolHelpButton->setToolTip(AppI18n::text("绘图协议示例"));
+    AppUi::setFluentToolTip(protocolHelpButton, AppI18n::text("绘图协议示例"));
     protocolHelpButton->setFixedSize(32, 32);
     protocolHelpButton->setIconSize(QSize(16, 16));
 
@@ -393,7 +394,7 @@ void QuickPlotWindow::setProtocol(PlotProtocol protocol)
     }
 
     m_protocol = protocol;
-    QSettings().setValue(QStringLiteral("plot/protocol"), protocolKey(protocol));
+    AppSettings().setValue(QStringLiteral("plot/protocol"), protocolKey(protocol));
     clearData();
     emit protocolChanged();
 }
@@ -414,7 +415,7 @@ void QuickPlotWindow::exportCsv()
         return;
     }
 
-    QSettings settings;
+    AppSettings settings;
     const QString initialFolder = settings.value(QStringLiteral("plot/exportFolder"), QDir::homePath()).toString();
     const QString initialName =
         QDir(initialFolder)

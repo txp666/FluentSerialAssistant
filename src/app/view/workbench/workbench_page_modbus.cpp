@@ -9,10 +9,8 @@ QWidget *WorkbenchPage::createModbusSection()
     auto *section = new ExpandSettingCard(FluentIcon::CommandPrompt, QStringLiteral("Modbus RTU"), QString(), this);
     auto *root = cardBody(section);
 
-    m_modbusSlaveSpin = new SpinBox(section);
-    m_modbusSlaveSpin->setRange(1, 247);
-    m_modbusSlaveSpin->setValue(1);
-    addFormRow(root, AppI18n::text("站号"), m_modbusSlaveSpin);
+    m_modbusSlaveEdit = createNumberEdit(section, 1, 1, 247);
+    addFormRow(root, AppI18n::text("站号"), m_modbusSlaveEdit);
 
     m_modbusFunctionCombo = new ComboBox(section);
     addModbusFunctionOptions(m_modbusFunctionCombo);
@@ -23,15 +21,11 @@ QWidget *WorkbenchPage::createModbusSection()
     }
     addFormRow(root, AppI18n::text("功能"), m_modbusFunctionCombo);
 
-    m_modbusAddressSpin = new SpinBox(section);
-    m_modbusAddressSpin->setRange(0, 65535);
-    m_modbusAddressSpin->setValue(0);
-    addFormRow(root, AppI18n::text("地址"), m_modbusAddressSpin);
+    m_modbusAddressEdit = createNumberEdit(section, 0, 0, 65535);
+    addFormRow(root, AppI18n::text("地址"), m_modbusAddressEdit);
 
-    m_modbusQuantitySpin = new SpinBox(section);
-    m_modbusQuantitySpin->setRange(1, 2000);
-    m_modbusQuantitySpin->setValue(1);
-    addFormRow(root, AppI18n::text("数量"), m_modbusQuantitySpin);
+    m_modbusQuantityEdit = createNumberEdit(section, 1, 1, 2000);
+    addFormRow(root, AppI18n::text("数量"), m_modbusQuantityEdit);
 
     m_modbusValuesEdit = new PlainTextEdit(section);
     m_modbusValuesEdit->setPlaceholderText(AppI18n::text("写入值，例如：1 2 0x1234"));
@@ -58,23 +52,23 @@ QWidget *WorkbenchPage::createModbusSection()
 
     connect(m_modbusFunctionCombo, &ComboBox::currentIndexChanged, this, [this](int) {
         updateModbusUi();
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("modbus/function"), m_modbusFunctionCombo->currentData().toString());
     });
-    connect(m_modbusSlaveSpin, &SpinBox::valueChanged, this, [](int value) {
-        QSettings settings;
-        settings.setValue(QStringLiteral("modbus/slave"), value);
+    connect(m_modbusSlaveEdit, &LineEdit::textChanged, this, [this](const QString &) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("modbus/slave"), numberEditValue(m_modbusSlaveEdit, 1, 1, 247));
     });
-    connect(m_modbusAddressSpin, &SpinBox::valueChanged, this, [](int value) {
-        QSettings settings;
-        settings.setValue(QStringLiteral("modbus/address"), value);
+    connect(m_modbusAddressEdit, &LineEdit::textChanged, this, [this](const QString &) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("modbus/address"), numberEditValue(m_modbusAddressEdit, 0, 0, 65535));
     });
-    connect(m_modbusQuantitySpin, &SpinBox::valueChanged, this, [](int value) {
-        QSettings settings;
-        settings.setValue(QStringLiteral("modbus/quantity"), value);
+    connect(m_modbusQuantityEdit, &LineEdit::textChanged, this, [this](const QString &) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("modbus/quantity"), numberEditValue(m_modbusQuantityEdit, 1, 1, 2000));
     });
     connect(m_modbusValuesEdit, &PlainTextEdit::textChanged, this, [this]() {
-        QSettings settings;
+        AppSettings settings;
         settings.setValue(QStringLiteral("modbus/values"), m_modbusValuesEdit->toPlainText());
     });
     connect(m_modbusFillButton, &PushButton::clicked, this, &WorkbenchPage::fillModbusRequest);
@@ -88,11 +82,13 @@ QWidget *WorkbenchPage::createModbusSection()
 AppModbus::RequestConfig WorkbenchPage::currentModbusConfig() const
 {
     AppModbus::RequestConfig config;
-    config.slaveId = static_cast<quint8>(m_modbusSlaveSpin ? m_modbusSlaveSpin->value() : 1);
+    config.slaveId = static_cast<quint8>(numberEditValue(m_modbusSlaveEdit, 1, 1, 247));
     config.functionKey =
         m_modbusFunctionCombo ? m_modbusFunctionCombo->currentData().toString() : AppModbus::defaultFunctionKey();
-    config.address = static_cast<quint16>(m_modbusAddressSpin ? m_modbusAddressSpin->value() : 0);
-    config.quantity = static_cast<quint16>(m_modbusQuantitySpin ? m_modbusQuantitySpin->value() : 1);
+    const AppModbus::FunctionOption function = AppModbus::functionForKey(config.functionKey);
+    config.address = static_cast<quint16>(numberEditValue(m_modbusAddressEdit, 0, 0, 65535));
+    config.quantity =
+        static_cast<quint16>(numberEditValue(m_modbusQuantityEdit, 1, 1, function.coil ? 2000 : 125));
     config.valuesText = m_modbusValuesEdit ? m_modbusValuesEdit->toPlainText() : QString();
     return config;
 }
@@ -175,11 +171,15 @@ void WorkbenchPage::updateModbusUi()
         AppModbus::functionForKey(m_modbusFunctionCombo->currentData().toString());
     const bool needsValues = function.write;
     const bool quantityEnabled = !function.write || function.multiple;
-    if (m_modbusQuantitySpin) {
-        m_modbusQuantitySpin->setEnabled(quantityEnabled);
-        m_modbusQuantitySpin->setMaximum(function.coil ? 2000 : 125);
+    if (m_modbusQuantityEdit) {
+        const int maximumQuantity = function.coil ? 2000 : 125;
+        m_modbusQuantityEdit->setEnabled(quantityEnabled);
+        m_modbusQuantityEdit->setValidator(new QIntValidator(1, maximumQuantity, m_modbusQuantityEdit));
         if (!quantityEnabled) {
-            m_modbusQuantitySpin->setValue(1);
+            setNumberEditValue(m_modbusQuantityEdit, 1, 1, maximumQuantity);
+        } else {
+            setNumberEditValue(m_modbusQuantityEdit, numberEditValue(m_modbusQuantityEdit, 1, 1, maximumQuantity), 1,
+                               maximumQuantity);
         }
     }
     if (m_modbusValuesEdit) {

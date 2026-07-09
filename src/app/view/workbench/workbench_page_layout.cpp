@@ -23,6 +23,7 @@ QWidget *WorkbenchPage::createWorkbench()
     sideLayout->setSpacing(10);
     sideLayout->addWidget(createConnectionSection());
     sideLayout->addWidget(createReceiveSettingsSection());
+    sideLayout->addWidget(createProtocolTemplateSection());
     sideLayout->addWidget(createSendSettingsSection());
     sideLayout->addWidget(createModbusSection());
     sideLayout->addWidget(createPacketSection());

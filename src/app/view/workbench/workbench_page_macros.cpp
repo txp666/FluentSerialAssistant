@@ -102,11 +102,11 @@ void WorkbenchPage::updateMacroActionState()
     if (m_macroResponseModeCombo) {
         m_macroResponseModeCombo->setEnabled(canEdit);
     }
-    if (m_macroTimeoutSpin) {
-        m_macroTimeoutSpin->setEnabled(canEdit);
+    if (m_macroTimeoutEdit) {
+        m_macroTimeoutEdit->setEnabled(canEdit);
     }
-    if (m_macroDelaySpin) {
-        m_macroDelaySpin->setEnabled(canEdit);
+    if (m_macroDelayEdit) {
+        m_macroDelayEdit->setEnabled(canEdit);
     }
     if (m_macroList) {
         m_macroList->setEnabled(canEdit);
@@ -126,8 +126,8 @@ void WorkbenchPage::updateMacroActionState()
     if (m_macroDownButton) {
         m_macroDownButton->setEnabled(canEdit && hasCurrent && row < m_macroSteps.size() - 1);
     }
-    if (m_macroLoopCountSpin) {
-        m_macroLoopCountSpin->setEnabled(canEdit);
+    if (m_macroLoopCountEdit) {
+        m_macroLoopCountEdit->setEnabled(canEdit);
     }
     if (m_macroAbortOnFailureCheck) {
         m_macroAbortOnFailureCheck->setEnabled(canEdit);
@@ -165,8 +165,8 @@ void WorkbenchPage::applyMacroStep(int row)
     if (responseModeIndex >= 0) {
         m_macroResponseModeCombo->setCurrentIndex(responseModeIndex);
     }
-    m_macroTimeoutSpin->setValue(qBound(1, step.timeoutMs, 600000));
-    m_macroDelaySpin->setValue(qBound(0, step.delayMs, 600000));
+    setNumberEditValue(m_macroTimeoutEdit, step.timeoutMs, 1, 600000);
+    setNumberEditValue(m_macroDelayEdit, step.delayMs, 0, 600000);
 }
 
 void WorkbenchPage::saveCurrentMacroStep()
@@ -194,8 +194,8 @@ void WorkbenchPage::saveCurrentMacroStep()
     step.lineEnding = normalizedLineEnding(m_macroLineEndingCombo->currentData().toString());
     step.responseMode = normalizedMode(m_macroResponseModeCombo->currentData().toString());
     step.expectedResponse = m_macroExpectedEdit->text();
-    step.timeoutMs = qBound(1, m_macroTimeoutSpin->value(), 600000);
-    step.delayMs = qBound(0, m_macroDelaySpin->value(), 600000);
+    step.timeoutMs = numberEditValue(m_macroTimeoutEdit, 1000, 1, 600000);
+    step.delayMs = numberEditValue(m_macroDelayEdit, 0, 0, 600000);
 
     int row = m_macroList ? m_macroList->currentRow() : -1;
     if (row >= 0 && row < m_macroSteps.size()) {
@@ -251,7 +251,7 @@ void WorkbenchPage::startMacroSequence()
 
     m_macroResults.clear();
     m_macroWaitBuffer.clear();
-    m_macroLoopTotal = qBound(1, m_macroLoopCountSpin ? m_macroLoopCountSpin->value() : 1, 100000);
+    m_macroLoopTotal = numberEditValue(m_macroLoopCountEdit, 1, 1, 100000);
     m_macroCurrentLoop = 1;
     m_macroCurrentStep = 0;
     m_macroActiveResult = -1;
@@ -530,7 +530,7 @@ bool WorkbenchPage::macroResponseMatches(const MacroStep &step, const QByteArray
 void WorkbenchPage::loadMacroSteps()
 {
     m_macroSteps.clear();
-    QSettings settings;
+    AppSettings settings;
     const QByteArray json = settings.value(QStringLiteral("macro/steps")).toString().toUtf8();
     if (json.isEmpty()) {
         updateMacroTable();
@@ -597,7 +597,7 @@ void WorkbenchPage::saveMacroSteps() const
     root.insert(QStringLiteral("version"), MacroStepSchemaVersion);
     root.insert(QStringLiteral("steps"), array);
 
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("macro/steps"),
                       QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact)));
 }
@@ -609,7 +609,7 @@ void WorkbenchPage::exportMacroResults()
         return;
     }
 
-    QSettings settings;
+    AppSettings settings;
     const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
     const QString initialName =
         QDir(initialFolder)
