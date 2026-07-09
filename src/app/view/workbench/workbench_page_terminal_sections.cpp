@@ -28,16 +28,19 @@ QWidget *WorkbenchPage::createTerminalSection()
 
     auto *searchButton = new TransparentToolButton(icon(FluentIcon::Search), section);
     searchButton->setToolTip(QStringLiteral("搜索"));
+    auto *plotButton = new TransparentToolButton(icon(FluentIcon::PieSingle), section);
+    plotButton->setToolTip(QStringLiteral("快速绘图"));
     auto *themeButton = new TransparentToolButton(icon(FluentIcon::Constract), section);
     themeButton->setToolTip(QStringLiteral("切换主题"));
     auto *settingsButton = new TransparentToolButton(icon(FluentIcon::Setting), section);
     settingsButton->setToolTip(QStringLiteral("设置"));
-    for (ToolButton *button : {searchButton, themeButton, settingsButton}) {
+    for (ToolButton *button : {searchButton, plotButton, themeButton, settingsButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
     }
     section->headerLayout()->addSpacing(4);
     section->headerLayout()->addWidget(searchButton);
+    section->headerLayout()->addWidget(plotButton);
     section->headerLayout()->addWidget(themeButton);
     section->headerLayout()->addWidget(settingsButton);
 
@@ -116,6 +119,7 @@ QWidget *WorkbenchPage::createTerminalSection()
             m_terminalSearchEdit->selectAll();
         }
     });
+    connect(plotButton, &TransparentToolButton::clicked, this, &WorkbenchPage::showQuickPlotWindow);
     connect(themeButton, &TransparentToolButton::clicked, this, []() {
         const Theme current = ThemeManager::instance()->effectiveTheme();
         const Theme next = current == Theme::Dark ? Theme::Light : Theme::Dark;

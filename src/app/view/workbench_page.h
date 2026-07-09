@@ -16,6 +16,7 @@ class QEvent;
 class QTextCharFormat;
 class QTextCursor;
 class QWheelEvent;
+class QuickPlotWindow;
 
 class WorkbenchPage : public AppPage
 {
@@ -281,6 +282,8 @@ class WorkbenchPage : public AppPage
     bool ensureAutoLogFile(ExportFormat format, qint64 nextBytes);
     QByteArray serializeLogRecord(const SessionRecord &record, ExportFormat format) const;
     void updateAutoLogStatus();
+    void showQuickPlotWindow();
+    void appendQuickPlotRecord(const SessionRecord &record, bool ignorePause = false);
     void browseSendFile();
     void startFileSend();
     void cancelFileSend();
@@ -384,6 +387,7 @@ class WorkbenchPage : public AppPage
     FluentQt::ListWidget *m_autoReplyList = nullptr;
     FluentQt::PlainTextEdit *m_sendEdit = nullptr;
     FluentQt::TextBrowser *m_terminalView = nullptr;
+    QuickPlotWindow *m_quickPlotWindow = nullptr;
     FluentQt::PrimaryPushButton *m_connectButton = nullptr;
     FluentQt::PrimaryPushButton *m_sendButton = nullptr;
     FluentQt::PrimaryPushButton *m_packetSendButton = nullptr;

@@ -75,6 +75,8 @@ add_executable(FluentSerialAssistant
     src/app/view/app_page.h
     src/app/view/main_window.cpp
     src/app/view/main_window.h
+    src/app/view/quick_plot_window.cpp
+    src/app/view/quick_plot_window.h
     src/app/view/settings_page.cpp
     src/app/view/settings_page.h
     src/app/view/workbench_page.cpp
@@ -90,6 +92,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench/workbench_page_macros.cpp
     src/app/view/workbench/workbench_page_modbus.cpp
     src/app/view/workbench/workbench_page_packets.cpp
+    src/app/view/workbench/workbench_page_plot.cpp
     src/app/view/workbench/workbench_page_side_sections.cpp
     src/app/view/workbench/workbench_page_state.cpp
     src/app/view/workbench/workbench_page_terminal.cpp
