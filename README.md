@@ -2,10 +2,15 @@
   <img src="logo.png" alt="Fluent 串口助手 Logo" width="96" height="96">
   <h1>Fluent 串口助手</h1>
   <p>基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的现代串口调试工具。</p>
+  <p><a href="README_EN.md">English</a> · 简体中文</p>
   <p>
     <a href="LICENSE">GPL-3.0-or-later</a>
     ·
+    <a href="https://github.com/txp666/FluentSerialAssistant/releases">下载</a>
+    ·
     <a href=".github/workflows/ci.yml">三平台 CI</a>
+    ·
+    <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
     ·
     <a href="CONTRIBUTING.md">贡献指南</a>
   </p>
@@ -56,7 +61,7 @@ Fluent 串口助手是一个基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的�
 - 字体设置：支持界面字体、终端等宽字体、终端字号和 TTF/OTF/TTC 自定义字体导入。
 - 界面语言：支持简体中文和 English，可在设置页或标题栏快捷按钮中无需重启切换。
 - Fluent 体验：快捷按钮提示、协议示例说明和错误提示统一使用 Fluent 组件库。
-- 配置存储：使用安装目录下的 `FluentSerialAssistant.ini` 保存业务设置，不使用 Windows 注册表或用户配置目录。
+- 配置存储：Windows、macOS 和 Linux 均使用系统标准的用户配置目录，不写 Windows 注册表；升级时会自动迁移旧版安装目录中的配置。
 
 
 ## 技术栈
@@ -162,24 +167,27 @@ Windows 下任务复用 `CMakePresets.json` 中的 MinGW 预设；macOS 和 Linu
 
 ## 打包发布
 
-Windows 紧凑发布包：
+推送与 CMake 版本一致的 `vX.Y.Z` 标签后，GitHub Actions 会生成并发布：
+
+- Windows x64：请求管理员权限并默认安装到 Program Files 的 Inno Setup 安装程序
+  `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe`
+- macOS arm64：`FluentSerialAssistant-X.Y.Z-macos-arm64.dmg`
+- Linux x64 / arm64：Debian 安装包
+  `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb`
+- 每个安装包对应的 `.sha256` 校验文件
+
+Windows 发布支持 SignPath Foundation 的免费开源 Authenticode 签名。签名会先应用到
+`FluentSerialAssistant.exe`，再构建并签署 Inno Setup 安装程序。申请和仓库配置见
+[SignPath 设置说明](docs/signing/SIGNPATH_SETUP.md)。
+
+本地 Windows 紧凑便携包仍可使用：
 
 ```powershell
 .\scripts\package_release.ps1
 ```
 
-输出目录：
-
-```text
-dist/FluentSerialAssistant-release
-```
-
-脚本会执行：
-
-- MinSizeRel 构建
-- `windeployqt` 部署 Qt 依赖
-- 排除未使用的插件、翻译和软件 OpenGL fallback
-- 对 `.exe` 和 `.dll` 执行 `strip --strip-unneeded`
+三平台安装包的底层脚本为 `scripts/package_windows.ps1`、
+`scripts/package_unix.sh` 和 `scripts/create_deb_package.sh`。
 
 ## 使用说明
 
@@ -201,7 +209,9 @@ dist/FluentSerialAssistant-release
 16. 可开启自动断帧、时间戳、自动滚动、循环发送和自动日志等选项。
 17. 使用 TXT、CSV、BIN 导出会话记录。
 
-配置文件使用 Qt `QSettings::IniFormat`，业务设置固定保存到程序安装目录下的 `FluentSerialAssistant.ini`。主题、语言等 Fluent 外观配置保存到同目录的 `FluentSerialAssistant.fluent.json`。
+配置文件使用 Qt `QSettings::IniFormat`。Windows、macOS 和 Linux 的业务设置均保存到
+Qt 提供的系统标准用户配置目录，主题、语言等 Fluent 外观配置也保存在同一目录。
+首次运行新版时会自动迁移旧版安装目录中的配置文件。
 
 ## 许可证
 
@@ -212,3 +222,11 @@ dist/FluentSerialAssistant-release
 ## 相关项目
 
 - [FluentQtWidgets](https://github.com/txp666/FluentQtWidgets)
+
+## Code signing policy
+
+Free code signing is provided by [SignPath.io](https://signpath.io/), with a
+certificate from [SignPath Foundation](https://signpath.org/), after the
+project's open-source application is approved. Team roles, release controls,
+signed artifact scope, and the privacy statement are documented in the
+[code signing policy](CODE_SIGNING_POLICY.md) and [privacy policy](PRIVACY.md).

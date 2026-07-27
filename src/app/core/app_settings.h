@@ -8,5 +8,6 @@ class AppSettings : public QSettings
   public:
     AppSettings();
 
+    static QString directoryPath();
     static QString filePath();
 };

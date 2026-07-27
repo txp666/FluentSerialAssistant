@@ -3,207 +3,411 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
 
 permissions:
+  actions: read
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  package:
-    name: ${{ matrix.name }}
+  windows-release:
+    name: Windows x64 / Inno Setup
+    runs-on: windows-2022
+    env:
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+
+    steps:
+      - name: Check out sources and submodules
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.10.3"
+          modules: "qt5compat qtserialport"
+          cache: true
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build/release
+          -G "Visual Studio 17 2022"
+          -A x64
+
+      - name: Build
+        run: cmake --build build/release --config Release --parallel
+
+      - name: Validate release tag
+        shell: pwsh
+        run: |
+          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          $configuredVersion = (Get-Content -LiteralPath "build/release/FluentSerialAssistant-version.txt" -Raw).Trim()
+          if ($tagVersion -ne $configuredVersion) {
+            throw "Tag version '$tagVersion' does not match CMake version '$configuredVersion'."
+          }
+          "RELEASE_VERSION=$tagVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Locate Inno Setup compiler
+        shell: pwsh
+        run: |
+          $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          $candidates = @(
+            $command.Source
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) }
+          $iscc = $candidates | Select-Object -First 1
+          if (-not $iscc) {
+            throw "ISCC.exe was not found on the Windows runner."
+          }
+          "INNO_SETUP_COMPILER=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Detect SignPath configuration
+        shell: pwsh
+        run: |
+          $hasToken = -not [string]::IsNullOrWhiteSpace($env:SIGNPATH_API_TOKEN)
+          $hasOrganization = -not [string]::IsNullOrWhiteSpace($env:SIGNPATH_ORGANIZATION_ID)
+          if ($hasToken -xor $hasOrganization) {
+            throw "Configure both SIGNPATH_API_TOKEN and SIGNPATH_ORGANIZATION_ID, or neither."
+          }
+          if ($hasToken) {
+            Write-Output "::add-mask::$env:SIGNPATH_API_TOKEN"
+            "SIGNPATH_ENABLED=true" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          } else {
+            Write-Warning "SignPath is not configured; this release will be unsigned."
+            "SIGNPATH_ENABLED=false" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
+      - name: Stage application and Qt runtime
+        shell: pwsh
+        run: |
+          & ./scripts/package_windows.ps1 `
+            -BuildDir "build/release" `
+            -OutputDir "dist" `
+            -Configuration "Release" `
+            -Version "$env:RELEASE_VERSION" `
+            -StageOnly
+
+      - name: Upload unsigned application for SignPath
+        id: upload-unsigned-application
+        uses: actions/upload-artifact@v7
+        with:
+          name: signpath-input-application-${{ env.RELEASE_VERSION }}
+          path: dist/stage/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-windows-x64/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign application with SignPath Foundation
+        if: env.SIGNPATH_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: fluent-serial-assistant
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: windows-application-v1
+          github-artifact-id: ${{ steps.upload-unsigned-application.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: dist/signed-application
+          parameters: |
+            version: "${{ env.RELEASE_VERSION }}"
+
+      - name: Select application payload
+        shell: pwsh
+        run: |
+          if ($env:SIGNPATH_ENABLED -eq "true") {
+            $application = Get-ChildItem -LiteralPath "dist/signed-application" -Recurse -File `
+              -Filter "FluentSerialAssistant.exe" | Select-Object -First 1
+            if (-not $application) {
+              throw "The signed application artifact does not contain FluentSerialAssistant.exe."
+            }
+            $signature = Get-AuthenticodeSignature -LiteralPath $application.FullName
+            if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+              throw "Application Authenticode verification failed: $($signature.Status)"
+            }
+            $sourceDir = $application.Directory.FullName
+          } else {
+            $sourceDir = (Resolve-Path "dist/stage/FluentSerialAssistant-$env:RELEASE_VERSION-windows-x64").Path
+          }
+          "WINDOWS_PACKAGE_SOURCE=$sourceDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          & ./scripts/package_windows.ps1 `
+            -BuildDir "build/release" `
+            -OutputDir "dist" `
+            -Configuration "Release" `
+            -Version "$env:RELEASE_VERSION" `
+            -SourceDir "$env:WINDOWS_PACKAGE_SOURCE" `
+            -InnoSetupCompilerPath "$env:INNO_SETUP_COMPILER"
+
+      - name: Upload unsigned installer for SignPath
+        id: upload-unsigned-installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: signpath-input-installer-${{ env.RELEASE_VERSION }}
+          path: dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-windows-x64-setup.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Sign installer with SignPath Foundation
+        if: env.SIGNPATH_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: fluent-serial-assistant
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: windows-installer-v1
+          github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: dist/signed-installer
+          parameters: |
+            version: "${{ env.RELEASE_VERSION }}"
+
+      - name: Finalize Windows release files
+        shell: pwsh
+        run: |
+          $installerName = "FluentSerialAssistant-$env:RELEASE_VERSION-windows-x64-setup.exe"
+          $installerPath = Join-Path "dist" $installerName
+          if ($env:SIGNPATH_ENABLED -eq "true") {
+            $signedInstaller = Get-ChildItem -LiteralPath "dist/signed-installer" -Recurse -File `
+              -Filter $installerName | Select-Object -First 1
+            if (-not $signedInstaller) {
+              throw "The SignPath output does not contain $installerName."
+            }
+            Copy-Item -LiteralPath $signedInstaller.FullName -Destination $installerPath -Force
+            $signature = Get-AuthenticodeSignature -LiteralPath $installerPath
+            if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+              throw "Installer Authenticode verification failed: $($signature.Status)"
+            }
+          }
+          $hash = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText(
+            "$installerPath.sha256",
+            "$hash  $installerName`n",
+            [Text.UTF8Encoding]::new($false)
+          )
+
+      - name: Upload Windows release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: FluentSerialAssistant-${{ env.RELEASE_VERSION }}-windows-x64
+          path: |
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-windows-x64-setup.exe
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-windows-x64-setup.exe.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+  macos-release:
+    name: macOS arm64 / DMG
+    runs-on: macos-15
+
+    steps:
+      - name: Check out sources and submodules
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.10.3"
+          modules: "qt5compat qtserialport"
+          cache: true
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build/release
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_ARCHITECTURES=arm64
+
+      - name: Build
+        run: cmake --build build/release --parallel
+
+      - name: Validate release tag and architecture
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          configured_version="$(tr -d '[:space:]' < build/release/FluentSerialAssistant-version.txt)"
+          test "$version" = "$configured_version"
+          test "$(uname -m)" = "arm64"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Deploy, ad-hoc sign, and build DMG
+        run: >-
+          ./scripts/package_unix.sh
+          --build-dir build/release
+          --output-dir dist
+          --platform macos
+          --architecture arm64
+          --version "$RELEASE_VERSION"
+
+      - name: Upload macOS release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-arm64
+          path: |
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-arm64.dmg
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-arm64.dmg.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+  linux-release:
+    name: Linux ${{ matrix.architecture }} / DEB
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Windows / MSVC
-            os: windows-latest
-            asset: windows-x64
-          - name: Linux / GCC
-            os: ubuntu-latest
-            asset: linux-x64
-          - name: macOS / Clang
-            os: macos-15
-            asset: macos
+          - architecture: x64
+            os: ubuntu-24.04
+            qt_host: linux
+            uname: x86_64
+            deb_architecture: amd64
+          - architecture: arm64
+            os: ubuntu-24.04-arm
+            qt_host: linux_arm64
+            uname: aarch64
+            deb_architecture: arm64
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Check out sources and submodules
+        uses: actions/checkout@v6
         with:
           submodules: recursive
+          fetch-depth: 0
 
-      - name: Install Linux packages
-        if: runner.os == 'Linux'
+      - name: Install build and runtime packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgl1-mesa-dev libxcb-cursor0 libxkbcommon-x11-0
-
-      - name: Install macOS packages
-        if: runner.os == 'macOS'
-        run: brew install ninja
-
-      - name: Setup MSVC
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+          sudo apt-get install -y \
+            ninja-build \
+            libgl1-mesa-dev \
+            libxcb-cursor0 \
+            libxkbcommon-x11-0
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.0'
-          modules: 'qtserialport qt5compat'
+          version: "6.10.3"
+          host: ${{ matrix.qt_host }}
+          modules: "qt5compat qtserialport"
           cache: true
 
       - name: Configure
-        shell: pwsh
-        run: |
-          $qtPrefix = $env:QT_ROOT_DIR
-          if (-not $qtPrefix -and $env:Qt6_DIR) {
-            $qtPrefix = (Resolve-Path (Join-Path $env:Qt6_DIR "../../..")).Path
-          }
-          if (-not $qtPrefix) {
-            throw "Qt prefix was not found."
-          }
-          $buildType = if ($env:RUNNER_OS -eq "Windows") { "MinSizeRel" } else { "Release" }
-          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE="$buildType" -DCMAKE_PREFIX_PATH="$qtPrefix"
+        run: >-
+          cmake -S . -B build/release
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build/release --parallel
 
-      - name: Package
+      - name: Validate release tag and architecture
         shell: bash
         run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          release_name="FluentSerialAssistant-${GITHUB_REF_NAME}-${{ matrix.asset }}"
-          package_root="${RUNNER_TEMP}/${release_name}"
-          rm -rf "$package_root"
-          mkdir -p "$package_root"
+          version="${GITHUB_REF_NAME#v}"
+          configured_version="$(tr -d '[:space:]' < build/release/FluentSerialAssistant-version.txt)"
+          test "$version" = "$configured_version"
+          test "$(uname -m)" = "${{ matrix.uname }}"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
 
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            binary_target="$(find build/release -maxdepth 6 -type f -name 'FluentSerialAssistant.exe' | head -n 1 || true)"
-            if [ -z "$binary_target" ]; then
-              echo "Unable to locate Windows executable."
-              find build/release -maxdepth 6 -print
-              exit 1
-            fi
-            cp "$binary_target" "$package_root/"
-            windeployqt \
-              --release \
-              --no-translations \
-              --no-system-d3d-compiler \
-              --no-system-dxc-compiler \
-              --no-compiler-runtime \
-              --no-opengl-sw \
-              --no-ffmpeg \
-              --skip-plugin-types generic,tls,networkinformation,styles \
-              --exclude-plugins qgif,qjpeg,qico \
-              "$package_root/FluentSerialAssistant.exe"
-            rm -f "$package_root"/vc_redist.*.exe
-          elif [ "${{ runner.os }}" = "macOS" ]; then
-            app_target="$(find build/release -maxdepth 6 -type d -name 'FluentSerialAssistant.app' | head -n 1 || true)"
-            if [ -z "$app_target" ]; then
-              echo "Unable to locate macOS app bundle."
-              find build/release -maxdepth 6 -print
-              exit 1
-            fi
-            cp -R "$app_target" "$package_root/"
-            macdeployqt "$package_root/FluentSerialAssistant.app"
-          else
-            binary_target="$(find build/release -maxdepth 6 -type f -name 'FluentSerialAssistant' | head -n 1 || true)"
-            if [ -z "$binary_target" ]; then
-              echo "Unable to locate Linux executable."
-              find build/release -maxdepth 6 -print
-              exit 1
-            fi
+      - name: Deploy and build DEB
+        run: >-
+          ./scripts/package_unix.sh
+          --build-dir build/release
+          --output-dir dist
+          --platform linux
+          --architecture "${{ matrix.architecture }}"
+          --version "$RELEASE_VERSION"
 
-            mkdir -p "$package_root/bin" "$package_root/lib" "$package_root/plugins"
-            cp "$binary_target" "$package_root/bin/FluentSerialAssistant"
-            chmod +x "$package_root/bin/FluentSerialAssistant"
+      - name: Validate DEB metadata and dependency resolution
+        shell: bash
+        run: |
+          deb="dist/FluentSerialAssistant-$RELEASE_VERSION-linux-${{ matrix.architecture }}.deb"
+          test "$(dpkg-deb --field "$deb" Package)" = "fluent-serial-assistant"
+          test "$(dpkg-deb --field "$deb" Version)" = "$RELEASE_VERSION"
+          test "$(dpkg-deb --field "$deb" Architecture)" = "${{ matrix.deb_architecture }}"
+          dpkg-deb --field "$deb" Depends | grep -F "libxcb-cursor0"
+          dpkg-deb --field "$deb" Depends | grep -F "libxkbcommon-x11-0"
+          sudo apt-get --simulate install "$PWD/$deb"
 
-            qt_prefix="${QT_ROOT_DIR:-}"
-            if [ -z "$qt_prefix" ]; then
-              qt_prefix="$(qtpaths6 --install-prefix 2>/dev/null || qtpaths --install-prefix)"
-            fi
-            qt_plugins_dir="$(qtpaths6 --plugin-dir 2>/dev/null || qtpaths --plugin-dir)"
+      - name: Upload Linux release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: FluentSerialAssistant-${{ env.RELEASE_VERSION }}-linux-${{ matrix.architecture }}
+          path: |
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-linux-${{ matrix.architecture }}.deb
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-linux-${{ matrix.architecture }}.deb.sha256
+          if-no-files-found: error
+          compression-level: 0
 
-            copy_qt_dependencies() {
-              local source_file="$1"
-              while IFS= read -r dep; do
-                if [ -z "$dep" ] || [ ! -f "$dep" ]; then
-                  continue
-                fi
-                case "$dep" in
-                  "$qt_prefix"/*)
-                    copy_qt_library "$dep"
-                    ;;
-                esac
-              done < <(ldd "$source_file" | awk '{ if ($2 == "=>") print $3; else if ($1 ~ /^\//) print $1; }')
-            }
+  publish-release:
+    name: Publish GitHub Release
+    needs:
+      - windows-release
+      - macos-release
+      - linux-release
+    runs-on: ubuntu-24.04
 
-            copy_qt_library() {
-              local dep="$1"
-              local base
-              base="$(basename "$dep")"
-              if [ -f "$package_root/lib/$base" ]; then
-                return
-              fi
-              cp -Lf "$dep" "$package_root/lib/$base"
-              copy_qt_dependencies "$dep"
-            }
+    steps:
+      - name: Check out release notes
+        uses: actions/checkout@v6
 
-            copy_qt_plugin_group() {
-              local group="$1"
-              shift
-              local destination="$package_root/plugins/$group"
-              mkdir -p "$destination"
-              local pattern plugin
-              for pattern in "$@"; do
-                for plugin in "$qt_plugins_dir/$group"/$pattern; do
-                  if [ ! -e "$plugin" ]; then
-                    continue
-                  fi
-                  cp -Lf "$plugin" "$destination/"
-                  copy_qt_dependencies "$plugin"
-                done
-              done
-            }
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: FluentSerialAssistant-*
+          path: dist
+          merge-multiple: true
 
-            copy_qt_dependencies "$package_root/bin/FluentSerialAssistant"
-            copy_qt_plugin_group platforms 'libqxcb.so'
-            copy_qt_plugin_group imageformats '*.so'
-            copy_qt_plugin_group iconengines '*.so'
-            copy_qt_plugin_group tls '*.so'
-            copy_qt_plugin_group platforminputcontexts '*.so'
+      - name: Verify release assets
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          expected=(
+            "dist/FluentSerialAssistant-$version-windows-x64-setup.exe"
+            "dist/FluentSerialAssistant-$version-windows-x64-setup.exe.sha256"
+            "dist/FluentSerialAssistant-$version-macos-arm64.dmg"
+            "dist/FluentSerialAssistant-$version-macos-arm64.dmg.sha256"
+            "dist/FluentSerialAssistant-$version-linux-x64.deb"
+            "dist/FluentSerialAssistant-$version-linux-x64.deb.sha256"
+            "dist/FluentSerialAssistant-$version-linux-arm64.deb"
+            "dist/FluentSerialAssistant-$version-linux-arm64.deb.sha256"
+          )
+          for asset in "${expected[@]}"; do
+            test -f "$asset"
+          done
+          (cd dist && sha256sum --check ./*.sha256)
 
-            printf '%s\n' '[Paths]' 'Prefix = ..' 'Plugins = ../plugins' > "$package_root/bin/qt.conf"
-            printf '%s\n' \
-              '#!/usr/bin/env bash' \
-              'set -e' \
-              'app_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' \
-              'export LD_LIBRARY_PATH="$app_dir/lib:${LD_LIBRARY_PATH:-}"' \
-              'export QT_PLUGIN_PATH="$app_dir/plugins"' \
-              'exec "$app_dir/bin/FluentSerialAssistant" "$@"' \
-              > "$package_root/FluentSerialAssistant"
-            chmod +x "$package_root/FluentSerialAssistant"
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          cp "docs/release-notes/$GITHUB_REF_NAME.md" release-body.md
+          printf '\n\n## Code signing policy\n\n' >> release-body.md
+          printf '%s\n' \
+            "Free Windows code signing is provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/), after approval of the project's open-source application." \
+            '' \
+            'See the [project code signing policy](https://github.com/txp666/FluentSerialAssistant/blob/main/CODE_SIGNING_POLICY.md).' \
+            >> release-body.md
 
-            mkdir -p "$package_root/share/applications" "$package_root/share/icons/hicolor/1024x1024/apps"
-            cp packaging/linux/tech.zhangshu.FluentSerialAssistant.desktop "$package_root/share/applications/"
-            cp logo.png "$package_root/share/icons/hicolor/1024x1024/apps/tech.zhangshu.FluentSerialAssistant.png"
-            du -sh "$package_root"
-          fi
-
-          cp README.md CHANGELOG.md LICENSE "$package_root/"
-
-          if [ "${{ runner.os }}" = "Windows" ] && command -v 7z >/dev/null 2>&1; then
-            7z a "artifacts/${release_name}.zip" "$package_root/."
-          else
-            tar -czf "artifacts/${release_name}.tar.gz" -C "${RUNNER_TEMP}" "${release_name}"
-          fi
-
-      - name: Publish release assets
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: docs/release-notes/${{ github.ref_name }}.md
-          files: artifacts/*
+          body_path: release-body.md
+          files: dist/*
           fail_on_unmatched_files: true
           overwrite_files: true

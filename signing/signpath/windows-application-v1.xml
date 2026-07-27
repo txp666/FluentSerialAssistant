@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<artifact-configuration
+    xmlns="http://signpath.io/artifact-configuration/v1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://signpath.io/artifact-configuration/v1 https://app.signpath.io/Web/artifact-configuration/v1.xsd">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file
+        path="FluentSerialAssistant.exe"
+        product-name="Fluent Serial Assistant"
+        product-version="${version}"
+        file-version="${version}"
+        company-name="txp"
+        original-filename="FluentSerialAssistant.exe">
+      <authenticode-sign
+          hash-algorithm="sha256"
+          description="Fluent Serial Assistant"
+          description-url="https://github.com/txp666/FluentSerialAssistant" />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

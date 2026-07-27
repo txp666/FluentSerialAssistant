@@ -1,12 +1,14 @@
 #include "app/view/main_window.h"
 
 #include "app/core/app_i18n.h"
+#include "app/core/app_settings.h"
 #include "app/core/font_preferences.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
 #include <QtCore/QSettings>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QStyleFactory>
@@ -24,14 +26,25 @@ int main(int argc, char *argv[])
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QCoreApplication::setOrganizationName(QStringLiteral("txp"));
     QCoreApplication::setApplicationName(QStringLiteral("FluentSerialAssistant"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.9"));
+    QCoreApplication::setApplicationVersion(QStringLiteral(FLUENT_SERIAL_ASSISTANT_VERSION));
 
-    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString configDir = AppSettings::directoryPath();
+    const QString legacyConfigDir = QCoreApplication::applicationDirPath();
+    const auto migrateLegacyConfig = [&configDir, &legacyConfigDir](const QString &fileName) {
+        const QString targetPath = QDir(configDir).filePath(fileName);
+        const QString legacyPath = QDir(legacyConfigDir).filePath(fileName);
+        if (!QFile::exists(targetPath) && QFile::exists(legacyPath)) {
+            QFile::copy(legacyPath, targetPath);
+        }
+    };
+    migrateLegacyConfig(QStringLiteral("FluentSerialAssistant.ini"));
+    migrateLegacyConfig(QStringLiteral("FluentSerialAssistant.fluent.json"));
+
     QSettings::setDefaultFormat(QSettings::IniFormat);
-    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, appDir);
-    QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, appDir);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, configDir);
+    QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, configDir);
     FluentQt::FluentConfig::instance()->setFileName(
-        QDir(appDir).filePath(QStringLiteral("FluentSerialAssistant.fluent.json")));
+        QDir(configDir).filePath(QStringLiteral("FluentSerialAssistant.fluent.json")));
 
     AppFontPreferences::loadCustomFonts();
     FluentQt::FluentConfig::instance()->load();

@@ -2,6 +2,28 @@
 
 本项目遵循面向用户的变更记录格式。版本号在正式发布前可能继续调整。
 
+## [0.1.10] - 2026-07-27
+
+### 新增
+
+- Windows 发布改为请求管理员权限、默认安装到 Program Files 的 Inno Setup 中英文安装程序，支持开始菜单、桌面快捷方式和完整卸载。
+- macOS 发布增加 ARM64 DMG，Linux 发布增加 x64/ARM64 DEB 安装包。
+- 增加 SignPath Foundation 免费开源代码签名接入，获批后分别签署 Windows 主程序和安装器。
+- 增加发布产物 SHA-256 校验、签名政策、隐私政策及 SignPath 申请配置。
+
+### 变更
+
+- GitHub Release 工作流改为按平台独立构建、验证并汇总发布安装包。
+- 应用版本统一由 CMake 项目版本生成，避免界面版本、安装器版本和发布标签不一致。
+- Windows、macOS 和 Linux 统一使用系统标准用户配置目录，并自动迁移旧版安装目录中的配置，确保 Program Files、应用包和 DEB 安装后均可由普通用户运行。
+- 增加英文版 README，并在中英文文档之间提供切换链接。
+
+### 验证
+
+- Qt 6.11.1 macOS Release 全新配置及完整构建通过。
+- ARM64 DMG 已实际生成，并通过 ad-hoc bundle 签名、镜像校验及挂载内容检查。
+- Release YAML、SignPath XML、Bash 脚本语法和仓库差异检查通过。
+
 ## [0.1.9] - 2026-07-09
 
 ### 新增

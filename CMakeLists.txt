@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.9
+    VERSION 0.1.10
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
+
+include(GNUInstallDirs)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -131,6 +133,9 @@ if(APPLE)
 endif()
 
 target_include_directories(FluentSerialAssistant PRIVATE src src/app)
+target_compile_definitions(FluentSerialAssistant PRIVATE
+    FLUENT_SERIAL_ASSISTANT_VERSION="${PROJECT_VERSION}"
+)
 
 target_link_libraries(FluentSerialAssistant
     PRIVATE
@@ -163,4 +168,101 @@ set_target_properties(FluentSerialAssistant PROPERTIES
     MACOSX_BUNDLE_ICON_FILE "app_icon.icns"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+)
+
+if(UNIX AND NOT APPLE)
+    set_target_properties(FluentSerialAssistant PROPERTIES
+        INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
+    )
+endif()
+
+if(WIN32)
+    set(FLUENT_SERIAL_ASSISTANT_RUNTIME_INSTALL_DIR ".")
+else()
+    set(FLUENT_SERIAL_ASSISTANT_RUNTIME_INSTALL_DIR "${CMAKE_INSTALL_BINDIR}")
+endif()
+
+install(TARGETS FluentSerialAssistant
+    RUNTIME DESTINATION "${FLUENT_SERIAL_ASSISTANT_RUNTIME_INSTALL_DIR}" COMPONENT Runtime
+    BUNDLE DESTINATION "." COMPONENT Runtime
+)
+
+if(UNIX AND NOT APPLE)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/logo.png"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps"
+        RENAME "tech.zhangshu.FluentSerialAssistant.png"
+        COMPONENT Runtime
+    )
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/tech.zhangshu.FluentSerialAssistant.desktop"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/applications"
+        COMPONENT Runtime
+    )
+endif()
+
+# Windows deployment is handled by scripts/package_windows.ps1 so the staged
+# executable can be signed before Inno Setup builds the final installer.
+# macOS explicitly deploys only the Qt plugins used by this application;
+# Homebrew can otherwise expose unrelated plugins with unavailable frameworks.
+if(APPLE)
+    set(FLUENT_SERIAL_ASSISTANT_MACOS_QT_PLUGINS
+        Qt6::QCocoaIntegrationPlugin
+        Qt6::QICOPlugin
+        Qt6::QSvgPlugin
+        Qt6::QSvgIconPlugin
+    )
+    set(FLUENT_SERIAL_ASSISTANT_MACOS_OPTIONAL_QT_PLUGINS
+        Qt6::QAppleNetworkInformationPlugin
+        Qt6::QSecureTransportBackendPlugin
+        Qt6::QTlsBackendCertOnlyPlugin
+    )
+    set(FLUENT_SERIAL_ASSISTANT_MACOS_DEPLOY_TOOL_OPTIONS "")
+    foreach(plugin_target IN LISTS FLUENT_SERIAL_ASSISTANT_MACOS_OPTIONAL_QT_PLUGINS)
+        if(TARGET ${plugin_target})
+            list(APPEND FLUENT_SERIAL_ASSISTANT_MACOS_QT_PLUGINS ${plugin_target})
+        endif()
+    endforeach()
+    foreach(plugin_target IN LISTS FLUENT_SERIAL_ASSISTANT_MACOS_QT_PLUGINS)
+        if(NOT TARGET ${plugin_target})
+            message(FATAL_ERROR "Required macOS Qt plugin target is unavailable: ${plugin_target}")
+        endif()
+        get_target_property(plugin_type ${plugin_target} QT_PLUGIN_TYPE)
+        get_target_property(plugin_path ${plugin_target} IMPORTED_LOCATION_RELEASE)
+        if(NOT plugin_path)
+            get_target_property(plugin_path ${plugin_target} IMPORTED_LOCATION)
+        endif()
+        if(NOT plugin_type OR NOT plugin_path)
+            message(FATAL_ERROR "Qt plugin target is missing deployment metadata: ${plugin_target}")
+        endif()
+        file(REAL_PATH "${plugin_path}" plugin_real_path)
+        get_filename_component(plugin_file_name "${plugin_real_path}" NAME)
+        install(FILES "${plugin_real_path}"
+            DESTINATION "FluentSerialAssistant.app/Contents/PlugIns/${plugin_type}"
+            COMPONENT Runtime
+        )
+        list(APPEND FLUENT_SERIAL_ASSISTANT_MACOS_DEPLOY_TOOL_OPTIONS
+            "-executable=FluentSerialAssistant.app/Contents/PlugIns/${plugin_type}/${plugin_file_name}"
+        )
+    endforeach()
+    qt_generate_deploy_app_script(
+        TARGET FluentSerialAssistant
+        OUTPUT_SCRIPT FLUENT_SERIAL_ASSISTANT_DEPLOY_SCRIPT
+        NO_PLUGINS
+        NO_TRANSLATIONS
+        NO_UNSUPPORTED_PLATFORM_ERROR
+        DEPLOY_TOOL_OPTIONS ${FLUENT_SERIAL_ASSISTANT_MACOS_DEPLOY_TOOL_OPTIONS}
+    )
+    install(SCRIPT "${FLUENT_SERIAL_ASSISTANT_DEPLOY_SCRIPT}" COMPONENT Runtime)
+elseif(UNIX)
+    qt_generate_deploy_app_script(
+        TARGET FluentSerialAssistant
+        OUTPUT_SCRIPT FLUENT_SERIAL_ASSISTANT_DEPLOY_SCRIPT
+        NO_TRANSLATIONS
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    install(SCRIPT "${FLUENT_SERIAL_ASSISTANT_DEPLOY_SCRIPT}" COMPONENT Runtime)
+endif()
+
+file(GENERATE
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/FluentSerialAssistant-version.txt"
+    CONTENT "${PROJECT_VERSION}\n"
 )
