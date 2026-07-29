@@ -63,6 +63,15 @@ QJsonObject booleanProperty(const QString &description, bool defaultValue)
     return property;
 }
 
+QJsonObject numberProperty(const QString &description, double defaultValue)
+{
+    QJsonObject property;
+    property.insert(QStringLiteral("type"), QStringLiteral("number"));
+    property.insert(QStringLiteral("description"), description);
+    property.insert(QStringLiteral("default"), defaultValue);
+    return property;
+}
+
 QJsonObject objectSchema(const QJsonObject &properties = {}, const QJsonArray &required = {})
 {
     QJsonObject schema;
@@ -381,15 +390,56 @@ QJsonArray McpServer::tools() const
                        objectSchema(protocolProperties, QJsonArray{QStringLiteral("name")}), false, false, true));
 
     QJsonObject plotProperties = optionalSessionProperties();
-    plotProperties.insert(QStringLiteral("protocol"),
-                          stringProperty(QStringLiteral("How received text is converted to curve values."),
-                                         QJsonArray{QStringLiteral("numbers"), QStringLiteral("delimited"),
-                                                    QStringLiteral("keyValue"), QStringLiteral("json")}));
+    plotProperties.insert(
+        QStringLiteral("protocol"),
+        stringProperty(QStringLiteral("How received data is converted to curve values."),
+                       QJsonArray{QStringLiteral("numbers"), QStringLiteral("delimited"), QStringLiteral("keyValue"),
+                                  QStringLiteral("json"), QStringLiteral("binary")}));
+    QJsonObject fieldsProperty;
+    fieldsProperty.insert(QStringLiteral("type"), QStringLiteral("array"));
+    fieldsProperty.insert(QStringLiteral("description"),
+                          QStringLiteral("Optional field names to keep. Multi-word and Unicode names are supported."));
+    fieldsProperty.insert(QStringLiteral("items"), QJsonObject{{QStringLiteral("type"), QStringLiteral("string")}});
+    plotProperties.insert(QStringLiteral("fields"), fieldsProperty);
+    plotProperties.insert(
+        QStringLiteral("binarySource"),
+        stringProperty(QStringLiteral("Read binary fields from the complete frame or the active protocol payload."),
+                       QJsonArray{QStringLiteral("frame"), QStringLiteral("payload")}));
+
+    QJsonObject binaryFieldProperties;
+    binaryFieldProperties.insert(QStringLiteral("name"), stringProperty(QStringLiteral("Curve and field name.")));
+    binaryFieldProperties.insert(QStringLiteral("byteOffset"),
+                                 integerProperty(QStringLiteral("Zero-based byte offset."), 0, 100000000, 0));
+    binaryFieldProperties.insert(
+        QStringLiteral("type"),
+        stringProperty(QStringLiteral("Numeric field type."),
+                       QJsonArray{QStringLiteral("u8"), QStringLiteral("i8"), QStringLiteral("u16"),
+                                  QStringLiteral("i16"), QStringLiteral("u32"), QStringLiteral("i32"),
+                                  QStringLiteral("u64"), QStringLiteral("i64"), QStringLiteral("f32"),
+                                  QStringLiteral("f64")}));
+    binaryFieldProperties.insert(QStringLiteral("byteOrder"),
+                                 stringProperty(QStringLiteral("Byte order for multi-byte fields."),
+                                                QJsonArray{QStringLiteral("little"), QStringLiteral("big")}));
+    binaryFieldProperties.insert(QStringLiteral("scale"),
+                                 numberProperty(QStringLiteral("Multiplier applied after decoding."), 1.0));
+    binaryFieldProperties.insert(QStringLiteral("add"),
+                                 numberProperty(QStringLiteral("Offset added after scaling."), 0.0));
+    QJsonObject binaryFieldsProperty;
+    binaryFieldsProperty.insert(QStringLiteral("type"), QStringLiteral("array"));
+    binaryFieldsProperty.insert(
+        QStringLiteral("description"),
+        QStringLiteral("Typed binary fields. When omitted, each source byte is plotted as CH1, CH2, and so on."));
+    binaryFieldsProperty.insert(
+        QStringLiteral("items"),
+        objectSchema(binaryFieldProperties,
+                     QJsonArray{QStringLiteral("name"), QStringLiteral("byteOffset"), QStringLiteral("type")}));
+    plotProperties.insert(QStringLiteral("binaryFields"), binaryFieldsProperty);
     plotProperties.insert(QStringLiteral("clear"),
                           booleanProperty(QStringLiteral("Clear existing curve data after opening."), false));
     result.append(tool(QStringLiteral("plot_open"), QStringLiteral("Open live plot"),
-                       QStringLiteral("Open the target session's live curve window and select its received-text "
-                                      "value extraction protocol."),
+                       QStringLiteral("Open the target session's live curve window. Supports line-aware text, "
+                                      "multi-word key-value fields, nested JSON, field selection, and typed binary "
+                                      "frame or protocol-payload fields."),
                        objectSchema(plotProperties), false, false, true));
     return result;
 }

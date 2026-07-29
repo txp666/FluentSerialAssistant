@@ -288,12 +288,104 @@
         <translation>JSON 对象</translation>
     </message>
     <message>
-        <source>选择接收文本如何转换为曲线数据</source>
-        <translation>选择接收文本如何转换为曲线数据</translation>
+        <source>二进制字段</source>
+        <translation>二进制字段</translation>
+    </message>
+    <message>
+        <source>选择接收数据如何转换为曲线数据</source>
+        <translation>选择接收数据如何转换为曲线数据</translation>
     </message>
     <message>
         <source>绘图协议示例</source>
         <translation>绘图协议示例</translation>
+    </message>
+    <message>
+        <source>解析设置</source>
+        <translation>解析设置</translation>
+    </message>
+    <message>
+        <source>字段筛选留空时显示全部解析结果。</source>
+        <translation>字段筛选留空时显示全部解析结果。</translation>
+    </message>
+    <message>
+        <source>例如：free sram, minimal sram</source>
+        <translation>例如：free sram, minimal sram</translation>
+    </message>
+    <message>
+        <source>字段筛选</source>
+        <translation>字段筛选</translation>
+    </message>
+    <message>
+        <source>二进制来源</source>
+        <translation>二进制来源</translation>
+    </message>
+    <message>
+        <source>完整帧</source>
+        <translation>完整帧</translation>
+    </message>
+    <message>
+        <source>协议载荷</source>
+        <translation>协议载荷</translation>
+    </message>
+    <message>
+        <source>未定义字段时按字节绘制 CH1、CH2……；协议载荷需要先启用协议模板。</source>
+        <translation>未定义字段时按字节绘制 CH1、CH2……；协议载荷需要先启用协议模板。</translation>
+    </message>
+    <message>
+        <source>字节偏移</source>
+        <translation>字节偏移</translation>
+    </message>
+    <message>
+        <source>类型</source>
+        <translation>类型</translation>
+    </message>
+    <message>
+        <source>比例</source>
+        <translation>比例</translation>
+    </message>
+    <message>
+        <source>加值</source>
+        <translation>加值</translation>
+    </message>
+    <message>
+        <source>添加字段</source>
+        <translation>添加字段</translation>
+    </message>
+    <message>
+        <source>删除选中</source>
+        <translation>删除选中</translation>
+    </message>
+    <message>
+        <source>应用</source>
+        <translation>应用</translation>
+    </message>
+    <message>
+        <source>配置无效</source>
+        <translation>配置无效</translation>
+    </message>
+    <message>
+        <source>第 %1 行缺少字段名称</source>
+        <translation>第 %1 行缺少字段名称</translation>
+    </message>
+    <message>
+        <source>第 %1 行的字节偏移无效</source>
+        <translation>第 %1 行的字节偏移无效</translation>
+    </message>
+    <message>
+        <source>第 %1 行的类型或字节序无效</source>
+        <translation>第 %1 行的类型或字节序无效</translation>
+    </message>
+    <message>
+        <source>第 %1 行的比例或加值无效</source>
+        <translation>第 %1 行的比例或加值无效</translation>
+    </message>
+    <message>
+        <source>小端</source>
+        <translation>小端</translation>
+    </message>
+    <message>
+        <source>大端</source>
+        <translation>大端</translation>
     </message>
     <message>
         <source>暂停</source>
@@ -324,6 +416,10 @@
         <translation>%1 · %2 点 · %3 通道</translation>
     </message>
     <message>
+        <source> · 字段：%1</source>
+        <translation> · 字段：%1</translation>
+    </message>
+    <message>
         <source>继续</source>
         <translation>继续</translation>
     </message>
@@ -334,22 +430,26 @@
 分隔值：读取逗号、分号、空格分隔的纯数字
   24.8,60.5,101.3  =&gt; CH1, CH2, CH3
 
-键值对：读取 name=value 或 name:value，字段名作为曲线名
-  temp=24.8 hum=60.5  =&gt; temp, hum
+键值对：支持多词或中文字段名
+  free sram: 43815 minimal sram: 38791
 
-JSON 对象：读取数值字段，数组字段会展开
-  {&quot;temp&quot;:24.8,&quot;hum&quot;:60.5}  =&gt; temp, hum</source>
+JSON 对象：递归读取对象和数组中的数值
+  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
+
+二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值</source>
         <translation>全部数字：提取每行里的所有数字
   T=24.8 H=60.5  =&gt; CH1=24.8, CH2=60.5
 
 分隔值：读取逗号、分号、空格分隔的纯数字
   24.8,60.5,101.3  =&gt; CH1, CH2, CH3
 
-键值对：读取 name=value 或 name:value，字段名作为曲线名
-  temp=24.8 hum=60.5  =&gt; temp, hum
+键值对：支持多词或中文字段名
+  free sram: 43815 minimal sram: 38791
 
-JSON 对象：读取数值字段，数组字段会展开
-  {&quot;temp&quot;:24.8,&quot;hum&quot;:60.5}  =&gt; temp, hum</translation>
+JSON 对象：递归读取对象和数组中的数值
+  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
+
+二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值</translation>
     </message>
     <message>
         <source>暂无曲线数据</source>

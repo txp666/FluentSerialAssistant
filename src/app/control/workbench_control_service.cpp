@@ -417,15 +417,23 @@ QJsonObject WorkbenchControlService::handleRequest(const QJsonObject &request)
     }
 
     if (action == QStringLiteral("plot.open")) {
-        const QString protocol = params.value(QStringLiteral("protocol")).toString(QStringLiteral("numbers"));
+        AppPlot::ParserConfig config;
         QString error;
-        if (!session->controlShowPlot(protocol, params.value(QStringLiteral("clear")).toBool(false), &error)) {
+        if (!AppPlot::parserConfigFromJson(params, &config, &error)) {
+            return errorResponse(id, QStringLiteral("INVALID_PARAMS"), error);
+        }
+        if (!session->controlShowPlot(config, params.value(QStringLiteral("clear")).toBool(false), &error)) {
             return errorResponse(id, QStringLiteral("PLOT_CONFIG_FAILED"), error);
         }
         QJsonObject result;
         result.insert(QStringLiteral("session"), session->controlStatus().id);
         result.insert(QStringLiteral("visible"), true);
-        result.insert(QStringLiteral("protocol"), protocol);
+        result.insert(QStringLiteral("protocol"), AppPlot::protocolKey(config.protocol));
+        result.insert(QStringLiteral("fields"), QJsonArray::fromStringList(config.fields));
+        if (config.protocol == AppPlot::Protocol::Binary) {
+            result.insert(QStringLiteral("binarySource"), AppPlot::binarySourceKey(config.binarySource));
+            result.insert(QStringLiteral("binaryFieldCount"), config.binaryFields.size());
+        }
         return successResponse(id, result);
     }
 

@@ -1,6 +1,7 @@
 #include "app/view/quick_plot_window.h"
 #include "app/core/app_i18n.h"
 #include "app/view/fluent_tooltip_helper.h"
+#include "app/view/plot_parser_dialog.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
@@ -8,12 +9,9 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
-#include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
-#include <QtCore/QJsonObject>
 #include <QtCore/QJsonParseError>
-#include <QtCore/QJsonValue>
-#include <QtCore/QRegularExpression>
+#include <QtCore/QSignalBlocker>
 #include <QtCore/QTextStream>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QHBoxLayout>
@@ -25,17 +23,25 @@
 
 namespace {
 
-const QRegularExpression &numberPattern()
+bool sameBinaryField(const AppPlot::BinaryField &left, const AppPlot::BinaryField &right)
 {
-    static const QRegularExpression pattern(QStringLiteral(R"([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?)"));
-    return pattern;
+    return left.name == right.name && left.byteOffset == right.byteOffset && left.type == right.type &&
+           left.byteOrder == right.byteOrder && qFuzzyCompare(left.scale, right.scale) &&
+           qFuzzyCompare(left.add, right.add);
 }
 
-const QRegularExpression &wholeNumberPattern()
+bool sameParserConfig(const AppPlot::ParserConfig &left, const AppPlot::ParserConfig &right)
 {
-    static const QRegularExpression pattern(
-        QStringLiteral(R"(^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$)"));
-    return pattern;
+    if (left.protocol != right.protocol || left.fields != right.fields || left.binarySource != right.binarySource ||
+        left.binaryFields.size() != right.binaryFields.size()) {
+        return false;
+    }
+    for (int index = 0; index < left.binaryFields.size(); ++index) {
+        if (!sameBinaryField(left.binaryFields.at(index), right.binaryFields.at(index))) {
+            return false;
+        }
+    }
+    return true;
 }
 
 double blankValue() { return std::numeric_limits<double>::quiet_NaN(); }
@@ -75,17 +81,28 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_protocolCombo->addItem(AppI18n::text("分隔值"), QIcon(), QStringLiteral("delimited"));
     m_protocolCombo->addItem(AppI18n::text("键值对"), QIcon(), QStringLiteral("keyValue"));
     m_protocolCombo->addItem(AppI18n::text("JSON 对象"), QIcon(), QStringLiteral("json"));
+    m_protocolCombo->addItem(AppI18n::text("二进制字段"), QIcon(), QStringLiteral("binary"));
     m_protocolCombo->setFixedSize(132, 32);
-    AppUi::setFluentToolTip(m_protocolCombo, AppI18n::text("选择接收文本如何转换为曲线数据"));
-    const QString savedProtocol =
-        AppSettings().value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
-    const int protocolIndex = m_protocolCombo->findData(savedProtocol);
+    AppUi::setFluentToolTip(m_protocolCombo, AppI18n::text("选择接收数据如何转换为曲线数据"));
+    AppSettings settings;
+    const QString savedConfig = settings.value(QStringLiteral("plot/parserConfig")).toString();
+    QJsonParseError savedConfigError;
+    const QJsonDocument savedConfigDocument = QJsonDocument::fromJson(savedConfig.toUtf8(), &savedConfigError);
+    QString configError;
+    if (savedConfigError.error != QJsonParseError::NoError || !savedConfigDocument.isObject() ||
+        !AppPlot::parserConfigFromJson(savedConfigDocument.object(), &m_parserConfig, &configError)) {
+        const QString savedProtocol =
+            settings.value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
+        AppPlot::protocolFromKey(savedProtocol, &m_parserConfig.protocol);
+    }
+    const int protocolIndex = m_protocolCombo->findData(AppPlot::protocolKey(m_parserConfig.protocol));
     m_protocolCombo->setCurrentIndex(protocolIndex >= 0 ? protocolIndex : 0);
-    m_protocol = protocolFromKey(m_protocolCombo->currentData().toString());
     auto *protocolHelpButton = new TransparentToolButton(icon(FluentIcon::Question), this);
     AppUi::setFluentToolTip(protocolHelpButton, AppI18n::text("绘图协议示例"));
     protocolHelpButton->setFixedSize(32, 32);
     protocolHelpButton->setIconSize(QSize(16, 16));
+    auto *parserSettingsButton = new PushButton(icon(FluentIcon::Setting), AppI18n::text("解析设置"), this);
+    parserSettingsButton->setFixedHeight(32);
 
     m_pauseButton = new PushButton(icon(FluentIcon::Pause), AppI18n::text("暂停"), this);
     m_pauseButton->setFixedHeight(32);
@@ -100,16 +117,17 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_statusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_statusLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-    toolbar->addWidget(protocolLabel);
-    toolbar->addWidget(m_protocolCombo);
-    toolbar->addWidget(protocolHelpButton);
+    toolbar->addWidget(protocolLabel, 0, Qt::AlignVCenter);
+    toolbar->addWidget(m_protocolCombo, 0, Qt::AlignVCenter);
+    toolbar->addWidget(protocolHelpButton, 0, Qt::AlignVCenter);
+    toolbar->addWidget(parserSettingsButton, 0, Qt::AlignVCenter);
     toolbar->addSpacing(4);
-    toolbar->addWidget(m_pauseButton);
-    toolbar->addWidget(clearButton);
-    toolbar->addWidget(resetButton);
-    toolbar->addWidget(exportButton);
+    toolbar->addWidget(m_pauseButton, 0, Qt::AlignVCenter);
+    toolbar->addWidget(clearButton, 0, Qt::AlignVCenter);
+    toolbar->addWidget(resetButton, 0, Qt::AlignVCenter);
+    toolbar->addWidget(exportButton, 0, Qt::AlignVCenter);
     toolbar->addStretch(1);
-    toolbar->addWidget(m_statusLabel, 1);
+    toolbar->addWidget(m_statusLabel, 1, Qt::AlignVCenter);
     root->addLayout(toolbar);
 
     m_plot = new RealtimePlotWidget(this);
@@ -126,10 +144,15 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_plot->setSeriesName(0, QStringLiteral("CH1"));
     root->addWidget(m_plot, 1);
 
-    connect(m_protocolCombo, &ComboBox::currentIndexChanged, this,
-            [this](int) { setProtocol(protocolFromKey(m_protocolCombo->currentData().toString())); });
+    connect(m_protocolCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        AppPlot::ParserConfig config = m_parserConfig;
+        AppPlot::protocolFromKey(m_protocolCombo->currentData().toString(), &config.protocol);
+        config.fields.clear();
+        configureParser(config);
+    });
     connect(protocolHelpButton, &TransparentToolButton::clicked, this,
             [this, protocolHelpButton]() { showProtocolHelp(protocolHelpButton); });
+    connect(parserSettingsButton, &PushButton::clicked, this, &QuickPlotWindow::showParserSettings);
     connect(m_pauseButton, &PushButton::clicked, this, [this]() { setPaused(!m_paused); });
     connect(clearButton, &PushButton::clicked, this, &QuickPlotWindow::clearData);
     connect(resetButton, &PushButton::clicked, m_plot, &RealtimePlotWidget::resetView);
@@ -138,24 +161,28 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     updateStatus();
 }
 
-void QuickPlotWindow::appendText(const QDateTime &timestamp, const QString &text, bool ignorePause)
+void QuickPlotWindow::appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
+                                   const QByteArray &payload, bool ignorePause)
 {
     if (m_paused && !ignorePause) {
         return;
     }
 
-    const QVector<PlotValue> values = extractValues(text);
-    if (values.isEmpty()) {
-        return;
+    const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(m_parserConfig, text, frame, payload);
+    for (const AppPlot::PlotSample &values : samples) {
+        appendValues(timestamp, values);
     }
+}
 
+void QuickPlotWindow::appendValues(const QDateTime &timestamp, const AppPlot::PlotSample &values)
+{
     const int sample = m_nextSample++;
     PlotRow row;
     row.timestamp = timestamp;
     row.sample = sample;
 
     for (int index = 0; index < values.size(); ++index) {
-        const PlotValue &plotValue = values.at(index);
+        const AppPlot::PlotValue &plotValue = values.at(index);
         const int channelIndex = channelIndexFor(plotValue.name, index);
         if (row.values.size() < m_channelCount) {
             const int oldSize = row.values.size();
@@ -186,166 +213,40 @@ void QuickPlotWindow::clearData()
     updateStatus();
 }
 
-bool QuickPlotWindow::setProtocolKey(const QString &key)
+bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)
 {
-    static const QStringList supported = {QStringLiteral("numbers"), QStringLiteral("delimited"),
-                                          QStringLiteral("keyValue"), QStringLiteral("json")};
-    if (!supported.contains(key)) {
-        return false;
-    }
+    const QString key = AppPlot::protocolKey(config.protocol);
     const int index = m_protocolCombo ? m_protocolCombo->findData(key) : -1;
     if (index < 0) {
         return false;
     }
-    m_protocolCombo->setCurrentIndex(index);
-    setProtocol(protocolFromKey(key));
+    AppPlot::ParserConfig normalized = config;
+    for (QString &field : normalized.fields) {
+        field = field.simplified();
+    }
+    normalized.fields.removeAll(QString());
+    if (sameParserConfig(m_parserConfig, normalized)) {
+        return true;
+    }
+    {
+        const QSignalBlocker blocker(m_protocolCombo);
+        m_protocolCombo->setCurrentIndex(index);
+    }
+    m_parserConfig = normalized;
+    AppSettings settings;
+    settings.setValue(QStringLiteral("plot/protocol"), key);
+    settings.setValue(
+        QStringLiteral("plot/parserConfig"),
+        QString::fromUtf8(QJsonDocument(AppPlot::parserConfigToJson(m_parserConfig)).toJson(QJsonDocument::Compact)));
+    clearData();
+    emit protocolChanged();
     return true;
 }
 
-QuickPlotWindow::PlotProtocol QuickPlotWindow::protocolFromKey(const QString &key) const
+bool QuickPlotWindow::requiresProtocolPayload() const
 {
-    if (key == QStringLiteral("delimited")) {
-        return PlotProtocol::Delimited;
-    }
-    if (key == QStringLiteral("keyValue")) {
-        return PlotProtocol::KeyValue;
-    }
-    if (key == QStringLiteral("json")) {
-        return PlotProtocol::Json;
-    }
-    return PlotProtocol::Numbers;
-}
-
-QString QuickPlotWindow::protocolKey(PlotProtocol protocol) const
-{
-    switch (protocol) {
-    case PlotProtocol::Delimited:
-        return QStringLiteral("delimited");
-    case PlotProtocol::KeyValue:
-        return QStringLiteral("keyValue");
-    case PlotProtocol::Json:
-        return QStringLiteral("json");
-    case PlotProtocol::Numbers:
-    default:
-        return QStringLiteral("numbers");
-    }
-}
-
-QVector<QuickPlotWindow::PlotValue> QuickPlotWindow::extractValues(const QString &text) const
-{
-    switch (m_protocol) {
-    case PlotProtocol::Delimited:
-        return extractDelimitedValues(text);
-    case PlotProtocol::KeyValue:
-        return extractKeyValuePairs(text);
-    case PlotProtocol::Json:
-        return extractJsonValues(text);
-    case PlotProtocol::Numbers:
-    default:
-        return extractNumberValues(text);
-    }
-}
-
-QVector<QuickPlotWindow::PlotValue> QuickPlotWindow::extractNumberValues(const QString &text) const
-{
-    QVector<PlotValue> values;
-    auto it = numberPattern().globalMatch(text);
-    while (it.hasNext()) {
-        const QRegularExpressionMatch match = it.next();
-        bool ok = false;
-        const double value = match.captured(0).toDouble(&ok);
-        if (ok && std::isfinite(value)) {
-            values.append({QString(), value});
-        }
-    }
-    return values;
-}
-
-QVector<QuickPlotWindow::PlotValue> QuickPlotWindow::extractDelimitedValues(const QString &text) const
-{
-    QVector<PlotValue> values;
-    const QStringList tokens = text.split(QRegularExpression(QStringLiteral(R"([,;\s]+)")), Qt::SkipEmptyParts);
-    for (const QString &token : tokens) {
-        const QString trimmed = token.trimmed();
-        if (!wholeNumberPattern().match(trimmed).hasMatch()) {
-            continue;
-        }
-        bool ok = false;
-        const double value = trimmed.toDouble(&ok);
-        if (ok && std::isfinite(value)) {
-            values.append({QString(), value});
-        }
-    }
-    return values;
-}
-
-QVector<QuickPlotWindow::PlotValue> QuickPlotWindow::extractKeyValuePairs(const QString &text) const
-{
-    static const QRegularExpression pairPattern(
-        QStringLiteral(
-            R"(([\p{L}_][\p{L}\p{N}_\.\-]*)\s*[:=]\s*([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?))"),
-        QRegularExpression::UseUnicodePropertiesOption);
-
-    QVector<PlotValue> values;
-    auto it = pairPattern.globalMatch(text);
-    while (it.hasNext()) {
-        const QRegularExpressionMatch match = it.next();
-        bool ok = false;
-        const double value = match.captured(2).toDouble(&ok);
-        if (ok && std::isfinite(value)) {
-            values.append({match.captured(1), value});
-        }
-    }
-    return values;
-}
-
-QVector<QuickPlotWindow::PlotValue> QuickPlotWindow::extractJsonValues(const QString &text) const
-{
-    QJsonParseError error;
-    const QJsonDocument document = QJsonDocument::fromJson(text.trimmed().toUtf8(), &error);
-    if (error.error != QJsonParseError::NoError) {
-        return {};
-    }
-
-    QVector<PlotValue> values;
-    if (document.isArray()) {
-        const QJsonArray array = document.array();
-        for (const QJsonValue &entry : array) {
-            if (entry.isDouble()) {
-                const double value = entry.toDouble();
-                if (std::isfinite(value)) {
-                    values.append({QString(), value});
-                }
-            }
-        }
-        return values;
-    }
-
-    if (!document.isObject()) {
-        return {};
-    }
-
-    const QJsonObject object = document.object();
-    for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
-        if (it.value().isDouble()) {
-            const double value = it.value().toDouble();
-            if (std::isfinite(value)) {
-                values.append({it.key(), value});
-            }
-        } else if (it.value().isArray()) {
-            const QJsonArray array = it.value().toArray();
-            for (int index = 0; index < array.size(); ++index) {
-                if (!array.at(index).isDouble()) {
-                    continue;
-                }
-                const double value = array.at(index).toDouble();
-                if (std::isfinite(value)) {
-                    values.append({QStringLiteral("%1_%2").arg(it.key()).arg(index + 1), value});
-                }
-            }
-        }
-    }
-    return values;
+    return m_parserConfig.protocol == AppPlot::Protocol::Binary &&
+           m_parserConfig.binarySource == AppPlot::BinarySource::Payload;
 }
 
 int QuickPlotWindow::channelIndexFor(const QString &name, int position)
@@ -389,8 +290,11 @@ void QuickPlotWindow::ensureSeriesCount(int count)
 void QuickPlotWindow::updateStatus()
 {
     const QString state = m_paused ? AppI18n::text("已暂停") : AppI18n::text("实时");
-    m_statusLabel->setText(
-        AppI18n::text("%1 · %2 点 · %3 通道").arg(state).arg(m_rows.size()).arg(qMax(1, m_channelCount)));
+    QString status = AppI18n::text("%1 · %2 点 · %3 通道").arg(state).arg(m_rows.size()).arg(qMax(1, m_channelCount));
+    if (!m_parserConfig.fields.isEmpty()) {
+        status += AppI18n::text(" · 字段：%1").arg(m_parserConfig.fields.join(QStringLiteral(", ")));
+    }
+    m_statusLabel->setText(status);
 }
 
 void QuickPlotWindow::setPaused(bool paused)
@@ -403,16 +307,12 @@ void QuickPlotWindow::setPaused(bool paused)
     updateStatus();
 }
 
-void QuickPlotWindow::setProtocol(PlotProtocol protocol)
+void QuickPlotWindow::showParserSettings()
 {
-    if (m_protocol == protocol) {
-        return;
+    PlotParserDialog dialog(m_parserConfig, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        configureParser(dialog.parserConfig());
     }
-
-    m_protocol = protocol;
-    AppSettings().setValue(QStringLiteral("plot/protocol"), protocolKey(protocol));
-    clearData();
-    emit protocolChanged();
 }
 
 void QuickPlotWindow::showProtocolHelp(QWidget *target)
@@ -420,8 +320,9 @@ void QuickPlotWindow::showProtocolHelp(QWidget *target)
     const QString content =
         AppI18n::text("全部数字：提取每行里的所有数字\n  T=24.8 H=60.5  => CH1=24.8, "
                       "CH2=60.5\n\n分隔值：读取逗号、分号、空格分隔的纯数字\n  24.8,60.5,101.3  => CH1, CH2, "
-                      "CH3\n\n键值对：读取 name=value 或 name:value，字段名作为曲线名\n  temp=24.8 hum=60.5  => temp, "
-                      "hum\n\nJSON 对象：读取数值字段，数组字段会展开\n  {\"temp\":24.8,\"hum\":60.5}  => temp, hum");
+                      "CH3\n\n键值对：支持多词或中文字段名\n  free sram: 43815 minimal sram: 38791\n\nJSON "
+                      "对象：递归读取对象和数组中的数值\n  {\"system\":{\"free\":43815}} => system.free\n\n"
+                      "二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值");
     FluentQt::TeachingTip::create(AppI18n::text("绘图协议示例"), content,
                                   FluentQt::icon(FluentQt::FluentIcon::Question), QPixmap(), true, target,
                                   FluentQt::TeachingTipTailPosition::Bottom, -1, this);

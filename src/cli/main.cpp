@@ -4,6 +4,7 @@
 #include <QtCore/QCommandLineOption>
 #include <QtCore/QCommandLineParser>
 #include <QtCore/QCoreApplication>
+#include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonParseError>
@@ -78,8 +79,18 @@ int main(int argc, char *argv[])
     parser.addOption({QStringLiteral("name"), QStringLiteral("Protocol template name"), QStringLiteral("value")});
     parser.addOption({QStringLiteral("disable"), QStringLiteral("Select the protocol template but disable parsing")});
     parser.addOption({QStringLiteral("plot-protocol"),
-                      QStringLiteral("Plot protocol: numbers, delimited, keyValue, or json"), QStringLiteral("name"),
-                      QStringLiteral("numbers")});
+                      QStringLiteral("Plot protocol: numbers, delimited, keyValue, json, or binary"),
+                      QStringLiteral("name"), QStringLiteral("numbers")});
+    parser.addOption({QStringLiteral("plot-field"),
+                      QStringLiteral("Only plot a named field; repeat the option for multiple fields"),
+                      QStringLiteral("name")});
+    parser.addOption({QStringLiteral("binary-source"), QStringLiteral("Binary data source: frame or payload"),
+                      QStringLiteral("source"), QStringLiteral("frame")});
+    parser.addOption({QStringLiteral("binary-field"),
+                      QStringLiteral("Binary field JSON; repeatable, for example "
+                                     "'{\"name\":\"temperature\",\"byteOffset\":0,\"type\":\"i16\","
+                                     "\"byteOrder\":\"little\",\"scale\":0.1}'"),
+                      QStringLiteral("json")});
     parser.addOption({QStringLiteral("clear"), QStringLiteral("Clear plot data after opening")});
     parser.addOption({QStringLiteral("params"), QStringLiteral("Raw JSON object for the call command"),
                       QStringLiteral("json"), QStringLiteral("{}")});
@@ -171,6 +182,21 @@ int main(int argc, char *argv[])
     } else if (command == QStringLiteral("plot")) {
         action = QStringLiteral("plot.open");
         params.insert(QStringLiteral("protocol"), parser.value(QStringLiteral("plot-protocol")));
+        params.insert(QStringLiteral("fields"),
+                      QJsonArray::fromStringList(parser.values(QStringLiteral("plot-field"))));
+        params.insert(QStringLiteral("binarySource"), parser.value(QStringLiteral("binary-source")));
+        QJsonArray binaryFields;
+        for (const QString &fieldJson : parser.values(QStringLiteral("binary-field"))) {
+            QJsonParseError fieldError;
+            const QJsonDocument fieldDocument = QJsonDocument::fromJson(fieldJson.toUtf8(), &fieldError);
+            if (fieldError.error != QJsonParseError::NoError || !fieldDocument.isObject()) {
+                return printCliError(
+                    QStringLiteral("INVALID_ARGUMENT"),
+                    QStringLiteral("--binary-field must be a JSON object: %1").arg(fieldError.errorString()));
+            }
+            binaryFields.append(fieldDocument.object());
+        }
+        params.insert(QStringLiteral("binaryFields"), binaryFields);
         params.insert(QStringLiteral("clear"), parser.isSet(QStringLiteral("clear")));
     } else if (command == QStringLiteral("call")) {
         if (positional.size() < 2) {

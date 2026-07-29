@@ -18,7 +18,7 @@
 
 namespace {
 
-constexpr int DefaultTerminalFontPointSize = 10;
+constexpr int DefaultTerminalFontPointSize = 14;
 constexpr int MinTerminalFontPointSize = 8;
 constexpr int MaxTerminalFontPointSize = 28;
 

@@ -207,22 +207,22 @@ bool WorkbenchPage::controlSelectProtocol(const QString &name, bool enabled, QSt
     return true;
 }
 
-bool WorkbenchPage::controlShowPlot(const QString &protocol, bool clear, QString *error)
+bool WorkbenchPage::controlShowPlot(const AppPlot::ParserConfig &config, bool clear, QString *error)
 {
     if (error) {
         error->clear();
     }
-    static const QStringList supported = {QStringLiteral("numbers"), QStringLiteral("delimited"),
-                                          QStringLiteral("keyValue"), QStringLiteral("json")};
-    if (!supported.contains(protocol)) {
+    if (config.protocol == AppPlot::Protocol::Binary && config.binarySource == AppPlot::BinarySource::Payload &&
+        (!m_protocolEnabledCheck || !m_protocolEnabledCheck->isChecked() || !m_protocolTemplateCombo ||
+         m_protocolTemplateCombo->currentIndex() < 0)) {
         if (error) {
-            *error = QStringLiteral("Unsupported plot protocol: %1").arg(protocol);
+            *error = QStringLiteral("Binary payload plotting requires an enabled protocol template");
         }
         return false;
     }
 
     showQuickPlotWindow();
-    if (!m_quickPlotWindow || !m_quickPlotWindow->setProtocolKey(protocol)) {
+    if (!m_quickPlotWindow || !m_quickPlotWindow->configureParser(config)) {
         if (error) {
             *error = QStringLiteral("Failed to configure the plot window");
         }

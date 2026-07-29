@@ -36,7 +36,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - Protocol templates for headers, length fields, commands, payloads, and checksums.
 - Unified RX/TX records with pause, automatic scrolling, clearing, and counter reset.
 - Keyword, regular-expression, case-sensitive, direction-filtered terminal search.
-- Multi-channel real-time plotting from numbers, delimited values, key-value pairs, or JSON objects, with CSV export.
+- Multi-channel real-time plotting from line-aware numbers, delimited values, multi-word/Unicode key-value pairs, nested JSON, and typed binary frame or payload fields. The UI, CLI, and MCP share a persistent parser configuration with field selection and CSV export.
 - A sortable and filterable frame table with HEX/text copying and terminal navigation.
 - Multiple independent serial sessions in tabs.
 - RX/TX totals, live transfer rates, and connection duration.
@@ -180,7 +180,7 @@ fluentserial-cli ports
 fluentserial-cli status
 fluentserial-cli send-hex --hex "01 03 00 00 00 02 C4 0B"
 fluentserial-cli records --direction rx --limit 20
-fluentserial-cli plot --plot-protocol keyValue
+fluentserial-cli plot --plot-protocol keyValue --plot-field "free sram" --clear
 ```
 
 See [AI control, CLI, MCP, and IPC documentation](docs/ai-control.md) for architecture, client configuration, all tools, and the versioned IPC contract.

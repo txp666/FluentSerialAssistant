@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.11
+    VERSION 0.1.12
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -58,6 +58,13 @@ set(FQW_ENABLE_NETWORK OFF CACHE BOOL "" FORCE)
 set(FQW_COMPACT_BUILD ON CACHE BOOL "" FORCE)
 add_subdirectory("${FLUENTQTWIDGETS_ROOT}" "${CMAKE_BINARY_DIR}/_deps/fluentqtwidgets")
 
+add_library(FluentSerialPlotParser STATIC
+    src/app/core/plot_value_parser.cpp
+    src/app/core/plot_value_parser.h
+)
+target_include_directories(FluentSerialPlotParser PUBLIC src)
+target_link_libraries(FluentSerialPlotParser PUBLIC Qt6::Core)
+
 add_library(FluentSerialControlClient STATIC
     src/app/control/control_protocol.cpp
     src/app/control/control_protocol.h
@@ -102,6 +109,8 @@ add_executable(FluentSerialAssistant
     src/app/view/data_table_window.h
     src/app/view/main_window.cpp
     src/app/view/main_window.h
+    src/app/view/plot_parser_dialog.cpp
+    src/app/view/plot_parser_dialog.h
     src/app/view/quick_plot_window.cpp
     src/app/view/quick_plot_window.h
     src/app/view/settings_page.cpp
@@ -164,6 +173,7 @@ target_link_libraries(FluentSerialAssistant
         Qt6::Qml
         FluentQtWidgets::Widgets
         FluentSerialControlClient
+        FluentSerialPlotParser
 )
 
 add_executable(fluentserial-cli

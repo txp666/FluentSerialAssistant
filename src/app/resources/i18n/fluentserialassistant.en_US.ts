@@ -288,12 +288,104 @@
         <translation>JSON Object</translation>
     </message>
     <message>
-        <source>选择接收文本如何转换为曲线数据</source>
-        <translation>Choose how received text is converted to curve data</translation>
+        <source>二进制字段</source>
+        <translation>Binary Fields</translation>
+    </message>
+    <message>
+        <source>选择接收数据如何转换为曲线数据</source>
+        <translation>Choose how received data is converted to curve data</translation>
     </message>
     <message>
         <source>绘图协议示例</source>
         <translation>Plot protocol examples</translation>
+    </message>
+    <message>
+        <source>解析设置</source>
+        <translation>Parser Settings</translation>
+    </message>
+    <message>
+        <source>字段筛选留空时显示全部解析结果。</source>
+        <translation>Leave field selection empty to show all parsed results.</translation>
+    </message>
+    <message>
+        <source>例如：free sram, minimal sram</source>
+        <translation>For example: free sram, minimal sram</translation>
+    </message>
+    <message>
+        <source>字段筛选</source>
+        <translation>Field selection</translation>
+    </message>
+    <message>
+        <source>二进制来源</source>
+        <translation>Binary source</translation>
+    </message>
+    <message>
+        <source>完整帧</source>
+        <translation>Complete frame</translation>
+    </message>
+    <message>
+        <source>协议载荷</source>
+        <translation>Protocol payload</translation>
+    </message>
+    <message>
+        <source>未定义字段时按字节绘制 CH1、CH2……；协议载荷需要先启用协议模板。</source>
+        <translation>When no fields are defined, bytes are plotted as CH1, CH2, and so on; protocol payload requires an enabled protocol template.</translation>
+    </message>
+    <message>
+        <source>字节偏移</source>
+        <translation>Byte offset</translation>
+    </message>
+    <message>
+        <source>类型</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <source>比例</source>
+        <translation>Scale</translation>
+    </message>
+    <message>
+        <source>加值</source>
+        <translation>Offset</translation>
+    </message>
+    <message>
+        <source>添加字段</source>
+        <translation>Add field</translation>
+    </message>
+    <message>
+        <source>删除选中</source>
+        <translation>Remove selected</translation>
+    </message>
+    <message>
+        <source>应用</source>
+        <translation>Apply</translation>
+    </message>
+    <message>
+        <source>配置无效</source>
+        <translation>Invalid configuration</translation>
+    </message>
+    <message>
+        <source>第 %1 行缺少字段名称</source>
+        <translation>Row %1 is missing a field name</translation>
+    </message>
+    <message>
+        <source>第 %1 行的字节偏移无效</source>
+        <translation>Row %1 has an invalid byte offset</translation>
+    </message>
+    <message>
+        <source>第 %1 行的类型或字节序无效</source>
+        <translation>Row %1 has an invalid type or byte order</translation>
+    </message>
+    <message>
+        <source>第 %1 行的比例或加值无效</source>
+        <translation>Row %1 has an invalid scale or offset</translation>
+    </message>
+    <message>
+        <source>小端</source>
+        <translation>Little-endian</translation>
+    </message>
+    <message>
+        <source>大端</source>
+        <translation>Big-endian</translation>
     </message>
     <message>
         <source>暂停</source>
@@ -321,7 +413,11 @@
     </message>
     <message>
         <source>%1 · %2 点 · %3 通道</source>
-        <translation>%1 ? %2 points ? %3 channels</translation>
+        <translation>%1 · %2 points · %3 channels</translation>
+    </message>
+    <message>
+        <source> · 字段：%1</source>
+        <translation> · Fields: %1</translation>
     </message>
     <message>
         <source>继续</source>
@@ -334,22 +430,26 @@
 分隔值：读取逗号、分号、空格分隔的纯数字
   24.8,60.5,101.3  =&gt; CH1, CH2, CH3
 
-键值对：读取 name=value 或 name:value，字段名作为曲线名
-  temp=24.8 hum=60.5  =&gt; temp, hum
+键值对：支持多词或中文字段名
+  free sram: 43815 minimal sram: 38791
 
-JSON 对象：读取数值字段，数组字段会展开
-  {&quot;temp&quot;:24.8,&quot;hum&quot;:60.5}  =&gt; temp, hum</source>
+JSON 对象：递归读取对象和数组中的数值
+  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
+
+二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值</source>
         <translation>All Numbers: extracts all numbers from each line
   T=24.8 H=60.5  =&gt; CH1=24.8, CH2=60.5
 
 Delimited Values: reads plain numbers separated by commas, semicolons, or spaces
   24.8,60.5,101.3  =&gt; CH1, CH2, CH3
 
-Key-Value Pairs: reads name=value or name:value and uses field names as curve names
-  temp=24.8 hum=60.5  =&gt; temp, hum
+Key-Value Pairs: supports multi-word and Unicode field names
+  free sram: 43815 minimal sram: 38791
 
-JSON Object: reads numeric fields; array fields are expanded
-  {&quot;temp&quot;:24.8,&quot;hum&quot;:60.5}  =&gt; temp, hum</translation>
+JSON Object: recursively reads numeric values from objects and arrays
+  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
+
+Binary Fields: plots individual bytes by default; configure type, byte order, scale, and offset in Parser Settings</translation>
     </message>
     <message>
         <source>暂无曲线数据</source>

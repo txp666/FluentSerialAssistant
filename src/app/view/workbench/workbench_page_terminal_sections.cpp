@@ -25,20 +25,20 @@ QWidget *WorkbenchPage::createTerminalSection()
     auto *root = cardBody(section, 10);
     section->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX"), section));
+    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX"), section), 0, Qt::AlignVCenter);
     m_rxCounterLabel = new StrongBodyLabel(QStringLiteral("0 B"), section);
-    section->headerLayout()->addWidget(m_rxCounterLabel);
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX"), section));
+    section->headerLayout()->addWidget(m_rxCounterLabel, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX"), section), 0, Qt::AlignVCenter);
     m_txCounterLabel = new StrongBodyLabel(QStringLiteral("0 B"), section);
-    section->headerLayout()->addWidget(m_txCounterLabel);
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX/s"), section));
+    section->headerLayout()->addWidget(m_txCounterLabel, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX/s"), section), 0, Qt::AlignVCenter);
     m_rxRateLabel = new StrongBodyLabel(QStringLiteral("0 B/s"), section);
-    section->headerLayout()->addWidget(m_rxRateLabel);
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX/s"), section));
+    section->headerLayout()->addWidget(m_rxRateLabel, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX/s"), section), 0, Qt::AlignVCenter);
     m_txRateLabel = new StrongBodyLabel(QStringLiteral("0 B/s"), section);
-    section->headerLayout()->addWidget(m_txRateLabel);
+    section->headerLayout()->addWidget(m_txRateLabel, 0, Qt::AlignVCenter);
     m_connectionTimeLabel = new CaptionLabel(AppI18n::text("未连接"), section);
-    section->headerLayout()->addWidget(m_connectionTimeLabel);
+    section->headerLayout()->addWidget(m_connectionTimeLabel, 0, Qt::AlignVCenter);
     section->headerLayout()->addStretch(1);
 
     auto *searchButton = new TransparentToolButton(icon(FluentIcon::Search), section);
@@ -61,13 +61,13 @@ QWidget *WorkbenchPage::createTerminalSection()
         button->setIconSize(QSize(16, 16));
     }
     section->headerLayout()->addSpacing(4);
-    section->headerLayout()->addWidget(searchButton);
-    section->headerLayout()->addWidget(plotButton);
-    section->headerLayout()->addWidget(dataTableButton);
-    section->headerLayout()->addWidget(themeButton);
-    section->headerLayout()->addWidget(languageButton);
-    section->headerLayout()->addWidget(m_receiveModeButton);
-    section->headerLayout()->addWidget(settingsButton);
+    section->headerLayout()->addWidget(searchButton, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(plotButton, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(dataTableButton, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(themeButton, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(languageButton, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(m_receiveModeButton, 0, Qt::AlignVCenter);
+    section->headerLayout()->addWidget(settingsButton, 0, Qt::AlignVCenter);
 
     auto *searchView = new FlyoutView(AppI18n::text("终端搜索"), QString(), icon(FluentIcon::Search), QPixmap(), true);
     auto *searchPanel = new QWidget(searchView);

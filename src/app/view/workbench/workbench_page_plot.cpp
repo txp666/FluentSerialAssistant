@@ -27,5 +27,13 @@ void WorkbenchPage::appendQuickPlotRecord(const SessionRecord &record, bool igno
         return;
     }
 
-    m_quickPlotWindow->appendText(record.timestamp, record.displayText, ignorePause);
+    QByteArray payload;
+    if (m_quickPlotWindow->requiresProtocolPayload() && m_protocolEnabledCheck && m_protocolEnabledCheck->isChecked() &&
+        m_protocolTemplateCombo && m_protocolTemplateCombo->currentIndex() >= 0) {
+        const AppProtocol::ParseResult result = AppProtocol::parseFrame(record.bytes, currentProtocolTemplateFromUi());
+        if (result.ok) {
+            payload = result.payload;
+        }
+    }
+    m_quickPlotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes, payload, ignorePause);
 }

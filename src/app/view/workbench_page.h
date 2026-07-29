@@ -44,7 +44,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QList<AppControl::RecordSnapshot> controlRecords(int limit, const QString &direction) const override;
     QList<AppControl::ProtocolSnapshot> controlProtocols() const override;
     bool controlSelectProtocol(const QString &name, bool enabled, QString *error) override;
-    bool controlShowPlot(const QString &protocol, bool clear, QString *error) override;
+    bool controlShowPlot(const AppPlot::ParserConfig &config, bool clear, QString *error) override;
 
   public slots:
     void setTerminalFontFamily(const QString &family);

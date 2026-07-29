@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/core/plot_value_parser.h"
 #include "app/core/protocol_template.h"
 #include "app/serial/serial_controller.h"
 
@@ -51,7 +52,7 @@ class SessionControl
     virtual QList<RecordSnapshot> controlRecords(int limit, const QString &direction) const = 0;
     virtual QList<ProtocolSnapshot> controlProtocols() const = 0;
     virtual bool controlSelectProtocol(const QString &name, bool enabled, QString *error) = 0;
-    virtual bool controlShowPlot(const QString &protocol, bool clear, QString *error) = 0;
+    virtual bool controlShowPlot(const AppPlot::ParserConfig &config, bool clear, QString *error) = 0;
 };
 
 } // namespace AppControl

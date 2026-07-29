@@ -1,5 +1,8 @@
 #pragma once
 
+#include "app/core/plot_value_parser.h"
+
+#include <QtCore/QByteArray>
 #include <QtCore/QDateTime>
 #include <QtCore/QVector>
 #include <QtWidgets/QWidget>
@@ -18,28 +21,16 @@ class QuickPlotWindow : public QWidget
   public:
     explicit QuickPlotWindow(QWidget *parent = nullptr);
 
-    void appendText(const QDateTime &timestamp, const QString &text, bool ignorePause = false);
+    void appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
+                      const QByteArray &payload = {}, bool ignorePause = false);
     void clearData();
-    bool setProtocolKey(const QString &key);
+    bool configureParser(const AppPlot::ParserConfig &config);
+    bool requiresProtocolPayload() const;
 
   signals:
     void protocolChanged();
 
   private:
-    enum class PlotProtocol
-    {
-        Numbers,
-        Delimited,
-        KeyValue,
-        Json
-    };
-
-    struct PlotValue
-    {
-        QString name;
-        double value = 0.0;
-    };
-
     struct PlotRow
     {
         QDateTime timestamp;
@@ -47,18 +38,12 @@ class QuickPlotWindow : public QWidget
         QVector<double> values;
     };
 
-    PlotProtocol protocolFromKey(const QString &key) const;
-    QString protocolKey(PlotProtocol protocol) const;
-    QVector<PlotValue> extractValues(const QString &text) const;
-    QVector<PlotValue> extractNumberValues(const QString &text) const;
-    QVector<PlotValue> extractDelimitedValues(const QString &text) const;
-    QVector<PlotValue> extractKeyValuePairs(const QString &text) const;
-    QVector<PlotValue> extractJsonValues(const QString &text) const;
+    void appendValues(const QDateTime &timestamp, const AppPlot::PlotSample &values);
     int channelIndexFor(const QString &name, int position);
     void ensureSeriesCount(int count);
     void updateStatus();
     void setPaused(bool paused);
-    void setProtocol(PlotProtocol protocol);
+    void showParserSettings();
     void showProtocolHelp(QWidget *target);
     void exportCsv();
 
@@ -68,7 +53,7 @@ class QuickPlotWindow : public QWidget
     FluentQt::CaptionLabel *m_statusLabel = nullptr;
     QVector<QString> m_channelNames;
     QVector<PlotRow> m_rows;
-    PlotProtocol m_protocol = PlotProtocol::Numbers;
+    AppPlot::ParserConfig m_parserConfig;
     int m_channelCount = 0;
     int m_nextSample = 0;
     bool m_paused = false;

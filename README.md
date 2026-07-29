@@ -36,7 +36,7 @@ Fluent 串口助手是一个基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的�
 - 协议模板：可定义帧头、长度字段、命令字、载荷和尾部校验字段，保存并切换模板后按模板解析接收帧。
 - 记录显示：RX/TX 统一会话记录，支持暂停显示、自动滚动、清空和计数重置。
 - 终端检索：支持按关键字搜索、高亮匹配、上/下匹配跳转、大小写敏感、正则搜索，并按全部、接收、发送过滤当前显示。
-- 快速绘图：从接收文本自动提取数字，弹出独立窗口显示多通道实时曲线；支持全部数字、分隔值、键值对、JSON 对象等取数协议，并支持暂停、清空和 CSV 导出。
+- 快速绘图：支持按行提取数字、分隔值、多词/中文键值、嵌套 JSON 和二进制字段；界面、CLI、MCP 共用可持久化解析配置，可筛选目标字段，并按整数/浮点、大小端、比例和偏移解码原始帧或协议载荷，支持暂停、清空和 CSV 导出。
 - 数据表格：按帧查看时间、方向、来源、长度、HEX、文本和校验结果，支持排序、过滤、复制单帧/HEX，并可定位回终端记录。
 - 多标签会话：支持在标题栏创建多个独立会话，新标签会复制当前会话配置，关闭标签会释放对应串口和文件资源。
 - 状态统计：显示 RX/TX 总量、实时速率和连接时长。
@@ -222,7 +222,7 @@ fluentserial-cli ports
 fluentserial-cli status
 fluentserial-cli send-hex --hex "01 03 00 00 00 02 C4 0B"
 fluentserial-cli records --direction rx --limit 20
-fluentserial-cli plot --plot-protocol keyValue
+fluentserial-cli plot --plot-protocol keyValue --plot-field "free sram" --clear
 ```
 
 架构、MCP 客户端配置、全部工具和 IPC 契约见 [AI 控制、CLI 与 MCP 文档](docs/ai-control.md)。

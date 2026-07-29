@@ -70,17 +70,35 @@ HEX 发送默认逐字节发送输入内容，不会隐式应用 GUI 的“自�
 ```bash
 fluentserial-cli protocol-use --name 'Example Template'
 fluentserial-cli records --direction rx --limit 10
-fluentserial-cli plot --plot-protocol keyValue
+fluentserial-cli plot --plot-protocol keyValue --plot-field 'free sram' --clear
 ```
 
 启用二进制协议模板后，`records` 的 RX 项会增加结构化的 `protocol` 对象，包括命令字、载荷、帧长和校验结果。
 
-当前有两类独立的“协议”：
+绘图解析由独立的解析层完成，界面只负责展示。文本记录会保留行边界，避免一次串口读取包含多行时把通道错位。快速绘图窗口的“解析设置”使用同一配置模型：文本/JSON 可直接筛选字段，二进制可选择完整帧或协议载荷，并在表格中配置类型、字节序、比例和加值。界面应用的配置会持久化，之后 CLI/MCP 修改时也会同步到窗口。
 
-- 二进制协议模板：从一帧字节中解析帧头、长度、命令、载荷和校验。
-- 绘图取值协议：从接收文本中按 `numbers`、`delimited`、`keyValue` 或 `json` 提取数值并显示曲线。
+- `numbers`：提取每行的全部数字。
+- `delimited`：提取逗号、分号或空白分隔的纯数字。
+- `keyValue`：提取 `name=value` 或 `name:value`，支持多词和 Unicode 字段名，例如 `free sram: 43815`。
+- `json`：递归提取对象和数组中的数值，嵌套字段使用路径名，例如 `system.free`、`channels[0]`。
+- `binary`：从完整帧或启用的协议模板载荷中提取二进制字段。
 
-二进制模板目前没有字段类型、缩放系数或单位定义，因此不会猜测如何把任意载荷字节变成物理量曲线。对于文本遥测，可直接使用绘图协议；对于二进制遥测，应先在协议层增加字段定义后再扩展为字段曲线。
+`--plot-field` 可重复指定，只保留目标字段。二进制未提供字段定义时，每个字节自动映射为 `CH1`、`CH2` 等无符号曲线。结构化二进制字段通过可重复的 JSON 参数定义：
+
+```bash
+fluentserial-cli plot \
+  --plot-protocol binary \
+  --binary-source payload \
+  --binary-field '{"name":"temperature","byteOffset":0,"type":"i16","byteOrder":"little","scale":0.1}' \
+  --binary-field '{"name":"pressure","byteOffset":2,"type":"u32","byteOrder":"big","scale":0.01,"add":-100}' \
+  --clear
+```
+
+- `binarySource`/`--binary-source` 为 `frame` 或 `payload`；使用 `payload` 前必须选择并启用二进制协议模板。
+- `byteOffset` 相对于所选来源从 `0` 开始。
+- `type` 支持 `u8`、`i8`、`u16`、`i16`、`u32`、`i32`、`u64`、`i64`、`f32` 和 `f64`。
+- `byteOrder` 支持 `little` 和 `big`；单字节字段会忽略字节序。
+- 最终值按 `decoded * scale + add` 计算，`scale` 和 `add` 默认分别为 `1` 和 `0`。
 
 ### 原始动作调用
 
@@ -127,7 +145,7 @@ MCP 服务遵循官方的 [stdio 传输](https://modelcontextprotocol.io/specifi
 | `serial_get_records` | 获取收发记录和协议解析结果 |
 | `protocol_list` | 获取二进制协议模板 |
 | `protocol_select` | 选择并启用协议模板 |
-| `plot_open` | 打开实时曲线并选择文本取值协议 |
+| `plot_open` | 打开实时曲线，配置文本/JSON 字段筛选或二进制字段解码 |
 
 工具调用同时返回 MCP `content` 和 `structuredContent`，业务错误通过 `isError: true` 返回，方便模型自行修正参数。
 
