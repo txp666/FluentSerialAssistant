@@ -1,5 +1,5 @@
-#include "app/view/workbench/workbench_page_internal.h"
 #include "app/core/app_i18n.h"
+#include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -373,7 +373,8 @@ void WorkbenchPage::startFileSend()
 
     AppSettings settings;
     settings.setValue(QStringLiteral("fileSend/path"), path);
-    settings.setValue(QStringLiteral("fileSend/chunkSize"), numberEditValue(m_fileChunkSizeEdit, DefaultFileChunkSize, 1, 65536));
+    settings.setValue(QStringLiteral("fileSend/chunkSize"),
+                      numberEditValue(m_fileChunkSizeEdit, DefaultFileChunkSize, 1, 65536));
     settings.setValue(QStringLiteral("fileSend/intervalMs"),
                       numberEditValue(m_fileIntervalEdit, DefaultFileChunkIntervalMs, 0, 60000));
 

@@ -57,7 +57,7 @@ DataTableRecord WorkbenchPage::dataTableRecord(int recordIndex, const SessionRec
     const AppChecksum::ChecksumResult checksum =
         AppChecksum::calculate(record.bytes, checksumAlgorithmKey(), checksumByteOrder());
     row.checksum = checksum.ok ? QStringLiteral("%1: %2").arg(AppChecksum::labelForAlgorithm(checksumAlgorithmKey()),
-                                                               bytesToHex(checksum.bytes))
+                                                              bytesToHex(checksum.bytes))
                                : checksum.errorMessage;
     return row;
 }

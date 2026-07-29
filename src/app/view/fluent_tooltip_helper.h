@@ -8,8 +8,7 @@
 
 namespace AppUi {
 
-inline void installFluentToolTip(QWidget *widget,
-                                 FluentQt::ToolTipPosition position = FluentQt::ToolTipPosition::Top,
+inline void installFluentToolTip(QWidget *widget, FluentQt::ToolTipPosition position = FluentQt::ToolTipPosition::Top,
                                  int delayMs = 300)
 {
     if (!widget) {
@@ -22,8 +21,7 @@ inline void installFluentToolTip(QWidget *widget,
 }
 
 inline void setFluentToolTip(QWidget *widget, const QString &text,
-                             FluentQt::ToolTipPosition position = FluentQt::ToolTipPosition::Top,
-                             int delayMs = 300)
+                             FluentQt::ToolTipPosition position = FluentQt::ToolTipPosition::Top, int delayMs = 300)
 {
     if (!widget) {
         return;

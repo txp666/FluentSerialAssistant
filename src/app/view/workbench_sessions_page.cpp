@@ -118,7 +118,9 @@ WorkbenchPage *WorkbenchSessionsPage::addSession(WorkbenchPage *source, bool res
     }
     connect(session, &WorkbenchPage::settingsRequested, this, &WorkbenchSessionsPage::settingsRequested);
 
-    const int index = m_tabs->addTab(session, nextTitle(), icon(FluentIcon::CommandPrompt), nextRouteKey());
+    const QString routeKey = nextRouteKey();
+    session->setObjectName(routeKey);
+    const int index = m_tabs->addTab(session, nextTitle(), icon(FluentIcon::CommandPrompt), routeKey);
     if (index >= 0) {
         m_tabs->setCurrentIndex(index);
         ++m_nextSession;
@@ -128,6 +130,61 @@ WorkbenchPage *WorkbenchSessionsPage::addSession(WorkbenchPage *source, bool res
         return nullptr;
     }
     return session;
+}
+
+QList<WorkbenchSessionsPage::ControlSessionEntry> WorkbenchSessionsPage::controlSessions() const
+{
+    QList<ControlSessionEntry> sessions;
+    if (!m_tabs) {
+        return sessions;
+    }
+
+    sessions.reserve(m_tabs->count());
+    for (int index = 0; index < m_tabs->count(); ++index) {
+        auto *page = qobject_cast<WorkbenchPage *>(m_tabs->widget(index));
+        if (!page) {
+            continue;
+        }
+        ControlSessionEntry entry;
+        entry.id = page->objectName();
+        entry.title = m_tabs->tabText(index);
+        entry.control = page;
+        entry.current = index == m_tabs->currentIndex();
+        sessions.append(entry);
+    }
+    return sessions;
+}
+
+AppControl::SessionControl *WorkbenchSessionsPage::controlSession(const QString &id) const
+{
+    if (!m_tabs) {
+        return nullptr;
+    }
+    if (id.trimmed().isEmpty() || id == QStringLiteral("current")) {
+        return currentSession();
+    }
+    for (int index = 0; index < m_tabs->count(); ++index) {
+        auto *page = qobject_cast<WorkbenchPage *>(m_tabs->widget(index));
+        if (page && page->objectName() == id) {
+            return page;
+        }
+    }
+    return nullptr;
+}
+
+bool WorkbenchSessionsPage::selectControlSession(const QString &id)
+{
+    if (!m_tabs) {
+        return false;
+    }
+    for (int index = 0; index < m_tabs->count(); ++index) {
+        QWidget *page = m_tabs->widget(index);
+        if (page && page->objectName() == id) {
+            m_tabs->setCurrentIndex(index);
+            return true;
+        }
+    }
+    return false;
 }
 
 void WorkbenchSessionsPage::updateTitleBarTabMetrics()

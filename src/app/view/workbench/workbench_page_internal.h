@@ -1,8 +1,8 @@
 #pragma once
 
-#include "app/view/workbench_page.h"
 #include "app/core/app_i18n.h"
 #include "app/view/fluent_tooltip_helper.h"
+#include "app/view/workbench_page.h"
 
 #include "app/core/checksum_utils.h"
 #include "app/core/font_preferences.h"
@@ -16,6 +16,7 @@
 #include <FluentQtWidgets/StyleSheet.h>
 #include <FluentQtWidgets/Theme.h>
 
+#include "app/core/app_settings.h"
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
 #include <QtCore/QEvent>
@@ -25,7 +26,6 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonParseError>
-#include "app/core/app_settings.h"
 #include <QtCore/QSignalBlocker>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QTimer>

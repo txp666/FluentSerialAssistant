@@ -49,6 +49,7 @@ Fluent 串口助手是一个基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的�
 - 常用包：支持分组、备注、启用/停用、保存、载入、发送、批量发送、删除、排序和 JSON 导入导出。
 - 宏命令：支持多步骤发送、步骤间延时、等待文本/HEX 响应、循环运行、失败中止和 CSV 结果导出。
 - 脚本插件：内置 JavaScript 脚本运行器，可通过受控 `serial` API 发送文本/HEX、读取收发记录快照、写脚本日志，并支持停止和异常提示。
+- AI 控制：提供用户级本地 IPC、机器可读 CLI 和 stdio MCP 服务；AI 可复用 GUI 当前会话完成端口扫描、连接、收发、记录读取、协议选择和曲线窗口控制，不会与 GUI 抢占串口。
 - 自动应答：支持文本、HEX 和正则匹配规则，命中后可立即或延时发送指定文本/HEX 应答，并在发送记录中标记来源。
 - 循环发送：支持毫秒级发送间隔。
 - 文件发送：支持选择文件后按块发送，可配置块大小和块间隔，并显示进度。
@@ -85,22 +86,25 @@ Fluent 串口助手是一个基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的�
 ├── scripts/                  # 发布和辅助脚本
 ├── src/
 │   ├── app/core/             # 字体偏好、HEX 解析、更新检查等通用逻辑
+│   ├── app/control/          # 会话控制接口、本地 JSON IPC 和客户端传输
 │   ├── app/resources/        # Qt 资源、应用图标和平台资源
 │   ├── app/serial/           # QSerialPort 封装
-│   └── app/view/             # 主窗口、设置页和终端工作台
-│       └── workbench/        # 终端工作台按职责拆分的实现文件
-│           ├── *_layout.cpp              # 页面整体布局
-│           ├── *_side_sections.cpp       # 左侧连接、收发、常用包、宏命令、自动应答、文件发送配置
-│           ├── *_terminal_sections.cpp   # 终端区和发送区 UI
-│           ├── *_terminal.cpp            # 终端记录、过滤、分色和渲染
-│           ├── *_packets.cpp             # 发送历史和常用包
-│           ├── *_macros.cpp              # 宏命令和测试序列
-│           ├── *_protocol_templates.cpp  # 协议模板保存、切换和解析
-│           ├── *_scripts.cpp             # JavaScript 脚本插件运行
-│           ├── *_auto_reply.cpp          # 自动应答规则匹配、发送和持久化
-│           ├── *_files.cpp               # 记录导出、接收保存和文件发送
-│           ├── *_connection.cpp          # 连接、重连和控件启停
-│           └── *_state.cpp               # 设置恢复、保存、计数和状态更新
+│   ├── app/view/             # 主窗口、设置页和终端工作台
+│   │   └── workbench/        # 终端工作台按职责拆分的实现文件
+│   │       ├── *_layout.cpp              # 页面整体布局
+│   │       ├── *_side_sections.cpp       # 左侧连接、收发、常用包、宏命令、自动应答、文件发送配置
+│   │       ├── *_terminal_sections.cpp   # 终端区和发送区 UI
+│   │       ├── *_terminal.cpp            # 终端记录、过滤、分色和渲染
+│   │       ├── *_packets.cpp             # 发送历史和常用包
+│   │       ├── *_macros.cpp              # 宏命令和测试序列
+│   │       ├── *_protocol_templates.cpp  # 协议模板保存、切换和解析
+│   │       ├── *_scripts.cpp             # JavaScript 脚本插件运行
+│   │       ├── *_auto_reply.cpp          # 自动应答规则匹配、发送和持久化
+│   │       ├── *_files.cpp               # 记录导出、接收保存和文件发送
+│   │       ├── *_connection.cpp          # 连接、重连和控件启停
+│   │       └── *_state.cpp               # 设置恢复、保存、计数和状态更新
+│   ├── cli/                  # 机器可读 CLI
+│   └── mcp/                  # MCP stdio 工具服务
 ├── third_party/FluentQtWidgets/
 ├── CMakeLists.txt
 ├── CMakePresets.json
@@ -208,6 +212,20 @@ Windows 发布支持 SignPath Foundation 的免费开源 Authenticode 签名。�
 15. 可点击左侧卡片标题折叠不常用配置，减少侧栏占用。
 16. 可开启自动断帧、时间戳、自动滚动、循环发送和自动日志等选项。
 17. 使用 TXT、CSV、BIN 导出会话记录。
+
+## AI、CLI 与 MCP 控制
+
+应用启动后，可通过 `fluentserial-cli` 或 `fluentserial-mcp` 控制 GUI 当前串口会话。GUI 始终是串口唯一所有者，CLI/MCP 通过当前用户可访问的本地 IPC 复用现有协议解析、记录和实时曲线能力。
+
+```bash
+fluentserial-cli ports
+fluentserial-cli status
+fluentserial-cli send-hex --hex "01 03 00 00 00 02 C4 0B"
+fluentserial-cli records --direction rx --limit 20
+fluentserial-cli plot --plot-protocol keyValue
+```
+
+架构、MCP 客户端配置、全部工具和 IPC 契约见 [AI 控制、CLI 与 MCP 文档](docs/ai-control.md)。
 
 配置文件使用 Qt `QSettings::IniFormat`。Windows、macOS 和 Linux 的业务设置均保存到
 Qt 提供的系统标准用户配置目录，主题、语言等 Fluent 外观配置也保存在同一目录。

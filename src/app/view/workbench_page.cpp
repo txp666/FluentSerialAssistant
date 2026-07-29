@@ -1,6 +1,6 @@
-#include "app/view/workbench/workbench_page_internal.h"
 #include "app/core/app_i18n.h"
 #include "app/core/script_runner.h"
+#include "app/view/workbench/workbench_page_internal.h"
 
 #include <QtCore/QThread>
 

@@ -4,11 +4,11 @@
 #include <FluentQtWidgets/Config.h>
 #include <FluentQtWidgets/Theme.h>
 
+#include "app/core/app_settings.h"
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
-#include "app/core/app_settings.h"
 #include <QtCore/QStandardPaths>
 #include <QtCore/QtGlobal>
 #include <QtGui/QFontDatabase>

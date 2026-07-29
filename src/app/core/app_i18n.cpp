@@ -2,11 +2,11 @@
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
+#include <QtCore/QCoreApplication>
 #include <QtCore/QFile>
 #include <QtCore/QHash>
-#include <QtCore/QMetaProperty>
-#include <QtCore/QCoreApplication>
 #include <QtCore/QLocale>
+#include <QtCore/QMetaProperty>
 #include <QtCore/QPointer>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSet>
@@ -75,10 +75,7 @@ QLocale localeForName(const QString &localeName)
     return QLocale(normalized);
 }
 
-bool isChineseLocale(const QLocale &locale)
-{
-    return locale.language() == QLocale::Chinese;
-}
+bool isChineseLocale(const QLocale &locale) { return locale.language() == QLocale::Chinese; }
 
 QString translationNameForLocale(const QLocale &locale)
 {
@@ -248,8 +245,8 @@ QString translateValue(const QString &value, const QString &localeName, bool all
 
     for (const CatalogEntry &entry : std::as_const(s_catalog)) {
         QHash<int, QString> arguments;
-        if (!matchPattern(value, entry.sourcePattern, &arguments) && !matchPattern(value, entry.zhPattern, &arguments) &&
-            !matchPattern(value, entry.enPattern, &arguments)) {
+        if (!matchPattern(value, entry.sourcePattern, &arguments) &&
+            !matchPattern(value, entry.zhPattern, &arguments) && !matchPattern(value, entry.enPattern, &arguments)) {
             continue;
         }
 
@@ -282,9 +279,9 @@ bool setTranslatedProperty(QObject *object, const char *propertyName, const QStr
 
 void retranslateObjectProperties(QObject *object, const QString &localeName)
 {
-    static constexpr const char *kProperties[] = {"title",       "content", "windowTitle", "toolTip",
-                                                  "statusTip",   "whatsThis", "placeholderText",
-                                                  "accessibleName", "accessibleDescription"};
+    static constexpr const char *kProperties[] = {"title",           "content",        "windowTitle",
+                                                  "toolTip",         "statusTip",      "whatsThis",
+                                                  "placeholderText", "accessibleName", "accessibleDescription"};
     for (const char *propertyName : kProperties) {
         setTranslatedProperty(object, propertyName, localeName);
     }
@@ -321,8 +318,7 @@ void retranslateObjectProperties(QObject *object, const QString &localeName)
     }
 }
 
-template <typename Combo>
-void retranslateComboItems(Combo *combo, const QString &localeName)
+template <typename Combo> void retranslateComboItems(Combo *combo, const QString &localeName)
 {
     if (!combo) {
         return;
@@ -494,8 +490,8 @@ QString normalizedLocaleName(const QString &localeName)
 
 QString effectiveLocaleName(const QString &localeName)
 {
-    return translationNameForLocale(localeForName(localeName.isEmpty() ? FluentQt::FluentConfig::instance()->localeName()
-                                                                      : localeName));
+    return translationNameForLocale(
+        localeForName(localeName.isEmpty() ? FluentQt::FluentConfig::instance()->localeName() : localeName));
 }
 
 QString localeDisplayName(const QString &localeName)
@@ -539,10 +535,7 @@ QString toggledChineseEnglishLocaleName(const QString &localeName)
     return effectiveLocaleName(current) == QStringLiteral("zh_CN") ? QStringLiteral("en_US") : QStringLiteral("zh_CN");
 }
 
-QString text(const char *sourceText)
-{
-    return QCoreApplication::translate("AppText", sourceText);
-}
+QString text(const char *sourceText) { return QCoreApplication::translate("AppText", sourceText); }
 
 bool installTranslators(QCoreApplication *application, const QString &localeName)
 {
@@ -553,8 +546,8 @@ bool installTranslators(QCoreApplication *application, const QString &localeName
     removeTranslator(application, s_appTranslator);
     removeTranslator(application, s_fluentTranslator);
 
-    const QLocale locale = localeForName(localeName.isEmpty() ? FluentQt::FluentConfig::instance()->localeName()
-                                                              : localeName);
+    const QLocale locale =
+        localeForName(localeName.isEmpty() ? FluentQt::FluentConfig::instance()->localeName() : localeName);
     bool installed = false;
 
     auto *fluentTranslator = new FluentQt::FluentTranslator(locale, application);

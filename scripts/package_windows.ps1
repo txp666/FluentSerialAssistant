@@ -79,6 +79,12 @@ if ($SourceDir) {
     if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
         throw "Installed executable is missing: $executable"
     }
+    foreach ($controlExecutableName in @("fluentserial-cli.exe", "fluentserial-mcp.exe")) {
+        $controlExecutable = Join-Path $stageDir $controlExecutableName
+        if (-not (Test-Path -LiteralPath $controlExecutable -PathType Leaf)) {
+            throw "Installed control executable is missing: $controlExecutable"
+        }
+    }
 
     $windeployqt = if ($QtBinDir) {
         Resolve-Tool "windeployqt.exe" (Join-Path $QtBinDir "windeployqt.exe")

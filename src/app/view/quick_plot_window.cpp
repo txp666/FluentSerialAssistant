@@ -4,6 +4,7 @@
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
+#include "app/core/app_settings.h"
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
@@ -13,7 +14,6 @@
 #include <QtCore/QJsonParseError>
 #include <QtCore/QJsonValue>
 #include <QtCore/QRegularExpression>
-#include "app/core/app_settings.h"
 #include <QtCore/QTextStream>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QHBoxLayout>
@@ -184,6 +184,22 @@ void QuickPlotWindow::clearData()
         m_plot->resetView();
     }
     updateStatus();
+}
+
+bool QuickPlotWindow::setProtocolKey(const QString &key)
+{
+    static const QStringList supported = {QStringLiteral("numbers"), QStringLiteral("delimited"),
+                                          QStringLiteral("keyValue"), QStringLiteral("json")};
+    if (!supported.contains(key)) {
+        return false;
+    }
+    const int index = m_protocolCombo ? m_protocolCombo->findData(key) : -1;
+    if (index < 0) {
+        return false;
+    }
+    m_protocolCombo->setCurrentIndex(index);
+    setProtocol(protocolFromKey(key));
+    return true;
 }
 
 QuickPlotWindow::PlotProtocol QuickPlotWindow::protocolFromKey(const QString &key) const
@@ -401,7 +417,11 @@ void QuickPlotWindow::setProtocol(PlotProtocol protocol)
 
 void QuickPlotWindow::showProtocolHelp(QWidget *target)
 {
-    const QString content = AppI18n::text("全部数字：提取每行里的所有数字\n  T=24.8 H=60.5  => CH1=24.8, CH2=60.5\n\n分隔值：读取逗号、分号、空格分隔的纯数字\n  24.8,60.5,101.3  => CH1, CH2, CH3\n\n键值对：读取 name=value 或 name:value，字段名作为曲线名\n  temp=24.8 hum=60.5  => temp, hum\n\nJSON 对象：读取数值字段，数组字段会展开\n  {\"temp\":24.8,\"hum\":60.5}  => temp, hum");
+    const QString content =
+        AppI18n::text("全部数字：提取每行里的所有数字\n  T=24.8 H=60.5  => CH1=24.8, "
+                      "CH2=60.5\n\n分隔值：读取逗号、分号、空格分隔的纯数字\n  24.8,60.5,101.3  => CH1, CH2, "
+                      "CH3\n\n键值对：读取 name=value 或 name:value，字段名作为曲线名\n  temp=24.8 hum=60.5  => temp, "
+                      "hum\n\nJSON 对象：读取数值字段，数组字段会展开\n  {\"temp\":24.8,\"hum\":60.5}  => temp, hum");
     FluentQt::TeachingTip::create(AppI18n::text("绘图协议示例"), content,
                                   FluentQt::icon(FluentQt::FluentIcon::Question), QPixmap(), true, target,
                                   FluentQt::TeachingTipTailPosition::Bottom, -1, this);

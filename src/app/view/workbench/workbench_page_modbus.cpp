@@ -1,5 +1,5 @@
-#include "app/view/workbench/workbench_page_internal.h"
 #include "app/core/app_i18n.h"
+#include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -87,8 +87,7 @@ AppModbus::RequestConfig WorkbenchPage::currentModbusConfig() const
         m_modbusFunctionCombo ? m_modbusFunctionCombo->currentData().toString() : AppModbus::defaultFunctionKey();
     const AppModbus::FunctionOption function = AppModbus::functionForKey(config.functionKey);
     config.address = static_cast<quint16>(numberEditValue(m_modbusAddressEdit, 0, 0, 65535));
-    config.quantity =
-        static_cast<quint16>(numberEditValue(m_modbusQuantityEdit, 1, 1, function.coil ? 2000 : 125));
+    config.quantity = static_cast<quint16>(numberEditValue(m_modbusQuantityEdit, 1, 1, function.coil ? 2000 : 125));
     config.valuesText = m_modbusValuesEdit ? m_modbusValuesEdit->toPlainText() : QString();
     return config;
 }

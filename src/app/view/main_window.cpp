@@ -1,4 +1,6 @@
 #include "app/view/main_window.h"
+#include "app/control/local_control_server.h"
+#include "app/control/workbench_control_service.h"
 #include "app/core/app_i18n.h"
 
 #include "app/view/settings_page.h"
@@ -27,6 +29,12 @@ MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
     }
 
     populateInterfaces();
+    m_controlService = new AppControl::WorkbenchControlService(m_workbenchPage, this);
+    m_controlServer = new AppControl::LocalControlServer(m_controlService, this);
+    QString controlError;
+    if (!m_controlServer->start(&controlError)) {
+        qWarning().noquote() << "Local control service unavailable:" << controlError;
+    }
     navigationInterface()->setVisible(false);
     navigationInterface()->setFixedWidth(0);
     switchTo(QStringLiteral("workbench"));

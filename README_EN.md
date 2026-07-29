@@ -47,6 +47,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - Send history and reusable grouped packets with JSON import/export and batch sending.
 - Multi-step macros with delays, expected responses, loops, stop-on-failure behavior, and CSV result export.
 - A built-in JavaScript runner with controlled `serial.sendText()`, `serial.sendHex()`, `serial.records()`, and `serial.log()` APIs.
+- AI control through a user-scoped local IPC service, a machine-readable CLI, and a stdio MCP server. AI clients can reuse the active GUI session for discovery, connection, traffic, protocol selection, records, and live-plot control without competing for the serial port.
 - Text, HEX, and regular-expression auto-reply rules with configurable delays.
 - Timed loop transmission and chunked file sending.
 - Rolling TXT, CSV, and BIN automatic logs.
@@ -76,9 +77,12 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 ├── signing/signpath/         # SignPath artifact configurations
 ├── src/
 │   ├── app/core/             # Shared settings, fonts, parsing, and update logic
+│   ├── app/control/          # Session control boundary, local JSON IPC, and client transport
 │   ├── app/resources/        # Qt resources, icons, and platform metadata
 │   ├── app/serial/           # QSerialPort integration
-│   └── app/view/             # Main window, settings, and terminal workspace
+│   ├── app/view/             # Main window, settings, and terminal workspace
+│   ├── cli/                  # Machine-readable CLI
+│   └── mcp/                  # MCP stdio tool server
 ├── third_party/FluentQtWidgets/
 ├── CMakeLists.txt
 └── CMakePresets.json
@@ -166,6 +170,20 @@ The lower-level packaging scripts are `scripts/package_windows.ps1`, `scripts/pa
 5. Save reusable packets, macros, protocol templates, scripts, and auto-reply rules.
 6. Use quick plotting or the frame table to inspect structured incoming data.
 7. Export records as TXT, CSV, or BIN.
+
+## AI, CLI, and MCP control
+
+Once the GUI is running, `fluentserial-cli` and `fluentserial-mcp` can control its current serial session. The GUI remains the sole owner of each serial port; both adapters reuse its protocol parsing, records, and live plotting over a user-scoped local IPC channel.
+
+```bash
+fluentserial-cli ports
+fluentserial-cli status
+fluentserial-cli send-hex --hex "01 03 00 00 00 02 C4 0B"
+fluentserial-cli records --direction rx --limit 20
+fluentserial-cli plot --plot-protocol keyValue
+```
+
+See [AI control, CLI, MCP, and IPC documentation](docs/ai-control.md) for architecture, client configuration, all tools, and the versioned IPC contract.
 
 Business settings use Qt `QSettings::IniFormat`. On every supported platform, business and Fluent appearance settings are stored together in Qt's standard per-user configuration directory. The first run migrates legacy settings found next to the executable.
 

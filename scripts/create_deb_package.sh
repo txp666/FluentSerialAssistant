@@ -93,6 +93,18 @@ exec /opt/FluentSerialAssistant/bin/FluentSerialAssistant "$@"
 LAUNCHER
 chmod 0755 "$package_root/usr/bin/fluent-serial-assistant"
 
+cat > "$package_root/usr/bin/fluentserial-cli" <<'CLI_LAUNCHER'
+#!/bin/sh
+exec /opt/FluentSerialAssistant/bin/fluentserial-cli "$@"
+CLI_LAUNCHER
+chmod 0755 "$package_root/usr/bin/fluentserial-cli"
+
+cat > "$package_root/usr/bin/fluentserial-mcp" <<'MCP_LAUNCHER'
+#!/bin/sh
+exec /opt/FluentSerialAssistant/bin/fluentserial-mcp "$@"
+MCP_LAUNCHER
+chmod 0755 "$package_root/usr/bin/fluentserial-mcp"
+
 cat > "$package_root/usr/share/applications/tech.zhangshu.FluentSerialAssistant.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application

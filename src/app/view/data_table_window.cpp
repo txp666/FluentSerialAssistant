@@ -8,8 +8,8 @@
 #include <QtCore/QSignalBlocker>
 #include <QtGui/QClipboard>
 #include <QtWidgets/QApplication>
-#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QVBoxLayout>
@@ -194,13 +194,8 @@ void DataTableWindow::appendRecord(const DataTableRecord &record)
 void DataTableWindow::setupHeaders()
 {
     const QStringList labels = {
-        AppI18n::text("时间"),
-        AppI18n::text("方向"),
-        AppI18n::text("来源"),
-        AppI18n::text("长度"),
-        QStringLiteral("HEX"),
-        AppI18n::text("文本"),
-        AppI18n::text("校验"),
+        AppI18n::text("时间"), AppI18n::text("方向"), AppI18n::text("来源"), AppI18n::text("长度"),
+        QStringLiteral("HEX"), AppI18n::text("文本"), AppI18n::text("校验"),
     };
     m_table->setHorizontalHeaderLabels(labels);
 }
@@ -215,10 +210,9 @@ void DataTableWindow::addRecordRow(const DataTableRecord &record)
     const QString length = QString::number(record.length);
     const QString text = escapedPlainText(record.text);
     const QString key = directionKey(direction);
-    const QString searchText =
-        QStringLiteral("%1 %2 %3 %4 %5 %6 %7")
-            .arg(timeText, direction, source, length, record.hex, text, record.checksum)
-            .toLower();
+    const QString searchText = QStringLiteral("%1 %2 %3 %4 %5 %6 %7")
+                                   .arg(timeText, direction, source, length, record.hex, text, record.checksum)
+                                   .toLower();
 
     const QStringList values = {timeText, direction, source, length, record.hex, text, record.checksum};
     for (int column = 0; column < values.size(); ++column) {
@@ -246,7 +240,8 @@ void DataTableWindow::applyFilter()
         return;
     }
 
-    const QString directionFilter = m_directionCombo ? m_directionCombo->currentData().toString() : QStringLiteral("all");
+    const QString directionFilter =
+        m_directionCombo ? m_directionCombo->currentData().toString() : QStringLiteral("all");
     const QString filterText = m_filterEdit ? m_filterEdit->text().trimmed().toLower() : QString();
     int visibleRows = 0;
     for (int row = 0; row < m_table->rowCount(); ++row) {
@@ -332,8 +327,8 @@ QString DataTableWindow::selectedFrameText() const
 
     QStringList lines;
     for (int column = 0; column < ColumnCount; ++column) {
-        const QString header = m_table->horizontalHeaderItem(column) ? m_table->horizontalHeaderItem(column)->text()
-                                                                     : QString();
+        const QString header =
+            m_table->horizontalHeaderItem(column) ? m_table->horizontalHeaderItem(column)->text() : QString();
         const QString value = m_table->item(row, column) ? m_table->item(row, column)->text() : QString();
         lines.append(QStringLiteral("%1: %2").arg(header, value));
     }

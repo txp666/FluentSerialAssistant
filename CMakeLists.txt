@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.10
+    VERSION 0.1.11
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -58,7 +58,22 @@ set(FQW_ENABLE_NETWORK OFF CACHE BOOL "" FORCE)
 set(FQW_COMPACT_BUILD ON CACHE BOOL "" FORCE)
 add_subdirectory("${FLUENTQTWIDGETS_ROOT}" "${CMAKE_BINARY_DIR}/_deps/fluentqtwidgets")
 
+add_library(FluentSerialControlClient STATIC
+    src/app/control/control_protocol.cpp
+    src/app/control/control_protocol.h
+    src/app/control/local_control_client.cpp
+    src/app/control/local_control_client.h
+)
+target_include_directories(FluentSerialControlClient PUBLIC src)
+target_link_libraries(FluentSerialControlClient PUBLIC Qt6::Core Qt6::Network)
+
 add_executable(FluentSerialAssistant
+    src/app/control/control_protocol.h
+    src/app/control/local_control_server.cpp
+    src/app/control/local_control_server.h
+    src/app/control/session_control.h
+    src/app/control/workbench_control_service.cpp
+    src/app/control/workbench_control_service.h
     src/app/core/app_i18n.cpp
     src/app/core/app_i18n.h
     src/app/core/app_settings.cpp
@@ -98,6 +113,7 @@ add_executable(FluentSerialAssistant
     src/app/view/workbench/workbench_page_checksum.cpp
     src/app/view/workbench/workbench_page_auto_reply.cpp
     src/app/view/workbench/workbench_page_connection.cpp
+    src/app/view/workbench/workbench_page_control.cpp
     src/app/view/workbench/workbench_page_data_table.cpp
     src/app/view/workbench/workbench_page_files.cpp
     src/app/view/workbench/workbench_page_internal.h
@@ -147,7 +163,27 @@ target_link_libraries(FluentSerialAssistant
         Qt6::Core5Compat
         Qt6::Qml
         FluentQtWidgets::Widgets
+        FluentSerialControlClient
 )
+
+add_executable(fluentserial-cli
+    src/cli/main.cpp
+)
+target_compile_definitions(fluentserial-cli PRIVATE
+    FLUENT_SERIAL_ASSISTANT_VERSION="${PROJECT_VERSION}"
+)
+target_link_libraries(fluentserial-cli PRIVATE FluentSerialControlClient)
+
+add_executable(fluentserial-mcp
+    src/mcp/main.cpp
+    src/mcp/mcp_server.cpp
+    src/mcp/mcp_server.h
+)
+target_include_directories(fluentserial-mcp PRIVATE src)
+target_compile_definitions(fluentserial-mcp PRIVATE
+    FLUENT_SERIAL_ASSISTANT_VERSION="${PROJECT_VERSION}"
+)
+target_link_libraries(fluentserial-mcp PRIVATE FluentSerialControlClient)
 
 if(MSVC)
     target_compile_options(FluentSerialAssistant PRIVATE /utf-8)
@@ -185,6 +221,24 @@ endif()
 install(TARGETS FluentSerialAssistant
     RUNTIME DESTINATION "${FLUENT_SERIAL_ASSISTANT_RUNTIME_INSTALL_DIR}" COMPONENT Runtime
     BUNDLE DESTINATION "." COMPONENT Runtime
+)
+
+if(APPLE)
+    set(FLUENT_SERIAL_ASSISTANT_CONTROL_INSTALL_DIR "FluentSerialAssistant.app/Contents/MacOS")
+    set_target_properties(fluentserial-cli fluentserial-mcp PROPERTIES
+        INSTALL_RPATH "@executable_path/../Frameworks"
+    )
+else()
+    set(FLUENT_SERIAL_ASSISTANT_CONTROL_INSTALL_DIR "${FLUENT_SERIAL_ASSISTANT_RUNTIME_INSTALL_DIR}")
+    if(UNIX)
+        set_target_properties(fluentserial-cli fluentserial-mcp PROPERTIES
+            INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
+        )
+    endif()
+endif()
+
+install(TARGETS fluentserial-cli fluentserial-mcp
+    RUNTIME DESTINATION "${FLUENT_SERIAL_ASSISTANT_CONTROL_INSTALL_DIR}" COMPONENT Runtime
 )
 
 if(UNIX AND NOT APPLE)
@@ -243,6 +297,10 @@ if(APPLE)
             "-executable=FluentSerialAssistant.app/Contents/PlugIns/${plugin_type}/${plugin_file_name}"
         )
     endforeach()
+    list(APPEND FLUENT_SERIAL_ASSISTANT_MACOS_DEPLOY_TOOL_OPTIONS
+        "-executable=FluentSerialAssistant.app/Contents/MacOS/fluentserial-cli"
+        "-executable=FluentSerialAssistant.app/Contents/MacOS/fluentserial-mcp"
+    )
     qt_generate_deploy_app_script(
         TARGET FluentSerialAssistant
         OUTPUT_SCRIPT FLUENT_SERIAL_ASSISTANT_DEPLOY_SCRIPT

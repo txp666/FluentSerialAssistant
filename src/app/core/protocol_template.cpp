@@ -3,8 +3,8 @@
 #include "app/core/app_i18n.h"
 #include "app/core/hex_utils.h"
 
-#include <QtCore/QtGlobal>
 #include <QtCore/QJsonValue>
+#include <QtCore/QtGlobal>
 
 namespace {
 
@@ -26,20 +26,11 @@ quint32 readUnsigned(const QByteArray &data, int offset, int size, AppChecksum::
     return value;
 }
 
-bool validLengthSize(int size)
-{
-    return size == 0 || size == 1 || size == 2 || size == 4;
-}
+bool validLengthSize(int size) { return size == 0 || size == 1 || size == 2 || size == 4; }
 
-int boundedOffset(int value)
-{
-    return qBound(0, value, MaxProtocolFrameBytes);
-}
+int boundedOffset(int value) { return qBound(0, value, MaxProtocolFrameBytes); }
 
-int boundedSize(int value)
-{
-    return qBound(0, value, MaxProtocolFrameBytes);
-}
+int boundedSize(int value) { return qBound(0, value, MaxProtocolFrameBytes); }
 
 QString checksumStatusText(const AppProtocol::ParseResult &result)
 {
@@ -68,10 +59,7 @@ QString lengthModeLabel(LengthMode mode)
     return mode == LengthMode::FrameLength ? AppI18n::text("整帧长度") : AppI18n::text("载荷长度");
 }
 
-QString checksumNoneKey()
-{
-    return QStringLiteral("none");
-}
+QString checksumNoneKey() { return QStringLiteral("none"); }
 
 bool hasChecksum(const ProtocolTemplate &protocolTemplate)
 {
@@ -101,33 +89,30 @@ ProtocolTemplate defaultTemplate()
     return item;
 }
 
-QList<ProtocolTemplate> defaultTemplates()
-{
-    return {defaultTemplate()};
-}
+QList<ProtocolTemplate> defaultTemplates() { return {defaultTemplate()}; }
 
 ProtocolTemplate fromJson(const QJsonObject &object)
 {
     ProtocolTemplate item = defaultTemplate();
     item.name = object.value(QStringLiteral("name")).toString(item.name).trimmed();
-    item.header = QByteArray::fromHex(object.value(QStringLiteral("header")).toString(bytesToHex(item.header)).toLatin1());
+    item.header =
+        QByteArray::fromHex(object.value(QStringLiteral("header")).toString(bytesToHex(item.header)).toLatin1());
     item.lengthOffset = boundedOffset(object.value(QStringLiteral("lengthOffset")).toInt(item.lengthOffset));
     item.lengthSize = object.value(QStringLiteral("lengthSize")).toInt(item.lengthSize);
     if (!validLengthSize(item.lengthSize)) {
         item.lengthSize = defaultTemplate().lengthSize;
     }
-    item.lengthMode = lengthModeFromKey(object.value(QStringLiteral("lengthMode")).toString(lengthModeKey(item.lengthMode)));
-    item.lengthByteOrder =
-        AppChecksum::byteOrderFromKey(object.value(QStringLiteral("lengthByteOrder"))
-                                          .toString(AppChecksum::byteOrderKey(item.lengthByteOrder)));
+    item.lengthMode =
+        lengthModeFromKey(object.value(QStringLiteral("lengthMode")).toString(lengthModeKey(item.lengthMode)));
+    item.lengthByteOrder = AppChecksum::byteOrderFromKey(
+        object.value(QStringLiteral("lengthByteOrder")).toString(AppChecksum::byteOrderKey(item.lengthByteOrder)));
     item.commandOffset = boundedOffset(object.value(QStringLiteral("commandOffset")).toInt(item.commandOffset));
     item.commandSize = boundedSize(object.value(QStringLiteral("commandSize")).toInt(item.commandSize));
     item.payloadOffset = boundedOffset(object.value(QStringLiteral("payloadOffset")).toInt(item.payloadOffset));
     item.payloadLength = boundedSize(object.value(QStringLiteral("payloadLength")).toInt(item.payloadLength));
     item.checksumAlgorithm = object.value(QStringLiteral("checksumAlgorithm")).toString(item.checksumAlgorithm);
-    item.checksumByteOrder =
-        AppChecksum::byteOrderFromKey(object.value(QStringLiteral("checksumByteOrder"))
-                                          .toString(AppChecksum::byteOrderKey(item.checksumByteOrder)));
+    item.checksumByteOrder = AppChecksum::byteOrderFromKey(
+        object.value(QStringLiteral("checksumByteOrder")).toString(AppChecksum::byteOrderKey(item.checksumByteOrder)));
     if (item.name.isEmpty()) {
         item.name = defaultTemplate().name;
     }
@@ -196,9 +181,8 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
             result.errorMessage = AppI18n::text("长度字段超出帧范围");
             return result;
         }
-        result.lengthValue =
-            readUnsigned(frame, protocolTemplate.lengthOffset, protocolTemplate.lengthSize,
-                         protocolTemplate.lengthByteOrder);
+        result.lengthValue = readUnsigned(frame, protocolTemplate.lengthOffset, protocolTemplate.lengthSize,
+                                          protocolTemplate.lengthByteOrder);
     }
 
     int frameLength = frame.size();
@@ -253,9 +237,8 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
         }
         const QByteArray checksumPayload = currentFrame.left(currentFrame.size() - checksumBytes);
         result.checksum = currentFrame.right(checksumBytes);
-        const AppChecksum::ChecksumResult checksum =
-            AppChecksum::calculate(checksumPayload, protocolTemplate.checksumAlgorithm,
-                                   protocolTemplate.checksumByteOrder);
+        const AppChecksum::ChecksumResult checksum = AppChecksum::calculate(
+            checksumPayload, protocolTemplate.checksumAlgorithm, protocolTemplate.checksumByteOrder);
         if (!checksum.ok) {
             result.errorMessage = checksum.errorMessage;
             return result;

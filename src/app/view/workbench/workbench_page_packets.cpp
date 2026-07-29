@@ -1,5 +1,5 @@
-#include "app/view/workbench/workbench_page_internal.h"
 #include "app/core/app_i18n.h"
+#include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;

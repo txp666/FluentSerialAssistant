@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/control/session_control.h"
 #include "app/core/checksum_utils.h"
 #include "app/core/modbus_utils.h"
 #include "app/core/protocol_template.h"
@@ -25,7 +26,7 @@ class ScriptRunner;
 struct DataTableRecord;
 class QuickPlotWindow;
 
-class WorkbenchPage : public AppPage
+class WorkbenchPage : public AppPage, public AppControl::SessionControl
 {
     Q_OBJECT
 
@@ -35,6 +36,15 @@ class WorkbenchPage : public AppPage
 
     void saveSettings() const;
     void copySessionConfigFrom(const WorkbenchPage &source);
+
+    AppControl::SessionStatus controlStatus() const override;
+    bool controlConnect(const SerialPortConfig &config, QString *error) override;
+    void controlDisconnect() override;
+    bool controlSendBytes(const QByteArray &data, const QString &source, QString *error) override;
+    QList<AppControl::RecordSnapshot> controlRecords(int limit, const QString &direction) const override;
+    QList<AppControl::ProtocolSnapshot> controlProtocols() const override;
+    bool controlSelectProtocol(const QString &name, bool enabled, QString *error) override;
+    bool controlShowPlot(const QString &protocol, bool clear, QString *error) override;
 
   public slots:
     void setTerminalFontFamily(const QString &family);

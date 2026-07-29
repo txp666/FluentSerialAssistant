@@ -7,20 +7,14 @@ using namespace WorkbenchPagePrivate;
 
 namespace {
 
-bool isReceiveHexMode(const QString &mode)
-{
-    return mode == QStringLiteral("hex");
-}
+bool isReceiveHexMode(const QString &mode) { return mode == QStringLiteral("hex"); }
 
 QString shortcutReceiveDisplayModeLabel(bool hexMode)
 {
     return hexMode ? QStringLiteral("HEX") : AppI18n::text("文本");
 }
 
-QString nextReceiveDisplayMode(bool hexMode)
-{
-    return hexMode ? QStringLiteral("text") : QStringLiteral("hex");
-}
+QString nextReceiveDisplayMode(bool hexMode) { return hexMode ? QStringLiteral("text") : QStringLiteral("hex"); }
 
 } // namespace
 
@@ -61,8 +55,8 @@ QWidget *WorkbenchPage::createTerminalSection()
     AppUi::installFluentToolTip(m_receiveModeButton);
     auto *settingsButton = new TransparentToolButton(icon(FluentIcon::Setting), section);
     AppUi::setFluentToolTip(settingsButton, AppI18n::text("设置"));
-    for (ToolButton *button : {searchButton, plotButton, dataTableButton, themeButton, languageButton, m_receiveModeButton,
-                               settingsButton}) {
+    for (ToolButton *button : {searchButton, plotButton, dataTableButton, themeButton, languageButton,
+                               m_receiveModeButton, settingsButton}) {
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
     }
@@ -204,8 +198,7 @@ void WorkbenchPage::updateReceiveModeButton()
     const QString currentLabel = shortcutReceiveDisplayModeLabel(hexMode);
     const QString nextLabel = shortcutReceiveDisplayModeLabel(!hexMode);
     m_receiveModeButton->setIcon(icon(hexMode ? FluentIcon::Code : FluentIcon::Font));
-    m_receiveModeButton->setToolTip(
-        AppI18n::text("当前接收显示为 %1，点击切换为 %2").arg(currentLabel, nextLabel));
+    m_receiveModeButton->setToolTip(AppI18n::text("当前接收显示为 %1，点击切换为 %2").arg(currentLabel, nextLabel));
 }
 
 QWidget *WorkbenchPage::createSendSection()

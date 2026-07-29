@@ -106,13 +106,19 @@ bool ScriptBridge::sendWithCallback(const SendCallback &callback, const QString 
     return true;
 }
 
-QString ScriptBridge::stringFromCallback(const StringCallback &callback) const { return callback ? callback() : QString(); }
+QString ScriptBridge::stringFromCallback(const StringCallback &callback) const
+{
+    return callback ? callback() : QString();
+}
 
 ScriptRunner::ScriptRunner(QObject *parent) : QObject(parent) {}
 
 ScriptRunner::~ScriptRunner() { requestStop(); }
 
-void ScriptRunner::setSendTextCallback(ScriptBridge::SendCallback callback) { m_sendTextCallback = std::move(callback); }
+void ScriptRunner::setSendTextCallback(ScriptBridge::SendCallback callback)
+{
+    m_sendTextCallback = std::move(callback);
+}
 
 void ScriptRunner::setSendHexCallback(ScriptBridge::SendCallback callback) { m_sendHexCallback = std::move(callback); }
 
@@ -136,7 +142,10 @@ void ScriptRunner::setLastRxHexCallback(ScriptBridge::StringCallback callback)
     m_lastRxHexCallback = std::move(callback);
 }
 
-void ScriptRunner::setRecordsCallback(ScriptBridge::RecordsCallback callback) { m_recordsCallback = std::move(callback); }
+void ScriptRunner::setRecordsCallback(ScriptBridge::RecordsCallback callback)
+{
+    m_recordsCallback = std::move(callback);
+}
 
 void ScriptRunner::requestStop()
 {

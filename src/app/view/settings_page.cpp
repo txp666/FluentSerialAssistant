@@ -12,9 +12,9 @@
 #include <FluentQtWidgets/Widgets/ComboBox.h>
 #include <FluentQtWidgets/Widgets/InfoBar.h>
 
+#include "app/core/app_settings.h"
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
-#include "app/core/app_settings.h"
 #include <QtCore/QStandardPaths>
 #include <QtGui/QColor>
 #include <QtGui/QDesktopServices>
@@ -158,16 +158,16 @@ SettingsPage::SettingsPage(QWidget *parent)
     themeModeCard->setCurrentIndex(themeToIndex(FluentConfig::instance()->themeMode()));
     auto *languageCard = new ComboBoxSettingCard(
         QStringList{AppI18n::text("跟随系统"), AppI18n::text("简体中文"), QStringLiteral("English")},
-        FluentIcon::Language, AppI18n::text("界面语言"),
-        AppI18n::text("切换 Fluent 控件和应用翻译资源的显示语言"), personalization);
+        FluentIcon::Language, AppI18n::text("界面语言"), AppI18n::text("切换 Fluent 控件和应用翻译资源的显示语言"),
+        personalization);
     languageCard->setCurrentIndex(AppI18n::localeIndex(FluentConfig::instance()->localeName()));
     languageCard->setContent(
         AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(FluentConfig::instance()->localeName())));
 
     const QColor defaultAccent(QStringLiteral("#009faa"));
-    auto *themeColorCard = new CustomColorSettingCard(defaultAccent, ThemeManager::instance()->accentColor(),
-                                                      FluentIcon::Palette, AppI18n::text("主题色"),
-                                                      AppI18n::text("选择 Fluent 控件的强调色"), personalization);
+    auto *themeColorCard =
+        new CustomColorSettingCard(defaultAccent, ThemeManager::instance()->accentColor(), FluentIcon::Palette,
+                                   AppI18n::text("主题色"), AppI18n::text("选择 Fluent 控件的强调色"), personalization);
     const QStringList uiFonts = AppFontPreferences::uiFontFamilies();
     auto *uiFontCard = new ComboBoxSettingCard(uiFonts, FluentIcon::Font, AppI18n::text("界面字体"),
                                                AppI18n::text("设置按钮、标签和页面文本的字体"), personalization);
@@ -195,13 +195,14 @@ SettingsPage::SettingsPage(QWidget *parent)
         const QString localeName = AppI18n::applyLocale(AppI18n::localeNameForIndex(index));
         languageCard->setContent(AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(localeName)));
     });
-    connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this, [languageCard](const QString &localeName) {
-        const int index = AppI18n::localeIndex(localeName);
-        if (languageCard->currentIndex() != index) {
-            languageCard->setCurrentIndex(index);
-        }
-        languageCard->setContent(AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(localeName)));
-    });
+    connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this,
+            [languageCard](const QString &localeName) {
+                const int index = AppI18n::localeIndex(localeName);
+                if (languageCard->currentIndex() != index) {
+                    languageCard->setCurrentIndex(index);
+                }
+                languageCard->setContent(AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(localeName)));
+            });
 
     connect(themeColorCard, &CustomColorSettingCard::colorChanged, this, [](const QColor &color) {
         FluentConfig::instance()->setThemeColor(color);
@@ -219,8 +220,8 @@ SettingsPage::SettingsPage(QWidget *parent)
     connect(m_updateChecker, &AppUpdate::UpdateChecker::checkStarted, this, &SettingsPage::handleUpdateCheckStarted);
     connect(m_updateChecker, &AppUpdate::UpdateChecker::checkFinished, this, &SettingsPage::handleUpdateCheckFinished);
 
-    personalization->addSettingCards({themeModeCard, languageCard, themeColorCard, uiFontCard, importFontCard,
-                                      m_updateCard});
+    personalization->addSettingCards(
+        {themeModeCard, languageCard, themeColorCard, uiFontCard, importFontCard, m_updateCard});
     addSection(QString(), personalization);
 
     auto *terminalGroup = new SettingCardGroup(QString(), this);
@@ -370,9 +371,9 @@ void SettingsPage::handleUpdateCheckFinished(bool ok, bool updateAvailable, cons
         m_updateCard->setContent(AppI18n::text("发现新版本 %1").arg(latestVersion));
     }
 
-    auto *bar = InfoBar::info(AppI18n::text("发现新版本"),
-                              AppI18n::text("当前 %1，最新 %2").arg(currentVersion, latestVersion), Qt::Horizontal,
-                              true, 10000, InfoBarPosition::Top, window());
+    auto *bar =
+        InfoBar::info(AppI18n::text("发现新版本"), AppI18n::text("当前 %1，最新 %2").arg(currentVersion, latestVersion),
+                      Qt::Horizontal, true, 10000, InfoBarPosition::Top, window());
     auto *openButton = new PushButton(icon(FluentIcon::Link), AppI18n::text("打开发布页"), bar);
     openButton->setEnabled(releaseUrl.isValid());
     bar->addWidget(openButton);

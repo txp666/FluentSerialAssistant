@@ -131,7 +131,8 @@ void WorkbenchPage::saveProtocolTemplates() const
 {
     AppSettings settings;
     const QJsonDocument document(AppProtocol::listToJson(m_protocolTemplates));
-    settings.setValue(QLatin1String(ProtocolTemplateSettingsKey), QString::fromUtf8(document.toJson(QJsonDocument::Compact)));
+    settings.setValue(QLatin1String(ProtocolTemplateSettingsKey),
+                      QString::fromUtf8(document.toJson(QJsonDocument::Compact)));
     if (m_protocolTemplateCombo && m_protocolTemplateCombo->currentIndex() >= 0) {
         settings.setValue(QStringLiteral("protocolTemplate/current"), m_protocolTemplateCombo->currentText());
     }
@@ -150,7 +151,8 @@ void WorkbenchPage::updateProtocolTemplateCombo(int selectedIndex)
     }
 
     const int previousIndex = m_protocolTemplateCombo->currentIndex();
-    const int targetIndex = qBound(0, selectedIndex >= 0 ? selectedIndex : previousIndex, m_protocolTemplates.size() - 1);
+    const int targetIndex =
+        qBound(0, selectedIndex >= 0 ? selectedIndex : previousIndex, m_protocolTemplates.size() - 1);
 
     const QSignalBlocker blocker(m_protocolTemplateCombo);
     m_protocolTemplateCombo->clear();
@@ -208,12 +210,12 @@ AppProtocol::ProtocolTemplate WorkbenchPage::currentProtocolTemplateFromUi() con
     }
     item.lengthOffset = intFromEdit(m_protocolLengthOffsetEdit);
     item.lengthSize = m_protocolLengthSizeCombo ? m_protocolLengthSizeCombo->currentData().toInt() : 0;
-    item.lengthMode =
-        AppProtocol::lengthModeFromKey(m_protocolLengthModeCombo ? m_protocolLengthModeCombo->currentData().toString()
-                                                                 : AppProtocol::lengthModeKey(AppProtocol::LengthMode::PayloadLength));
-    item.lengthByteOrder =
-        AppChecksum::byteOrderFromKey(m_protocolLengthByteOrderCombo ? m_protocolLengthByteOrderCombo->currentData().toString()
-                                                                     : AppChecksum::byteOrderKey(AppChecksum::ByteOrder::BigEndian));
+    item.lengthMode = AppProtocol::lengthModeFromKey(
+        m_protocolLengthModeCombo ? m_protocolLengthModeCombo->currentData().toString()
+                                  : AppProtocol::lengthModeKey(AppProtocol::LengthMode::PayloadLength));
+    item.lengthByteOrder = AppChecksum::byteOrderFromKey(
+        m_protocolLengthByteOrderCombo ? m_protocolLengthByteOrderCombo->currentData().toString()
+                                       : AppChecksum::byteOrderKey(AppChecksum::ByteOrder::BigEndian));
     item.commandOffset = intFromEdit(m_protocolCommandOffsetEdit);
     item.commandSize = intFromEdit(m_protocolCommandSizeEdit);
     item.payloadOffset = intFromEdit(m_protocolPayloadOffsetEdit);
@@ -221,9 +223,9 @@ AppProtocol::ProtocolTemplate WorkbenchPage::currentProtocolTemplateFromUi() con
     item.checksumAlgorithm = m_protocolChecksumAlgorithmCombo
                                  ? m_protocolChecksumAlgorithmCombo->currentData().toString()
                                  : AppProtocol::checksumNoneKey();
-    item.checksumByteOrder =
-        AppChecksum::byteOrderFromKey(m_protocolChecksumByteOrderCombo ? m_protocolChecksumByteOrderCombo->currentData().toString()
-                                                                       : AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian));
+    item.checksumByteOrder = AppChecksum::byteOrderFromKey(
+        m_protocolChecksumByteOrderCombo ? m_protocolChecksumByteOrderCombo->currentData().toString()
+                                         : AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian));
     return item;
 }
 

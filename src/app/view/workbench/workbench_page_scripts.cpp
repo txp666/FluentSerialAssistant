@@ -22,21 +22,17 @@ QString normalizedScriptLineEnding(QString value)
     return QStringLiteral("none");
 }
 
-QString scriptFileFilter()
-{
-    return AppI18n::text("JavaScript 文件 (*.js);;所有文件 (*)");
-}
+QString scriptFileFilter() { return AppI18n::text("JavaScript 文件 (*.js);;所有文件 (*)"); }
 
 QString scriptExample()
 {
-    return QStringLiteral(
-        "// serial.sendText(text, lineEnding)  lineEnding: none | cr | lf | crlf\n"
-        "// serial.sendHex(hex, lineEnding)\n"
-        "// serial.receivedText(), serial.receivedHex(), serial.lastRxText(), serial.records()\n"
-        "serial.log('records: ' + serial.records().length);\n"
-        "serial.sendText('AT', 'crlf');\n"
-        "serial.sleep(200);\n"
-        "serial.log('last rx: ' + serial.lastRxText());\n");
+    return QStringLiteral("// serial.sendText(text, lineEnding)  lineEnding: none | cr | lf | crlf\n"
+                          "// serial.sendHex(hex, lineEnding)\n"
+                          "// serial.receivedText(), serial.receivedHex(), serial.lastRxText(), serial.records()\n"
+                          "serial.log('records: ' + serial.records().length);\n"
+                          "serial.sendText('AT', 'crlf');\n"
+                          "serial.sleep(200);\n"
+                          "serial.log('last rx: ' + serial.lastRxText());\n");
 }
 
 QString timestampedScriptLog(const QString &message)
@@ -76,10 +72,9 @@ void WorkbenchPage::updateScriptActionState()
 
 void WorkbenchPage::loadScriptFile()
 {
-    const QString path = QFileDialog::getOpenFileName(this, AppI18n::text("载入脚本"),
-                                                      m_scriptFilePath.isEmpty() ? defaultExportFolder()
-                                                                                 : QFileInfo(m_scriptFilePath).path(),
-                                                      scriptFileFilter());
+    const QString path = QFileDialog::getOpenFileName(
+        this, AppI18n::text("载入脚本"),
+        m_scriptFilePath.isEmpty() ? defaultExportFolder() : QFileInfo(m_scriptFilePath).path(), scriptFileFilter());
     if (path.isEmpty()) {
         return;
     }
@@ -173,9 +168,9 @@ void WorkbenchPage::startScript()
 
         bool ok = false;
         QString localError;
-        QMetaObject::invokeMethod(page, [&]() {
-            ok = page->sendScriptPayload(payload, QStringLiteral("text"), lineEnding, &localError);
-        }, Qt::BlockingQueuedConnection);
+        QMetaObject::invokeMethod(
+            page, [&]() { ok = page->sendScriptPayload(payload, QStringLiteral("text"), lineEnding, &localError); },
+            Qt::BlockingQueuedConnection);
         if (error) {
             *error = localError;
         }
@@ -192,9 +187,9 @@ void WorkbenchPage::startScript()
 
         bool ok = false;
         QString localError;
-        QMetaObject::invokeMethod(page, [&]() {
-            ok = page->sendScriptPayload(payload, QStringLiteral("hex"), lineEnding, &localError);
-        }, Qt::BlockingQueuedConnection);
+        QMetaObject::invokeMethod(
+            page, [&]() { ok = page->sendScriptPayload(payload, QStringLiteral("hex"), lineEnding, &localError); },
+            Qt::BlockingQueuedConnection);
         if (error) {
             *error = localError;
         }
@@ -204,40 +199,40 @@ void WorkbenchPage::startScript()
     runner->setReceivedTextCallback([page]() {
         QString value;
         if (page) {
-            QMetaObject::invokeMethod(page, [&]() { value = page->scriptReceivedTextSnapshot(); },
-                                      Qt::BlockingQueuedConnection);
+            QMetaObject::invokeMethod(
+                page, [&]() { value = page->scriptReceivedTextSnapshot(); }, Qt::BlockingQueuedConnection);
         }
         return value;
     });
     runner->setReceivedHexCallback([page]() {
         QString value;
         if (page) {
-            QMetaObject::invokeMethod(page, [&]() { value = page->scriptReceivedHexSnapshot(); },
-                                      Qt::BlockingQueuedConnection);
+            QMetaObject::invokeMethod(
+                page, [&]() { value = page->scriptReceivedHexSnapshot(); }, Qt::BlockingQueuedConnection);
         }
         return value;
     });
     runner->setLastRxTextCallback([page]() {
         QString value;
         if (page) {
-            QMetaObject::invokeMethod(page, [&]() { value = page->scriptLastRxTextSnapshot(); },
-                                      Qt::BlockingQueuedConnection);
+            QMetaObject::invokeMethod(
+                page, [&]() { value = page->scriptLastRxTextSnapshot(); }, Qt::BlockingQueuedConnection);
         }
         return value;
     });
     runner->setLastRxHexCallback([page]() {
         QString value;
         if (page) {
-            QMetaObject::invokeMethod(page, [&]() { value = page->scriptLastRxHexSnapshot(); },
-                                      Qt::BlockingQueuedConnection);
+            QMetaObject::invokeMethod(
+                page, [&]() { value = page->scriptLastRxHexSnapshot(); }, Qt::BlockingQueuedConnection);
         }
         return value;
     });
     runner->setRecordsCallback([page]() {
         QVariantList records;
         if (page) {
-            QMetaObject::invokeMethod(page, [&]() { records = page->scriptRecordSnapshot(); },
-                                      Qt::BlockingQueuedConnection);
+            QMetaObject::invokeMethod(
+                page, [&]() { records = page->scriptRecordSnapshot(); }, Qt::BlockingQueuedConnection);
         }
         return records;
     });
@@ -371,13 +366,14 @@ bool WorkbenchPage::sendScriptPayload(const QString &payloadText, const QString 
             return false;
         }
         output.append(checksum.bytes);
-        setChecksumResultText(QStringLiteral("%1 0x%2 · %3")
-                                  .arg(AppChecksum::labelForAlgorithm(checksumAlgorithmKey()),
-                                       QStringLiteral("%1")
-                                           .arg(checksum.value, AppChecksum::widthForAlgorithm(checksumAlgorithmKey()) * 2,
-                                                16, QLatin1Char('0'))
-                                           .toUpper(),
-                                       bytesToHex(checksum.bytes)));
+        setChecksumResultText(
+            QStringLiteral("%1 0x%2 · %3")
+                .arg(AppChecksum::labelForAlgorithm(checksumAlgorithmKey()),
+                     QStringLiteral("%1")
+                         .arg(checksum.value, AppChecksum::widthForAlgorithm(checksumAlgorithmKey()) * 2, 16,
+                              QLatin1Char('0'))
+                         .toUpper(),
+                     bytesToHex(checksum.bytes)));
     }
 
     QString writeError;
@@ -453,8 +449,8 @@ QVariantList WorkbenchPage::scriptRecordSnapshot() const
 
         QVariantMap item;
         item.insert(QStringLiteral("time"), record.timestamp.toString(Qt::ISODateWithMs));
-        item.insert(QStringLiteral("direction"), record.direction == RecordDirection::Tx ? QStringLiteral("tx")
-                                                                                         : QStringLiteral("rx"));
+        item.insert(QStringLiteral("direction"),
+                    record.direction == RecordDirection::Tx ? QStringLiteral("tx") : QStringLiteral("rx"));
         item.insert(QStringLiteral("source"), record.sourceLabel);
         item.insert(QStringLiteral("length"), record.bytes.size());
         item.insert(QStringLiteral("hex"), bytesToHex(record.bytes));

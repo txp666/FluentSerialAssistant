@@ -20,6 +20,7 @@ class QuickPlotWindow : public QWidget
 
     void appendText(const QDateTime &timestamp, const QString &text, bool ignorePause = false);
     void clearData();
+    bool setProtocolKey(const QString &key);
 
   signals:
     void protocolChanged();

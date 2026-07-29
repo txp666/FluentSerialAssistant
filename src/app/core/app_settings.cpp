@@ -15,7 +15,4 @@ QString AppSettings::directoryPath()
     return path;
 }
 
-QString AppSettings::filePath()
-{
-    return QDir(directoryPath()).filePath(QStringLiteral("FluentSerialAssistant.ini"));
-}
+QString AppSettings::filePath() { return QDir(directoryPath()).filePath(QStringLiteral("FluentSerialAssistant.ini")); }

@@ -4,6 +4,11 @@
 
 class WorkbenchSessionsPage;
 
+namespace AppControl {
+class LocalControlServer;
+class WorkbenchControlService;
+} // namespace AppControl
+
 class MainWindow : public FluentQt::MSFluentWindow
 {
     Q_OBJECT
@@ -19,4 +24,6 @@ class MainWindow : public FluentQt::MSFluentWindow
     void populateInterfaces();
 
     WorkbenchSessionsPage *m_workbenchPage = nullptr;
+    AppControl::WorkbenchControlService *m_controlService = nullptr;
+    AppControl::LocalControlServer *m_controlServer = nullptr;
 };

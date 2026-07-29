@@ -85,6 +85,12 @@ if [[ "$platform" == "macos" ]]; then
         echo "Installed macOS executable is missing: $executable" >&2
         exit 2
     fi
+    for control_executable in fluentserial-cli fluentserial-mcp; do
+        if [[ ! -x "$app_bundle/Contents/MacOS/$control_executable" ]]; then
+            echo "Installed macOS control executable is missing: $control_executable" >&2
+            exit 2
+        fi
+    done
     if [[ ! -f "$app_bundle/Contents/PlugIns/platforms/libqcocoa.dylib" ]]; then
         echo "Required Qt Cocoa platform plugin was not deployed." >&2
         exit 2
@@ -118,6 +124,12 @@ else
         echo "Installed Linux executable is missing: $executable" >&2
         exit 2
     fi
+    for control_executable in fluentserial-cli fluentserial-mcp; do
+        if [[ ! -x "$stage_dir/bin/$control_executable" ]]; then
+            echo "Installed Linux control executable is missing: $control_executable" >&2
+            exit 2
+        fi
+    done
     if ! find "$stage_dir" -type f -name 'libQt6Core.so*' -print -quit | grep -q .; then
         echo "Qt Core runtime library was not deployed." >&2
         exit 2
