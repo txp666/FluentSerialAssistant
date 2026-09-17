@@ -2215,6 +2215,260 @@ Content: %4</translation>
         <source> · 余 %1 B</source>
         <translation> · extra %1 B</translation>
     </message>
+    <message>
+        <source>更新信息超过大小限制</source>
+        <translation>Update information exceeds the size limit.</translation>
+    </message>
+    <message>
+        <source>更新下载超过最长等待时间，请重试</source>
+        <translation>The update download timed out. Please try again.</translation>
+    </message>
+    <message>
+        <source>更新下载地址必须使用 HTTPS（本机测试地址除外）</source>
+        <translation>The update download URL must use HTTPS, except for local test addresses.</translation>
+    </message>
+    <message>
+        <source>更新文件大小、SHA256 或保存路径无效</source>
+        <translation>The update file size, SHA-256 checksum, or save path is invalid.</translation>
+    </message>
+    <message>
+        <source>无法创建更新下载目录</source>
+        <translation>Unable to create the update download folder.</translation>
+    </message>
+    <message>
+        <source>无法创建更新下载临时目录</source>
+        <translation>Unable to create a temporary folder for the update download.</translation>
+    </message>
+    <message>
+        <source>正在检测下载服务器</source>
+        <translation>Checking the download server...</translation>
+    </message>
+    <message>
+        <source>无法写入更新临时文件：%1</source>
+        <translation>Unable to write the temporary update file: %1</translation>
+    </message>
+    <message>
+        <source>更新服务器重定向到不安全的下载地址</source>
+        <translation>The update server redirected to an insecure download URL.</translation>
+    </message>
+    <message>
+        <source>更新下载失败：%1</source>
+        <translation>Update download failed: %1</translation>
+    </message>
+    <message>
+        <source>更新服务器未返回有效的下载响应</source>
+        <translation>The update server did not return a valid download response.</translation>
+    </message>
+    <message>
+        <source>更新文件下载不完整，请重试</source>
+        <translation>The update download is incomplete. Please try again.</translation>
+    </message>
+    <message>
+        <source>无法保存更新临时文件：%1</source>
+        <translation>Unable to save the temporary update file: %1</translation>
+    </message>
+    <message>
+        <source>更新服务器返回了不安全的下载地址</source>
+        <translation>The update server returned an insecure download URL.</translation>
+    </message>
+    <message>
+        <source>更新服务器返回了不支持的压缩编码</source>
+        <translation>The update server returned an unsupported compression encoding.</translation>
+    </message>
+    <message>
+        <source>服务器不支持分段下载，正在使用单连接</source>
+        <translation>The server does not support partial downloads. Using a single connection.</translation>
+    </message>
+    <message>
+        <source>更新服务器返回 HTTP %1，预期 HTTP %2</source>
+        <translation>The update server returned HTTP %1; expected HTTP %2.</translation>
+    </message>
+    <message>
+        <source>更新服务器返回的分段范围或文件大小不匹配</source>
+        <translation>The update server returned a mismatched byte range or file size.</translation>
+    </message>
+    <message>
+        <source>更新服务器返回的文件长度不匹配</source>
+        <translation>The update server returned a mismatched file length.</translation>
+    </message>
+    <message>
+        <source>更新服务器发送的数据超过预期文件长度</source>
+        <translation>The update server sent more data than the expected file length.</translation>
+    </message>
+    <message>
+        <source>正在使用 %1 路连接下载</source>
+        <translation>Downloading with %1 parallel connections...</translation>
+    </message>
+    <message>
+        <source>无法保存更新文件：%1</source>
+        <translation>Unable to save the update file: %1</translation>
+    </message>
+    <message>
+        <source>无法读取更新临时文件：%1</source>
+        <translation>Unable to read the temporary update file: %1</translation>
+    </message>
+    <message>
+        <source>更新文件大小校验失败</source>
+        <translation>Update file size verification failed.</translation>
+    </message>
+    <message>
+        <source>更新文件 SHA256 校验失败，请重试</source>
+        <translation>Update file SHA-256 verification failed. Please try again.</translation>
+    </message>
+    <message>
+        <source>无法完成更新文件保存：%1</source>
+        <translation>Unable to finish saving the update file: %1</translation>
+    </message>
+    <message>
+        <source>正在合并并校验更新文件</source>
+        <translation>Combining and verifying the update file...</translation>
+    </message>
+    <message>
+        <source>%1
+安装日志：%2</source>
+        <translation>%1
+Installation log: %2</translation>
+    </message>
+    <message>
+        <source>未能准备更新安装，当前应用将保持运行。</source>
+        <translation>Unable to prepare the update installation. The app will remain open.</translation>
+    </message>
+    <message>
+        <source>更新安装包不存在或为空。</source>
+        <translation>The update installer is missing or empty.</translation>
+    </message>
+    <message>
+        <source>当前系统不支持自动安装更新。</source>
+        <translation>Automatic update installation is not supported on this system.</translation>
+    </message>
+    <message>
+        <source>更新安装包格式与当前系统不匹配。</source>
+        <translation>The update installer format does not match this system.</translation>
+    </message>
+    <message>
+        <source>请从已安装的应用程序启动后再更新。</source>
+        <translation>Please launch the installed app before updating.</translation>
+    </message>
+    <message>
+        <source>无法创建更新安装目录。</source>
+        <translation>Unable to create the update installation folder.</translation>
+    </message>
+    <message>
+        <source>无法准备更新安装文件。</source>
+        <translation>Unable to prepare the update installation files.</translation>
+    </message>
+    <message>
+        <source>系统未授权启动更新安装程序。</source>
+        <translation>The system did not authorize launching the update installer.</translation>
+    </message>
+    <message>
+        <source>无法创建更新安装脚本。</source>
+        <translation>Unable to create the update installation script.</translation>
+    </message>
+    <message>
+        <source>自动安装需要系统提供 pkexec 和 apt-get，请使用系统软件安装器安装已下载的 DEB。</source>
+        <translation>Automatic installation requires pkexec and apt-get. Use your system software installer to install the downloaded DEB.</translation>
+    </message>
+    <message>
+        <source>无法启动更新安装程序。</source>
+        <translation>Unable to launch the update installer.</translation>
+    </message>
+    <message>
+        <source>正在校验更新文件...</source>
+        <translation>Verifying the update file...</translation>
+    </message>
+    <message>
+        <source>下载已取消</source>
+        <translation>Download canceled.</translation>
+    </message>
+    <message>
+        <source>正在下载更新...</source>
+        <translation>Downloading the update...</translation>
+    </message>
+    <message>
+        <source>正在取消下载...</source>
+        <translation>Canceling the download...</translation>
+    </message>
+    <message>
+        <source>下载校验完成，正在准备安装...</source>
+        <translation>Download verified. Preparing installation...</translation>
+    </message>
+    <message>
+        <source>无法启动更新安装程序</source>
+        <translation>Unable to launch the update installer.</translation>
+    </message>
+    <message>
+        <source>未找到有效的正式发布版本</source>
+        <translation>No valid stable release was found.</translation>
+    </message>
+    <message>
+        <source>更新版本号无效</source>
+        <translation>The update version number is invalid.</translation>
+    </message>
+    <message>
+        <source>当前应用版本号无效</source>
+        <translation>The current app version number is invalid.</translation>
+    </message>
+    <message>
+        <source>更新发布地址无效</source>
+        <translation>The update release URL is invalid.</translation>
+    </message>
+    <message>
+        <source>此版本未提供更新说明。</source>
+        <translation>No release notes are available for this version.</translation>
+    </message>
+    <message>
+        <source>此系统或架构暂不支持自动安装更新</source>
+        <translation>Automatic update installation is not supported on this system or architecture.</translation>
+    </message>
+    <message>
+        <source>安装包地址、大小或 SHA-256 校验信息无效</source>
+        <translation>The installer URL, size, or SHA-256 checksum is invalid.</translation>
+    </message>
+    <message>
+        <source>未找到适用于当前系统的唯一安装包</source>
+        <translation>A unique installer for this system could not be found.</translation>
+    </message>
+    <message>
+        <source>下载完成并校验通过后，应用将退出并安装更新。</source>
+        <translation>The app will close and install the update after the download is verified.</translation>
+    </message>
+    <message>
+        <source>更新失败</source>
+        <translation>Update failed</translation>
+    </message>
+    <message>
+        <source>重试下载并安装</source>
+        <translation>Retry download and install</translation>
+    </message>
+    <message>
+        <source>下载并安装</source>
+        <translation>Download and install</translation>
+    </message>
+    <message>
+        <source>取消更新</source>
+        <translation>Cancel update</translation>
+    </message>
+    <message>
+        <source>稍后</source>
+        <translation>Later</translation>
+    </message>
+    <message>
+        <source>%1% · %2 / %3</source>
+        <translation>%1% · %2 / %3</translation>
+    </message>
+    <message>
+        <source>%1 / %2 字节</source>
+        <translation>%1 / %2 bytes</translation>
+    </message>
+    <message>
+        <source>查看进度</source>
+        <translation>View progress</translation>
+    </message>
+    <message>
+        <source>查看更新</source>
+        <translation>View update</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

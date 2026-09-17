@@ -2215,6 +2215,260 @@ JSON 对象：递归读取对象和数组中的数值
         <source> · 余 %1 B</source>
         <translation> · 余 %1 B</translation>
     </message>
+    <message>
+        <source>更新信息超过大小限制</source>
+        <translation>更新信息超过大小限制</translation>
+    </message>
+    <message>
+        <source>更新下载超过最长等待时间，请重试</source>
+        <translation>更新下载超过最长等待时间，请重试</translation>
+    </message>
+    <message>
+        <source>更新下载地址必须使用 HTTPS（本机测试地址除外）</source>
+        <translation>更新下载地址必须使用 HTTPS（本机测试地址除外）</translation>
+    </message>
+    <message>
+        <source>更新文件大小、SHA256 或保存路径无效</source>
+        <translation>更新文件大小、SHA256 或保存路径无效</translation>
+    </message>
+    <message>
+        <source>无法创建更新下载目录</source>
+        <translation>无法创建更新下载目录</translation>
+    </message>
+    <message>
+        <source>无法创建更新下载临时目录</source>
+        <translation>无法创建更新下载临时目录</translation>
+    </message>
+    <message>
+        <source>正在检测下载服务器</source>
+        <translation>正在检测下载服务器</translation>
+    </message>
+    <message>
+        <source>无法写入更新临时文件：%1</source>
+        <translation>无法写入更新临时文件：%1</translation>
+    </message>
+    <message>
+        <source>更新服务器重定向到不安全的下载地址</source>
+        <translation>更新服务器重定向到不安全的下载地址</translation>
+    </message>
+    <message>
+        <source>更新下载失败：%1</source>
+        <translation>更新下载失败：%1</translation>
+    </message>
+    <message>
+        <source>更新服务器未返回有效的下载响应</source>
+        <translation>更新服务器未返回有效的下载响应</translation>
+    </message>
+    <message>
+        <source>更新文件下载不完整，请重试</source>
+        <translation>更新文件下载不完整，请重试</translation>
+    </message>
+    <message>
+        <source>无法保存更新临时文件：%1</source>
+        <translation>无法保存更新临时文件：%1</translation>
+    </message>
+    <message>
+        <source>更新服务器返回了不安全的下载地址</source>
+        <translation>更新服务器返回了不安全的下载地址</translation>
+    </message>
+    <message>
+        <source>更新服务器返回了不支持的压缩编码</source>
+        <translation>更新服务器返回了不支持的压缩编码</translation>
+    </message>
+    <message>
+        <source>服务器不支持分段下载，正在使用单连接</source>
+        <translation>服务器不支持分段下载，正在使用单连接</translation>
+    </message>
+    <message>
+        <source>更新服务器返回 HTTP %1，预期 HTTP %2</source>
+        <translation>更新服务器返回 HTTP %1，预期 HTTP %2</translation>
+    </message>
+    <message>
+        <source>更新服务器返回的分段范围或文件大小不匹配</source>
+        <translation>更新服务器返回的分段范围或文件大小不匹配</translation>
+    </message>
+    <message>
+        <source>更新服务器返回的文件长度不匹配</source>
+        <translation>更新服务器返回的文件长度不匹配</translation>
+    </message>
+    <message>
+        <source>更新服务器发送的数据超过预期文件长度</source>
+        <translation>更新服务器发送的数据超过预期文件长度</translation>
+    </message>
+    <message>
+        <source>正在使用 %1 路连接下载</source>
+        <translation>正在使用 %1 路连接下载</translation>
+    </message>
+    <message>
+        <source>无法保存更新文件：%1</source>
+        <translation>无法保存更新文件：%1</translation>
+    </message>
+    <message>
+        <source>无法读取更新临时文件：%1</source>
+        <translation>无法读取更新临时文件：%1</translation>
+    </message>
+    <message>
+        <source>更新文件大小校验失败</source>
+        <translation>更新文件大小校验失败</translation>
+    </message>
+    <message>
+        <source>更新文件 SHA256 校验失败，请重试</source>
+        <translation>更新文件 SHA256 校验失败，请重试</translation>
+    </message>
+    <message>
+        <source>无法完成更新文件保存：%1</source>
+        <translation>无法完成更新文件保存：%1</translation>
+    </message>
+    <message>
+        <source>正在合并并校验更新文件</source>
+        <translation>正在合并并校验更新文件</translation>
+    </message>
+    <message>
+        <source>%1
+安装日志：%2</source>
+        <translation>%1
+安装日志：%2</translation>
+    </message>
+    <message>
+        <source>未能准备更新安装，当前应用将保持运行。</source>
+        <translation>未能准备更新安装，当前应用将保持运行。</translation>
+    </message>
+    <message>
+        <source>更新安装包不存在或为空。</source>
+        <translation>更新安装包不存在或为空。</translation>
+    </message>
+    <message>
+        <source>当前系统不支持自动安装更新。</source>
+        <translation>当前系统不支持自动安装更新。</translation>
+    </message>
+    <message>
+        <source>更新安装包格式与当前系统不匹配。</source>
+        <translation>更新安装包格式与当前系统不匹配。</translation>
+    </message>
+    <message>
+        <source>请从已安装的应用程序启动后再更新。</source>
+        <translation>请从已安装的应用程序启动后再更新。</translation>
+    </message>
+    <message>
+        <source>无法创建更新安装目录。</source>
+        <translation>无法创建更新安装目录。</translation>
+    </message>
+    <message>
+        <source>无法准备更新安装文件。</source>
+        <translation>无法准备更新安装文件。</translation>
+    </message>
+    <message>
+        <source>系统未授权启动更新安装程序。</source>
+        <translation>系统未授权启动更新安装程序。</translation>
+    </message>
+    <message>
+        <source>无法创建更新安装脚本。</source>
+        <translation>无法创建更新安装脚本。</translation>
+    </message>
+    <message>
+        <source>自动安装需要系统提供 pkexec 和 apt-get，请使用系统软件安装器安装已下载的 DEB。</source>
+        <translation>自动安装需要系统提供 pkexec 和 apt-get，请使用系统软件安装器安装已下载的 DEB。</translation>
+    </message>
+    <message>
+        <source>无法启动更新安装程序。</source>
+        <translation>无法启动更新安装程序。</translation>
+    </message>
+    <message>
+        <source>正在校验更新文件...</source>
+        <translation>正在校验更新文件...</translation>
+    </message>
+    <message>
+        <source>下载已取消</source>
+        <translation>下载已取消</translation>
+    </message>
+    <message>
+        <source>正在下载更新...</source>
+        <translation>正在下载更新...</translation>
+    </message>
+    <message>
+        <source>正在取消下载...</source>
+        <translation>正在取消下载...</translation>
+    </message>
+    <message>
+        <source>下载校验完成，正在准备安装...</source>
+        <translation>下载校验完成，正在准备安装...</translation>
+    </message>
+    <message>
+        <source>无法启动更新安装程序</source>
+        <translation>无法启动更新安装程序</translation>
+    </message>
+    <message>
+        <source>未找到有效的正式发布版本</source>
+        <translation>未找到有效的正式发布版本</translation>
+    </message>
+    <message>
+        <source>更新版本号无效</source>
+        <translation>更新版本号无效</translation>
+    </message>
+    <message>
+        <source>当前应用版本号无效</source>
+        <translation>当前应用版本号无效</translation>
+    </message>
+    <message>
+        <source>更新发布地址无效</source>
+        <translation>更新发布地址无效</translation>
+    </message>
+    <message>
+        <source>此版本未提供更新说明。</source>
+        <translation>此版本未提供更新说明。</translation>
+    </message>
+    <message>
+        <source>此系统或架构暂不支持自动安装更新</source>
+        <translation>此系统或架构暂不支持自动安装更新</translation>
+    </message>
+    <message>
+        <source>安装包地址、大小或 SHA-256 校验信息无效</source>
+        <translation>安装包地址、大小或 SHA-256 校验信息无效</translation>
+    </message>
+    <message>
+        <source>未找到适用于当前系统的唯一安装包</source>
+        <translation>未找到适用于当前系统的唯一安装包</translation>
+    </message>
+    <message>
+        <source>下载完成并校验通过后，应用将退出并安装更新。</source>
+        <translation>下载完成并校验通过后，应用将退出并安装更新。</translation>
+    </message>
+    <message>
+        <source>更新失败</source>
+        <translation>更新失败</translation>
+    </message>
+    <message>
+        <source>重试下载并安装</source>
+        <translation>重试下载并安装</translation>
+    </message>
+    <message>
+        <source>下载并安装</source>
+        <translation>下载并安装</translation>
+    </message>
+    <message>
+        <source>取消更新</source>
+        <translation>取消更新</translation>
+    </message>
+    <message>
+        <source>稍后</source>
+        <translation>稍后</translation>
+    </message>
+    <message>
+        <source>%1% · %2 / %3</source>
+        <translation>%1% · %2 / %3</translation>
+    </message>
+    <message>
+        <source>%1 / %2 字节</source>
+        <translation>%1 / %2 字节</translation>
+    </message>
+    <message>
+        <source>查看进度</source>
+        <translation>查看进度</translation>
+    </message>
+    <message>
+        <source>查看更新</source>
+        <translation>查看更新</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

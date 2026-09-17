@@ -2,7 +2,7 @@
 
 #include "app/core/app_i18n.h"
 #include "app/core/font_preferences.h"
-#include "app/core/update_checker.h"
+#include "app/core/update_manager.h"
 #include "app/serial/virtual_serial_pair.h"
 #include "app/view/fluent_tooltip_helper.h"
 
@@ -18,7 +18,6 @@
 #include <QtCore/QDir>
 #include <QtCore/QStandardPaths>
 #include <QtGui/QColor>
-#include <QtGui/QDesktopServices>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QLabel>
 
@@ -140,7 +139,7 @@ QString currentVersionText()
 
 } // namespace
 
-SettingsPage::SettingsPage(QWidget *parent)
+SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateManager)
     : AppPage(AppI18n::text("设置"), AppI18n::text("配置应用外观、终端显示和会话导出行为。"), parent)
 {
     AppSettings settings;
@@ -178,7 +177,9 @@ SettingsPage::SettingsPage(QWidget *parent)
                             AppI18n::text("支持 TTF、OTF 和 TTC 字体文件"), personalization);
     m_updateCard = new PushSettingCard(AppI18n::text("检查更新"), FluentIcon::Update, AppI18n::text("应用更新"),
                                        currentVersionText(), personalization);
-    m_updateChecker = new AppUpdate::UpdateChecker(this);
+    m_updateCard->setObjectName(QStringLiteral("applicationUpdateCard"));
+    m_updateManager = updateManager ? updateManager : new AppUpdate::UpdateManager(this);
+    m_lastUpdateState = m_updateManager->state();
 
     connect(themeModeCard, &ComboBoxSettingCard::currentIndexChanged, this, [](int index) {
         const Theme theme = indexToTheme(index);
@@ -218,8 +219,10 @@ SettingsPage::SettingsPage(QWidget *parent)
     connect(uiFontCard, &ComboBoxSettingCard::currentTextChanged, this,
             [](const QString &family) { AppFontPreferences::setUiFontFamily(family); });
     connect(m_updateCard, &PushSettingCard::clicked, this, &SettingsPage::checkForUpdates);
-    connect(m_updateChecker, &AppUpdate::UpdateChecker::checkStarted, this, &SettingsPage::handleUpdateCheckStarted);
-    connect(m_updateChecker, &AppUpdate::UpdateChecker::checkFinished, this, &SettingsPage::handleUpdateCheckFinished);
+    connect(m_updateManager, &AppUpdate::UpdateManager::stateChanged, this, &SettingsPage::handleUpdateStateChanged);
+    connect(m_updateManager, &AppUpdate::UpdateManager::updateFound, this, &SettingsPage::updateDialogRequested);
+    connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this, &SettingsPage::refreshUpdateCard);
+    refreshUpdateCard();
 
     personalization->addSettingCards(
         {themeModeCard, languageCard, themeColorCard, uiFontCard, importFontCard, m_updateCard});
@@ -344,57 +347,62 @@ SettingsPage::SettingsPage(QWidget *parent)
 
 void SettingsPage::checkForUpdates()
 {
-    if (m_updateChecker && !m_updateChecker->isChecking()) {
-        m_updateChecker->checkLatestRelease();
+    if (!m_updateManager) {
+        return;
+    }
+    if (!m_updateManager->release().version.isEmpty() &&
+        m_updateManager->state() != AppUpdate::UpdateManager::State::Checking &&
+        m_updateManager->state() != AppUpdate::UpdateManager::State::UpToDate) {
+        emit updateDialogRequested();
+        return;
+    }
+    if (!m_updateManager->isBusy()) {
+        m_updateManager->checkForUpdates(false);
     }
 }
 
-void SettingsPage::handleUpdateCheckStarted()
+void SettingsPage::handleUpdateStateChanged(AppUpdate::UpdateManager::State state)
 {
-    if (!m_updateCard) {
+    const auto previousState = m_lastUpdateState;
+    m_lastUpdateState = state;
+    refreshUpdateCard();
+
+    if (m_updateManager->isAutomaticCheck() || previousState != AppUpdate::UpdateManager::State::Checking) {
         return;
     }
-    m_updateCard->setContent(AppI18n::text("正在检查更新..."));
-    if (m_updateCard->button()) {
-        m_updateCard->button()->setEnabled(false);
+    if (state == AppUpdate::UpdateManager::State::Failed) {
+        InfoBar::error(AppI18n::text("检查更新失败"), m_updateManager->statusMessage(), Qt::Horizontal, true, 3500,
+                       InfoBarPosition::Top, window());
+    } else if (state == AppUpdate::UpdateManager::State::UpToDate) {
+        InfoBar::success(AppI18n::text("当前已是最新版本"),
+                         AppI18n::text("版本 %1").arg(QCoreApplication::applicationVersion()), Qt::Horizontal, true,
+                         2200, InfoBarPosition::Top, window());
     }
 }
 
-void SettingsPage::handleUpdateCheckFinished(bool ok, bool updateAvailable, const QString &currentVersion,
-                                             const QString &latestVersion, const QUrl &releaseUrl,
-                                             const QString &message)
+void SettingsPage::refreshUpdateCard()
 {
-    if (m_updateCard && m_updateCard->button()) {
-        m_updateCard->button()->setEnabled(true);
-    }
-
-    if (!ok) {
-        if (m_updateCard) {
-            m_updateCard->setContent(AppI18n::text("检查失败：%1").arg(message));
-        }
-        InfoBar::error(AppI18n::text("检查更新失败"), message, Qt::Horizontal, true, 3500, InfoBarPosition::Top,
-                       window());
+    if (!m_updateCard || !m_updateManager) {
         return;
     }
-
-    if (!updateAvailable) {
-        if (m_updateCard) {
-            m_updateCard->setContent(AppI18n::text("当前已是最新版本 %1").arg(currentVersion));
-        }
-        InfoBar::success(AppI18n::text("当前已是最新版本"), AppI18n::text("版本 %1").arg(currentVersion),
-                         Qt::Horizontal, true, 2200, InfoBarPosition::Top, window());
-        return;
+    using State = AppUpdate::UpdateManager::State;
+    const auto state = m_updateManager->state();
+    QString content = m_updateManager->statusMessage();
+    if (state == State::Idle) {
+        content = currentVersionText();
+    } else if (state == State::Checking) {
+        content = AppI18n::text("正在检查更新...");
+    } else if (state == State::Available) {
+        content = AppI18n::text("发现新版本 %1").arg(m_updateManager->release().version);
+    } else if (state == State::UpToDate) {
+        content = AppI18n::text("当前已是最新版本 %1").arg(QCoreApplication::applicationVersion());
     }
-
-    if (m_updateCard) {
-        m_updateCard->setContent(AppI18n::text("发现新版本 %1").arg(latestVersion));
+    m_updateCard->setContent(content);
+    if (auto *button = m_updateCard->button()) {
+        button->setEnabled(state != State::Checking && state != State::Installing);
+        button->setText(state == State::Downloading || state == State::Verifying ? AppI18n::text("查看进度")
+                        : !m_updateManager->release().version.isEmpty() && state != State::UpToDate
+                            ? AppI18n::text("查看更新")
+                            : AppI18n::text("检查更新"));
     }
-
-    auto *bar =
-        InfoBar::info(AppI18n::text("发现新版本"), AppI18n::text("当前 %1，最新 %2").arg(currentVersion, latestVersion),
-                      Qt::Horizontal, true, 10000, InfoBarPosition::Top, window());
-    auto *openButton = new PushButton(icon(FluentIcon::Link), AppI18n::text("打开发布页"), bar);
-    openButton->setEnabled(releaseUrl.isValid());
-    bar->addWidget(openButton);
-    connect(openButton, &PushButton::clicked, this, [releaseUrl]() { QDesktopServices::openUrl(releaseUrl); });
 }

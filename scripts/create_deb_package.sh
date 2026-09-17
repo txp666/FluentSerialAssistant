@@ -130,7 +130,7 @@ Installed-Size: $installed_size
 Section: utils
 Priority: optional
 Homepage: https://github.com/txp666/FluentSerialAssistant
-Depends: libc6 (>= 2.39), libstdc++6, libgcc-s1, libdbus-1-3, libopengl0, libgl1, libegl1, libfontconfig1, libfreetype6, libglib2.0-0t64, libx11-6, libx11-xcb1, libxext6, libxfixes3, libxi6, libxrender1, libsm6, libice6, libxcb1, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render0, libxcb-render-util0, libxcb-shape0, libxcb-shm0, libxcb-sync1, libxcb-util1, libxcb-xfixes0, libxcb-xinerama0, libxcb-xkb1, libxkbcommon0, libxkbcommon-x11-0
+Depends: apt, pkexec, libc6 (>= 2.39), libstdc++6, libgcc-s1, libdbus-1-3, libopengl0, libgl1, libegl1, libfontconfig1, libfreetype6, libglib2.0-0t64, libx11-6, libx11-xcb1, libxext6, libxfixes3, libxi6, libxrender1, libsm6, libice6, libxcb1, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render0, libxcb-render-util0, libxcb-shape0, libxcb-shm0, libxcb-sync1, libxcb-util1, libxcb-xfixes0, libxcb-xinerama0, libxcb-xkb1, libxkbcommon0, libxkbcommon-x11-0
 Description: Modern cross-platform serial terminal assistant
  Fluent Serial Assistant provides serial communication, packet tools,
  plotting, scripting, protocol templates, and session management.

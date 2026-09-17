@@ -52,7 +52,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - Multiple text, HEX, and regular-expression auto-reply rules with configurable delays. Click **New**, fill in the rule, then **Add**; select an existing rule and click **Save** to edit it.
 - Timed loop transmission and chunked file sending.
 - Rolling TXT, CSV, and BIN automatic logs.
-- GitHub Releases update checking.
+- Automatic update checks at startup, release notes before confirmation, and download, verification, and installation after approval. Manual checks and retries are available in Settings.
 - TXT, CSV, and BIN record export and raw receive-data saving.
 - Session restoration and optional automatic reconnection.
 - Light, dark, system theme, accent color, UI font, monospace font, and custom font configuration.
@@ -180,6 +180,13 @@ The lower-level packaging scripts are `scripts/package_windows.ps1`, `scripts/pa
 4. Turn the virtual serial pair off in Settings to disconnect both virtual endpoints.
 
 The pair works only within the same app instance, requires no drivers, and does not affect physical serial ports. It passes sent bytes in both directions without simulating baud rate or flow control. Data sent while the other end is disconnected is discarded and is not delivered after it connects.
+
+### In-app updates
+
+1. The app checks for updates at startup. No popup appears when there is no update or the network is unavailable. You can also check manually under **Settings → App Updates**.
+2. Review the new version and release notes, then select **Download and install** to start downloading. Select **Later** to postpone the update.
+3. Downloads use four parallel connections and show progress, downloaded size, and status. You can cancel while downloading. Servers without partial-download support automatically use a single connection; failed downloads can be retried.
+4. After the installer passes file-size and SHA-256 verification, installation is prepared. The operating system may request permission. Once the installer is ready, the app saves its settings and exits so installation can proceed, without a second in-app confirmation.
 
 ## AI, CLI, and MCP control
 

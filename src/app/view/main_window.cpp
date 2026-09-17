@@ -2,10 +2,13 @@
 #include "app/control/local_control_server.h"
 #include "app/control/workbench_control_service.h"
 #include "app/core/app_i18n.h"
+#include "app/core/update_manager.h"
 
 #include "app/view/settings_page.h"
+#include "app/view/update_dialog.h"
 #include "app/view/workbench_sessions_page.h"
 
+#include <QtCore/QCoreApplication>
 #include <QtGui/QCloseEvent>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QIcon>
@@ -28,7 +31,16 @@ MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
         move(available.center() - rect().center());
     }
 
+    m_updateManager = new AppUpdate::UpdateManager(this);
     populateInterfaces();
+    connect(m_updateManager, &AppUpdate::UpdateManager::installationReady, this, [this]() {
+        m_installationReady = true;
+        if (m_updateDialog) {
+            m_updateDialog->hide();
+        }
+        close();
+        QCoreApplication::quit();
+    });
     m_controlService = new AppControl::WorkbenchControlService(m_workbenchPage, this);
     m_controlServer = new AppControl::LocalControlServer(m_controlService, this);
     QString controlError;
@@ -44,10 +56,39 @@ MainWindow::~MainWindow() = default;
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    if (m_updateManager && !m_installationReady) {
+        if (m_updateManager->state() == AppUpdate::UpdateManager::State::Installing) {
+            event->ignore();
+            return;
+        }
+        m_updateManager->cancelDownload();
+    }
     if (m_workbenchPage) {
         m_workbenchPage->saveSettings();
     }
     MSFluentWindow::closeEvent(event);
+}
+
+void MainWindow::startUpdateCheck()
+{
+    if (m_startupUpdateCheckStarted || !m_updateManager) {
+        return;
+    }
+    m_startupUpdateCheckStarted = true;
+    m_updateManager->checkForUpdates(true);
+}
+
+void MainWindow::showUpdateDialog()
+{
+    if (!m_updateManager || m_updateManager->release().version.isEmpty()) {
+        return;
+    }
+    if (!m_updateDialog) {
+        m_updateDialog = new UpdateDialog(m_updateManager, this);
+        m_updateDialog->setAttribute(Qt::WA_DeleteOnClose);
+    }
+    m_updateDialog->open();
+    m_updateDialog->raise();
 }
 
 void MainWindow::populateInterfaces()
@@ -63,7 +104,7 @@ void MainWindow::populateInterfaces()
         switchTo(QStringLiteral("settings"));
     });
 
-    auto *settingsPage = new SettingsPage(this);
+    auto *settingsPage = new SettingsPage(this, m_updateManager);
     settingsPage->setObjectName(QStringLiteral("settings"));
     addSubInterface(settingsPage, icon(FluentIcon::Setting), AppI18n::text("设置"), QIcon(),
                     NavigationItemPosition::Bottom);
@@ -75,4 +116,5 @@ void MainWindow::populateInterfaces()
     });
     connect(settingsPage, &SettingsPage::terminalFontChanged, m_workbenchPage,
             &WorkbenchSessionsPage::setTerminalFontFamily);
+    connect(settingsPage, &SettingsPage::updateDialogRequested, this, &MainWindow::showUpdateDialog);
 }

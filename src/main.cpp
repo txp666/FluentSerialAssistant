@@ -10,6 +10,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QSettings>
+#include <QtCore/QTimer>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QStyleFactory>
 
@@ -55,6 +56,7 @@ int main(int argc, char *argv[])
 
     MainWindow window;
     window.show();
+    QTimer::singleShot(1000, &window, &MainWindow::startUpdateCheck);
 
     return app.exec();
 }

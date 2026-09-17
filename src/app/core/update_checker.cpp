@@ -2,83 +2,63 @@
 #include "app/core/app_i18n.h"
 
 #include <QtCore/QCoreApplication>
-#include <QtCore/QJsonDocument>
-#include <QtCore/QJsonObject>
-#include <QtCore/QRegularExpression>
+#include <QtCore/QTimer>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
 
-namespace {
-
-QUrl latestReleaseApiUrl()
-{
-    return QUrl(QStringLiteral("https://api.github.com/repos/txp666/FluentSerialAssistant/releases/latest"));
-}
-
-QString normalizedVersion(QString version)
-{
-    version = version.trimmed();
-    if (version.startsWith(QLatin1Char('v'), Qt::CaseInsensitive)) {
-        version.remove(0, 1);
-    }
-    return version;
-}
-
-QList<int> versionParts(const QString &version)
-{
-    QList<int> parts;
-    const QRegularExpression numberPattern(QStringLiteral("(\\d+)"));
-    auto matchIterator = numberPattern.globalMatch(normalizedVersion(version));
-    while (matchIterator.hasNext()) {
-        parts.append(matchIterator.next().captured(1).toInt());
-    }
-    return parts;
-}
-
-int compareVersions(const QString &left, const QString &right)
-{
-    const QList<int> leftParts = versionParts(left);
-    const QList<int> rightParts = versionParts(right);
-    const int count = qMax(leftParts.size(), rightParts.size());
-    for (int i = 0; i < count; ++i) {
-        const int leftValue = i < leftParts.size() ? leftParts.at(i) : 0;
-        const int rightValue = i < rightParts.size() ? rightParts.at(i) : 0;
-        if (leftValue != rightValue) {
-            return leftValue < rightValue ? -1 : 1;
-        }
-    }
-    return 0;
-}
-
-QString currentApplicationVersion()
-{
-    const QString version = QCoreApplication::applicationVersion();
-    return version.isEmpty() ? QStringLiteral("0.0.0") : version;
-}
-
-} // namespace
-
 namespace AppUpdate {
 
-UpdateChecker::UpdateChecker(QObject *parent) : QObject(parent), m_network(new QNetworkAccessManager(this)) {}
+namespace {
+constexpr qint64 kMaximumReleaseBytes = 2 * 1024 * 1024;
+}
+
+UpdateChecker::UpdateChecker(QObject *parent)
+    : UpdateChecker(QUrl(QStringLiteral("https://api.github.com/repos/txp666/FluentSerialAssistant/releases/latest")),
+                    parent)
+{
+}
+
+UpdateChecker::UpdateChecker(const QUrl &releaseApiUrl, QObject *parent)
+    : QObject(parent), m_network(new QNetworkAccessManager(this)), m_releaseApiUrl(releaseApiUrl)
+{
+}
 
 bool UpdateChecker::isChecking() const { return m_checking; }
+
+const ReleaseInfo &UpdateChecker::latestRelease() const { return m_release; }
 
 void UpdateChecker::checkLatestRelease()
 {
     if (m_checking) {
         return;
     }
-
     m_checking = true;
+    m_release = {};
+    m_payload.clear();
+    m_responseTooLarge = false;
     emit checkStarted();
 
-    QNetworkRequest request(latestReleaseApiUrl());
+    QNetworkRequest request(m_releaseApiUrl);
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setRawHeader("User-Agent", "FluentSerialAssistant");
-
-    QNetworkReply *reply = m_network->get(request);
+    request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setTransferTimeout(15000);
+    auto *reply = m_network->get(request);
+    reply->setReadBufferSize(kMaximumReleaseBytes + 1);
+    QTimer::singleShot(45000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
+    connect(reply, &QIODevice::readyRead, this, [this, reply]() {
+        m_payload.append(reply->readAll());
+        if (m_payload.size() > kMaximumReleaseBytes) {
+            m_responseTooLarge = true;
+            reply->abort();
+        }
+    });
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         handleReply(reply);
         reply->deleteLater();
@@ -87,38 +67,40 @@ void UpdateChecker::checkLatestRelease()
 
 void UpdateChecker::handleReply(QNetworkReply *reply)
 {
-    const QString currentVersion = currentApplicationVersion();
+    QString currentVersion = QCoreApplication::applicationVersion();
+    if (currentVersion.isEmpty()) {
+        currentVersion = QStringLiteral("0.0.0");
+    }
     m_checking = false;
-
+    const auto fail = [this, &currentVersion](const QString &message) {
+        emit checkFinished(false, false, currentVersion, {}, {}, message);
+    };
+    if (m_responseTooLarge) {
+        fail(AppI18n::text("更新信息超过大小限制"));
+        return;
+    }
     if (reply->error() != QNetworkReply::NoError) {
-        emit checkFinished(false, false, currentVersion, QString(), QUrl(), reply->errorString());
+        fail(reply->errorString());
         return;
     }
-
-    const int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    if (statusCode < 200 || statusCode >= 300) {
-        emit checkFinished(false, false, currentVersion, QString(), QUrl(),
-                           AppI18n::text("GitHub 返回 HTTP %1").arg(statusCode));
+    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (status != 200) {
+        fail(AppI18n::text("GitHub 返回 HTTP %1").arg(status));
         return;
     }
-
-    const QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
-    if (!document.isObject()) {
-        emit checkFinished(false, false, currentVersion, QString(), QUrl(), AppI18n::text("更新信息格式无效"));
+    m_payload.append(reply->readAll());
+    if (m_payload.size() > kMaximumReleaseBytes) {
+        fail(AppI18n::text("更新信息超过大小限制"));
         return;
     }
-
-    const QJsonObject release = document.object();
-    const QString latestVersion = normalizedVersion(release.value(QStringLiteral("tag_name")).toString());
-    const QUrl releaseUrl(release.value(QStringLiteral("html_url")).toString());
-    if (latestVersion.isEmpty() || !releaseUrl.isValid()) {
-        emit checkFinished(false, false, currentVersion, QString(), QUrl(), AppI18n::text("未找到有效的发布版本"));
+    bool available = false;
+    QString error;
+    if (!parseRelease(m_payload, currentPlatformKey(), currentVersion, &m_release, &available, &error)) {
+        fail(error);
         return;
     }
-
-    const bool updateAvailable = compareVersions(latestVersion, currentVersion) > 0;
-    emit checkFinished(true, updateAvailable, currentVersion, latestVersion, releaseUrl,
-                       updateAvailable ? AppI18n::text("发现新版本") : AppI18n::text("当前已是最新版本"));
+    emit checkFinished(true, available, currentVersion, m_release.version, m_release.releaseUrl,
+                       available ? AppI18n::text("发现新版本") : AppI18n::text("当前已是最新版本"));
 }
 
 } // namespace AppUpdate
