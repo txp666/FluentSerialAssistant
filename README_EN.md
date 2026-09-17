@@ -39,6 +39,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - Multi-channel real-time plotting from line-aware numbers, delimited values, multi-word/Unicode key-value pairs, nested JSON, and typed binary frame or payload fields. The UI, CLI, and MCP share a persistent parser configuration with field selection and CSV export.
 - A sortable and filterable frame table with HEX/text copying and terminal navigation.
 - Multiple independent serial sessions in tabs.
+- A built-in virtual serial pair: enable it in Settings, then connect two sessions to `VIRTUAL-A` and `VIRTUAL-B` for two-way data transfer inside the app without installing drivers.
 - RX/TX totals, live transfer rates, and connection duration.
 - Text and HEX sending with None, CR, LF, and CRLF line endings.
 - CRC16-Modbus, CRC16-CCITT, CRC32, LRC, XOR, and SUM8 calculation and automatic appending.
@@ -48,7 +49,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - Multi-step macros with delays, expected responses, loops, stop-on-failure behavior, and CSV result export.
 - A built-in JavaScript runner with controlled `serial.sendText()`, `serial.sendHex()`, `serial.records()`, and `serial.log()` APIs.
 - AI control through a user-scoped local IPC service, a machine-readable CLI, and a stdio MCP server. AI clients can reuse the active GUI session for discovery, connection, traffic, protocol selection, records, and live-plot control without competing for the serial port.
-- Text, HEX, and regular-expression auto-reply rules with configurable delays.
+- Multiple text, HEX, and regular-expression auto-reply rules with configurable delays. Click **New**, fill in the rule, then **Add**; select an existing rule and click **Save** to edit it.
 - Timed loop transmission and chunked file sending.
 - Rolling TXT, CSV, and BIN automatic logs.
 - GitHub Releases update checking.
@@ -170,6 +171,15 @@ The lower-level packaging scripts are `scripts/package_windows.ps1`, `scripts/pa
 5. Save reusable packets, macros, protocol templates, scripts, and auto-reply rules.
 6. Use quick plotting or the frame table to inspect structured incoming data.
 7. Export records as TXT, CSV, or BIN.
+
+### Built-in virtual serial pair
+
+1. Open **Settings** and enable **Built-in virtual serial pair**.
+2. Connect one session to `VIRTUAL-A` and another to `VIRTUAL-B`. Refresh the port list if necessary.
+3. Send text or HEX data from either end and receive it at the other. Auto-reply rules can also be used to test requests and responses.
+4. Turn the virtual serial pair off in Settings to disconnect both virtual endpoints.
+
+The pair works only within the same app instance, requires no drivers, and does not affect physical serial ports. It passes sent bytes in both directions without simulating baud rate or flow control. Data sent while the other end is disconnected is discarded and is not delivered after it connects.
 
 ## AI, CLI, and MCP control
 

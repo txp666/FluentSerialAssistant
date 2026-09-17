@@ -4,8 +4,7 @@
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
-#include <QtCore/QMetaType>
-#include <QtCore/QSignalBlocker>
+#include <QtCore/QItemSelectionModel>
 #include <QtGui/QClipboard>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QHBoxLayout>
@@ -14,48 +13,7 @@
 #include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QVBoxLayout>
 
-namespace {
-
-constexpr int SortRole = Qt::UserRole + 1;
-constexpr int SearchRole = Qt::UserRole + 2;
-constexpr int RecordIndexRole = Qt::UserRole + 3;
-constexpr int DirectionKeyRole = Qt::UserRole + 4;
-
-class SortableTableItem : public QTableWidgetItem
-{
-  public:
-    explicit SortableTableItem(const QString &text) : QTableWidgetItem(text) {}
-
-    bool operator<(const QTableWidgetItem &other) const override
-    {
-        const QVariant left = data(SortRole);
-        const QVariant right = other.data(SortRole);
-        const bool numeric = (left.metaType().id() == QMetaType::LongLong || left.metaType().id() == QMetaType::Int) &&
-                             (right.metaType().id() == QMetaType::LongLong || right.metaType().id() == QMetaType::Int);
-        if (numeric) {
-            return left.toLongLong() < right.toLongLong();
-        }
-        return text().localeAwareCompare(other.text()) < 0;
-    }
-};
-
-QString directionKey(const QString &direction)
-{
-    const QString trimmed = direction.trimmed().toLower();
-    if (trimmed == QStringLiteral("tx") || trimmed == AppI18n::text("发送").toLower()) {
-        return QStringLiteral("tx");
-    }
-    return QStringLiteral("rx");
-}
-
-QString escapedPlainText(QString text)
-{
-    text.replace(QLatin1Char('\r'), QStringLiteral("\\r"));
-    text.replace(QLatin1Char('\n'), QStringLiteral("\\n"));
-    return text;
-}
-
-} // namespace
+using Column = DataTableModel;
 
 DataTableWindow::DataTableWindow(QWidget *parent) : QWidget(parent, Qt::Window)
 {
@@ -108,8 +66,11 @@ DataTableWindow::DataTableWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     toolbar->addWidget(m_statusLabel);
     root->addLayout(toolbar);
 
-    m_table = new TableWidget(this);
-    m_table->setColumnCount(ColumnCount);
+    m_model = new DataTableModel(this);
+    m_proxy = new DataTableFilterModel(this);
+    m_proxy->setSourceModel(m_model);
+    m_table = new TableView(this);
+    m_table->setModel(m_proxy);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setSelectionMode(QAbstractItemView::SingleSelection);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -119,28 +80,37 @@ DataTableWindow::DataTableWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_table->setContextMenuPolicy(Qt::CustomContextMenu);
     m_table->setBorderRadius(8);
     m_table->verticalHeader()->setVisible(false);
+    m_table->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    m_table->verticalHeader()->setDefaultSectionSize(32);
     m_table->horizontalHeader()->setStretchLastSection(false);
     m_table->horizontalHeader()->setSectionsClickable(true);
-    m_table->horizontalHeader()->setSectionResizeMode(TimeColumn, QHeaderView::ResizeToContents);
-    m_table->horizontalHeader()->setSectionResizeMode(DirectionColumn, QHeaderView::ResizeToContents);
-    m_table->horizontalHeader()->setSectionResizeMode(SourceColumn, QHeaderView::ResizeToContents);
-    m_table->horizontalHeader()->setSectionResizeMode(LengthColumn, QHeaderView::ResizeToContents);
-    m_table->horizontalHeader()->setSectionResizeMode(HexColumn, QHeaderView::Stretch);
-    m_table->horizontalHeader()->setSectionResizeMode(TextColumn, QHeaderView::Stretch);
-    m_table->horizontalHeader()->setSectionResizeMode(ChecksumColumn, QHeaderView::ResizeToContents);
-    setupHeaders();
+    // Content-based sizing scans historical rows whenever new data arrives.
+    m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_table->setColumnWidth(Column::TimeColumn, 200);
+    m_table->setColumnWidth(Column::DirectionColumn, 70);
+    m_table->setColumnWidth(Column::SourceColumn, 100);
+    m_table->setColumnWidth(Column::LengthColumn, 70);
+    m_table->setColumnWidth(Column::ChecksumColumn, 160);
+    m_table->horizontalHeader()->setSectionResizeMode(Column::HexColumn, QHeaderView::Stretch);
+    m_table->horizontalHeader()->setSectionResizeMode(Column::TextColumn, QHeaderView::Stretch);
+    m_table->sortByColumn(Column::TimeColumn, Qt::AscendingOrder);
     root->addWidget(m_table, 1);
 
-    connect(m_filterEdit, &SearchLineEdit::textChanged, this, [this]() { applyFilter(); });
+    m_filterTimer.setSingleShot(true);
+    m_filterTimer.setInterval(150);
+    connect(&m_filterTimer, &QTimer::timeout, this, &DataTableWindow::applyFilter);
+    connect(m_filterEdit, &SearchLineEdit::textChanged, this, [this]() { m_filterTimer.start(); });
     connect(m_filterEdit, &SearchLineEdit::clearSignal, this, [this]() { applyFilter(); });
     connect(m_directionCombo, &ComboBox::currentIndexChanged, this, [this](int) { applyFilter(); });
     connect(refreshButton, &PushButton::clicked, this, &DataTableWindow::refreshRequested);
     connect(m_copyButton, &PushButton::clicked, this, &DataTableWindow::copySelectedFrame);
     connect(m_copyHexButton, &PushButton::clicked, this, &DataTableWindow::copySelectedHex);
     connect(m_locateButton, &PushButton::clicked, this, &DataTableWindow::locateSelectedFrame);
-    connect(m_table, &TableWidget::itemSelectionChanged, this, &DataTableWindow::updateActionState);
-    connect(m_table, &TableWidget::itemDoubleClicked, this, [this](QTableWidgetItem *) { locateSelectedFrame(); });
-    connect(m_table, &TableWidget::customContextMenuRequested, this, &DataTableWindow::showContextMenu);
+    connect(m_table->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+            &DataTableWindow::updateActionState);
+    connect(m_table->selectionModel(), &QItemSelectionModel::currentChanged, this, &DataTableWindow::updateActionState);
+    connect(m_table, &TableView::doubleClicked, this, [this](const QModelIndex &) { locateSelectedFrame(); });
+    connect(m_table, &TableView::customContextMenuRequested, this, &DataTableWindow::showContextMenu);
 
     updateStatus();
     updateActionState();
@@ -148,137 +118,38 @@ DataTableWindow::DataTableWindow(QWidget *parent) : QWidget(parent, Qt::Window)
 
 void DataTableWindow::setRecords(const QVector<DataTableRecord> &records)
 {
-    if (!m_table) {
-        return;
-    }
-
-    const int previousRecordIndex = selectedRecordIndex();
-    const int sortColumn = m_table->horizontalHeader()->sortIndicatorSection();
-    const Qt::SortOrder sortOrder = m_table->horizontalHeader()->sortIndicatorOrder();
-
-    const QSignalBlocker blocker(m_table);
-    m_table->setSortingEnabled(false);
-    m_table->setRowCount(0);
-    m_totalRows = 0;
-    for (const DataTableRecord &record : records) {
-        addRecordRow(record);
-    }
-    m_table->setSortingEnabled(true);
-    m_table->sortItems(sortColumn >= 0 ? sortColumn : TimeColumn, sortColumn >= 0 ? sortOrder : Qt::AscendingOrder);
-    applyFilter();
+    const qint64 previousRecordIndex = selectedRecordIndex();
+    m_model->setRecords(records);
     if (previousRecordIndex >= 0) {
-        for (int row = 0; row < m_table->rowCount(); ++row) {
-            QTableWidgetItem *item = m_table->item(row, TimeColumn);
-            if (item && item->data(RecordIndexRole).toInt() == previousRecordIndex) {
-                m_table->selectRow(row);
-                break;
-            }
+        const int row = m_model->rowForRecordIndex(previousRecordIndex);
+        const QModelIndex index = m_proxy->mapFromSource(m_model->index(row, 0));
+        if (index.isValid()) {
+            m_table->selectRow(index.row());
         }
     }
+    updateStatus();
     updateActionState();
 }
 
-void DataTableWindow::appendRecord(const DataTableRecord &record)
+void DataTableWindow::appendRecords(const QVector<DataTableRecord> &records, qint64 firstRecordIndex)
 {
-    if (!m_table) {
-        return;
-    }
-
-    const bool sorting = m_table->isSortingEnabled();
-    m_table->setSortingEnabled(false);
-    addRecordRow(record);
-    m_table->setSortingEnabled(sorting);
-    applyFilter();
-}
-
-void DataTableWindow::setupHeaders()
-{
-    const QStringList labels = {
-        AppI18n::text("时间"), AppI18n::text("方向"), AppI18n::text("来源"), AppI18n::text("长度"),
-        QStringLiteral("HEX"), AppI18n::text("文本"), AppI18n::text("校验"),
-    };
-    m_table->setHorizontalHeaderLabels(labels);
-}
-
-void DataTableWindow::addRecordRow(const DataTableRecord &record)
-{
-    const int row = m_table->rowCount();
-    m_table->insertRow(row);
-    const QString timeText = record.timestamp.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"));
-    const QString direction = record.direction;
-    const QString source = record.source.trimmed().isEmpty() ? QStringLiteral("-") : record.source.trimmed();
-    const QString length = QString::number(record.length);
-    const QString text = escapedPlainText(record.text);
-    const QString key = directionKey(direction);
-    const QString searchText = QStringLiteral("%1 %2 %3 %4 %5 %6 %7")
-                                   .arg(timeText, direction, source, length, record.hex, text, record.checksum)
-                                   .toLower();
-
-    const QStringList values = {timeText, direction, source, length, record.hex, text, record.checksum};
-    for (int column = 0; column < values.size(); ++column) {
-        auto *item = new SortableTableItem(values.at(column));
-        item->setToolTip(values.at(column));
-        item->setData(SearchRole, searchText);
-        item->setData(RecordIndexRole, record.recordIndex);
-        item->setData(DirectionKeyRole, key);
-        if (column == TimeColumn) {
-            item->setData(SortRole, record.timestamp.toMSecsSinceEpoch());
-        } else if (column == LengthColumn) {
-            item->setData(SortRole, record.length);
-            item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        } else {
-            item->setData(SortRole, values.at(column));
-        }
-        m_table->setItem(row, column, item);
-    }
-    ++m_totalRows;
+    m_model->removeRecordsBefore(firstRecordIndex);
+    m_model->appendRecords(records);
+    updateStatus();
+    updateActionState();
 }
 
 void DataTableWindow::applyFilter()
 {
-    if (!m_table) {
-        return;
-    }
-
-    const QString directionFilter =
-        m_directionCombo ? m_directionCombo->currentData().toString() : QStringLiteral("all");
-    const QString filterText = m_filterEdit ? m_filterEdit->text().trimmed().toLower() : QString();
-    int visibleRows = 0;
-    for (int row = 0; row < m_table->rowCount(); ++row) {
-        QTableWidgetItem *item = m_table->item(row, TimeColumn);
-        if (!item) {
-            m_table->setRowHidden(row, true);
-            continue;
-        }
-
-        const QString rowDirection = item->data(DirectionKeyRole).toString();
-        const QString rowSearch = item->data(SearchRole).toString();
-        const bool directionOk = directionFilter == QStringLiteral("all") || directionFilter == rowDirection;
-        const bool textOk = filterText.isEmpty() || rowSearch.contains(filterText);
-        const bool visible = directionOk && textOk;
-        m_table->setRowHidden(row, !visible);
-        if (visible) {
-            ++visibleRows;
-        }
-    }
-
+    m_filterTimer.stop();
+    m_proxy->setFilters(m_filterEdit->text(), m_directionCombo->currentData().toString());
     updateStatus();
     updateActionState();
 }
 
 void DataTableWindow::updateStatus()
 {
-    if (!m_statusLabel || !m_table) {
-        return;
-    }
-
-    int visibleRows = 0;
-    for (int row = 0; row < m_table->rowCount(); ++row) {
-        if (!m_table->isRowHidden(row)) {
-            ++visibleRows;
-        }
-    }
-    m_statusLabel->setText(AppI18n::text("显示 %1/%2 条").arg(visibleRows).arg(m_totalRows));
+    m_statusLabel->setText(AppI18n::text("显示 %1/%2 条").arg(m_proxy->rowCount()).arg(m_model->rowCount()));
 }
 
 void DataTableWindow::updateActionState()
@@ -295,27 +166,19 @@ void DataTableWindow::updateActionState()
     }
 }
 
-int DataTableWindow::selectedRecordIndex() const
+qint64 DataTableWindow::selectedRecordIndex() const
 {
     const int row = selectedRow();
-    if (row < 0 || !m_table) {
-        return -1;
-    }
-    QTableWidgetItem *item = m_table->item(row, TimeColumn);
-    return item ? item->data(RecordIndexRole).toInt() : -1;
+    return row >= 0 ? m_proxy->index(row, 0).data(DataTableModel::RecordIndexRole).toLongLong() : -1;
 }
 
 int DataTableWindow::selectedRow() const
 {
-    if (!m_table) {
-        return -1;
-    }
-    const auto rows = m_table->selectionModel() ? m_table->selectionModel()->selectedRows() : QModelIndexList();
+    const auto rows = m_table->selectionModel()->selectedRows();
     if (!rows.isEmpty()) {
         return rows.first().row();
     }
-    const int current = m_table->currentRow();
-    return current >= 0 && !m_table->isRowHidden(current) ? current : -1;
+    return m_table->currentIndex().isValid() ? m_table->currentIndex().row() : -1;
 }
 
 QString DataTableWindow::selectedFrameText() const
@@ -326,10 +189,9 @@ QString DataTableWindow::selectedFrameText() const
     }
 
     QStringList lines;
-    for (int column = 0; column < ColumnCount; ++column) {
-        const QString header =
-            m_table->horizontalHeaderItem(column) ? m_table->horizontalHeaderItem(column)->text() : QString();
-        const QString value = m_table->item(row, column) ? m_table->item(row, column)->text() : QString();
+    for (int column = 0; column < Column::ColumnCount; ++column) {
+        const QString header = m_proxy->headerData(column, Qt::Horizontal).toString();
+        const QString value = m_proxy->index(row, column).data().toString();
         lines.append(QStringLiteral("%1: %2").arg(header, value));
     }
     return lines.join(QLatin1Char('\n'));
@@ -338,10 +200,10 @@ QString DataTableWindow::selectedFrameText() const
 QString DataTableWindow::selectedHexText() const
 {
     const int row = selectedRow();
-    if (row < 0 || !m_table || !m_table->item(row, HexColumn)) {
+    if (row < 0) {
         return {};
     }
-    return m_table->item(row, HexColumn)->text();
+    return m_proxy->index(row, Column::HexColumn).data().toString();
 }
 
 void DataTableWindow::copySelectedFrame()
@@ -362,7 +224,7 @@ void DataTableWindow::copySelectedHex()
 
 void DataTableWindow::locateSelectedFrame()
 {
-    const int recordIndex = selectedRecordIndex();
+    const qint64 recordIndex = selectedRecordIndex();
     if (recordIndex >= 0) {
         emit locateRequested(recordIndex);
     }

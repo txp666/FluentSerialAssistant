@@ -248,6 +248,36 @@
         <translation>Serial port is not connected</translation>
     </message>
     <message>
+        <source>内置虚拟串口对</source>
+        <translation>Built-in virtual serial pair</translation>
+    </message>
+    <message>
+        <source>两个会话分别连接 VIRTUAL-A 和 VIRTUAL-B，即可双向收发。
+仅在本应用内可用，不模拟波特率和流控；关闭后断开虚拟连接。</source>
+        <translation>Connect two sessions to VIRTUAL-A and VIRTUAL-B for two-way communication.
+Available only in this app. Baud rate and flow control are not simulated; switching off disconnects the virtual ports.</translation>
+    </message>
+    <message>
+        <source>虚拟串口对未开启，请先在设置中开启</source>
+        <translation>The virtual serial pair is disabled. Enable it in Settings first.</translation>
+    </message>
+    <message>
+        <source>虚拟串口 %1 已被其他会话占用</source>
+        <translation>Virtual port %1 is already in use by another session.</translation>
+    </message>
+    <message>
+        <source>虚拟串口接收缓冲区已满，请降低发送速率</source>
+        <translation>The virtual port receive buffer is full. Reduce the sending rate.</translation>
+    </message>
+    <message>
+        <source>内置虚拟串口 A（连接 B）</source>
+        <translation>Built-in virtual port A (connected to B)</translation>
+    </message>
+    <message>
+        <source>内置虚拟串口 B（连接 A）</source>
+        <translation>Built-in virtual port B (connected to A)</translation>
+    </message>
+    <message>
         <source>切换主题</source>
         <translation>Toggle theme</translation>
     </message>
@@ -718,6 +748,14 @@ Reply: %2</translation>
     <message>
         <source>无法保存自动应答</source>
         <translation>Unable to save auto reply</translation>
+    </message>
+    <message>
+        <source>新建</source>
+        <translation>New</translation>
+    </message>
+    <message>
+        <source>添加</source>
+        <translation>Add</translation>
     </message>
     <message>
         <source>匹配内容为空</source>

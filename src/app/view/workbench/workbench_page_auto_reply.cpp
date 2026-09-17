@@ -81,10 +81,8 @@ void WorkbenchPage::updateAutoReplyTable(int selectedRow)
         m_autoReplyList->addItem(item);
     }
 
-    if (!m_autoReplyRules.isEmpty()) {
-        const int row =
-            qBound(0, selectedRow >= 0 ? selectedRow : m_autoReplyList->currentRow(), m_autoReplyRules.size() - 1);
-        m_autoReplyList->setCurrentRow(row);
+    if (selectedRow >= 0 && selectedRow < m_autoReplyRules.size()) {
+        m_autoReplyList->setCurrentRow(selectedRow);
     }
     updateAutoReplyActionState();
 }
@@ -93,8 +91,8 @@ void WorkbenchPage::updateAutoReplyActionState()
 {
     const int row = m_autoReplyList ? m_autoReplyList->currentRow() : -1;
     const bool hasCurrent = row >= 0 && row < m_autoReplyRules.size();
-    if (m_autoReplyLoadButton) {
-        m_autoReplyLoadButton->setEnabled(hasCurrent);
+    if (m_autoReplySaveButton) {
+        m_autoReplySaveButton->setText(hasCurrent ? AppI18n::text("保存") : AppI18n::text("添加"));
     }
     if (m_autoReplyDeleteButton) {
         m_autoReplyDeleteButton->setEnabled(hasCurrent);
@@ -105,6 +103,21 @@ void WorkbenchPage::updateAutoReplyActionState()
     if (m_autoReplyDownButton) {
         m_autoReplyDownButton->setEnabled(hasCurrent && row < m_autoReplyRules.size() - 1);
     }
+}
+
+void WorkbenchPage::startNewAutoReplyRule()
+{
+    m_autoReplyList->setCurrentRow(-1);
+    m_autoReplyNameEdit->clear();
+    m_autoReplyEnabledCheck->setChecked(true);
+    m_autoReplyPatternEdit->clear();
+    m_autoReplyMatchModeCombo->setCurrentIndex(0);
+    m_autoReplyResponseModeCombo->setCurrentIndex(0);
+    m_autoReplyLineEndingCombo->setCurrentIndex(0);
+    m_autoReplyPayloadEdit->clear();
+    setNumberEditValue(m_autoReplyDelayEdit, 0, 0, 600000);
+    updateAutoReplyActionState();
+    m_autoReplyNameEdit->setFocus();
 }
 
 void WorkbenchPage::applyAutoReplyRule(int row)
@@ -206,6 +219,11 @@ void WorkbenchPage::removeSelectedAutoReplyRule()
     const QString name = autoReplyRuleName(m_autoReplyRules.at(row).name, row);
     m_autoReplyRules.removeAt(row);
     updateAutoReplyTable(qMin(row, m_autoReplyRules.size() - 1));
+    if (m_autoReplyRules.isEmpty()) {
+        startNewAutoReplyRule();
+    } else {
+        applyAutoReplyRule(m_autoReplyList->currentRow());
+    }
     saveAutoReplyRules();
     showInfo(AppI18n::text("已删除自动应答"), name);
 }
@@ -253,7 +271,12 @@ void WorkbenchPage::handleAutoReplyReceivedData(const QByteArray &data)
         if (delayMs <= 0) {
             sendAutoReplyRule(rule);
         } else {
-            QTimer::singleShot(delayMs, this, [this, rule]() { sendAutoReplyRule(rule); });
+            const quint64 generation = m_connectionGeneration;
+            QTimer::singleShot(delayMs, this, [this, rule, generation]() {
+                if (generation == m_connectionGeneration) {
+                    sendAutoReplyRule(rule);
+                }
+            });
         }
     }
 
@@ -368,7 +391,8 @@ void WorkbenchPage::loadAutoReplyRules()
         }
         m_autoReplyRules.append(rule);
     }
-    updateAutoReplyTable();
+    updateAutoReplyTable(m_autoReplyRules.isEmpty() ? -1 : 0);
+    applyAutoReplyRule(m_autoReplyList->currentRow());
 }
 
 void WorkbenchPage::saveAutoReplyRules() const

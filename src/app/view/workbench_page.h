@@ -30,6 +30,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
 {
     Q_OBJECT
 
+    friend class WorkbenchDataTableTest;
+
   public:
     explicit WorkbenchPage(QWidget *parent = nullptr, bool restoreSavedSession = true, bool allowAutoOpen = true);
     ~WorkbenchPage() override;
@@ -53,6 +55,9 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void settingsRequested();
 
   private:
+    friend class AutoReplyTest;
+    friend class VirtualSerialWorkbenchTest;
+
     bool eventFilter(QObject *watched, QEvent *event) override;
 
     QWidget *createWorkbench();
@@ -311,6 +316,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QVariantList scriptRecordSnapshot() const;
     void updateAutoReplyTable(int selectedRow = -1);
     void updateAutoReplyActionState();
+    void startNewAutoReplyRule();
     void applyAutoReplyRule(int row);
     void saveCurrentAutoReplyRule();
     void removeSelectedAutoReplyRule();
@@ -334,9 +340,10 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void appendQuickPlotRecord(const SessionRecord &record, bool ignorePause = false);
     void showDataTableWindow();
     void refreshDataTableWindow();
+    void flushDataTableWindow();
     QVector<DataTableRecord> dataTableRecords() const;
     DataTableRecord dataTableRecord(int recordIndex, const SessionRecord &record) const;
-    void locateRecordInTerminal(int recordIndex);
+    void locateRecordInTerminal(qint64 recordId);
     void browseSendFile();
     void startFileSend();
     void cancelFileSend();
@@ -353,7 +360,10 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     SerialController m_serial;
     QList<SerialPortDescriptor> m_ports;
     QList<SessionRecord> m_records;
-    QList<int> m_pendingRecordIndexes;
+    // Stable table IDs survive removal of old session records.
+    qint64 m_firstRecordIndex = 0;
+    qint64 m_dataTableNextRecordIndex = 0;
+    QList<qint64> m_pendingRecordIndexes;
     QList<SendHistoryItem> m_sendHistory;
     QList<SendPacket> m_sendPackets;
     QList<MacroStep> m_macroSteps;
@@ -366,6 +376,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QByteArray m_autoReplyBuffer;
     qint64 m_rxCount = 0;
     qint64 m_txCount = 0;
+    quint64 m_connectionGeneration = 0;
     qint64 m_lastStatsRxCount = 0;
     qint64 m_lastStatsTxCount = 0;
     qint64 m_fileSendTotal = 0;
@@ -375,6 +386,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QDateTime m_lastRxTimestamp;
     QDateTime m_connectionStartedAt;
     QTimer m_flushTimer;
+    QTimer m_dataTableTimer;
     QTimer m_loopTimer;
     QTimer m_reconnectTimer;
     QTimer m_statsTimer;
@@ -394,6 +406,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     int m_macroActiveResult = -1;
     int m_autoLogFileIndex = 1;
     qint64 m_autoLogCurrentSize = 0;
+    bool m_countersDirty = false;
     bool m_manualDisconnect = false;
     bool m_macroRunning = false;
     bool m_macroWaitingForResponse = false;
@@ -497,7 +510,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::PushButton *m_scriptStopButton = nullptr;
     FluentQt::PushButton *m_scriptClearLogButton = nullptr;
     FluentQt::PushButton *m_autoReplySaveButton = nullptr;
-    FluentQt::PushButton *m_autoReplyLoadButton = nullptr;
+    FluentQt::PushButton *m_autoReplyNewButton = nullptr;
     FluentQt::PushButton *m_autoReplyDeleteButton = nullptr;
     FluentQt::PushButton *m_checksumCalcButton = nullptr;
     FluentQt::PushButton *m_modbusFillButton = nullptr;

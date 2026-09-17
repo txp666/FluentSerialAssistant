@@ -248,6 +248,36 @@
         <translation>串口未连接</translation>
     </message>
     <message>
+        <source>内置虚拟串口对</source>
+        <translation>内置虚拟串口对</translation>
+    </message>
+    <message>
+        <source>两个会话分别连接 VIRTUAL-A 和 VIRTUAL-B，即可双向收发。
+仅在本应用内可用，不模拟波特率和流控；关闭后断开虚拟连接。</source>
+        <translation>两个会话分别连接 VIRTUAL-A 和 VIRTUAL-B，即可双向收发。
+仅在本应用内可用，不模拟波特率和流控；关闭后断开虚拟连接。</translation>
+    </message>
+    <message>
+        <source>虚拟串口对未开启，请先在设置中开启</source>
+        <translation>虚拟串口对未开启，请先在设置中开启</translation>
+    </message>
+    <message>
+        <source>虚拟串口 %1 已被其他会话占用</source>
+        <translation>虚拟串口 %1 已被其他会话占用</translation>
+    </message>
+    <message>
+        <source>虚拟串口接收缓冲区已满，请降低发送速率</source>
+        <translation>虚拟串口接收缓冲区已满，请降低发送速率</translation>
+    </message>
+    <message>
+        <source>内置虚拟串口 A（连接 B）</source>
+        <translation>内置虚拟串口 A（连接 B）</translation>
+    </message>
+    <message>
+        <source>内置虚拟串口 B（连接 A）</source>
+        <translation>内置虚拟串口 B（连接 A）</translation>
+    </message>
+    <message>
         <source>切换主题</source>
         <translation>切换主题</translation>
     </message>
@@ -718,6 +748,14 @@ JSON 对象：递归读取对象和数组中的数值
     <message>
         <source>无法保存自动应答</source>
         <translation>无法保存自动应答</translation>
+    </message>
+    <message>
+        <source>新建</source>
+        <translation>新建</translation>
+    </message>
+    <message>
+        <source>添加</source>
+        <translation>添加</translation>
     </message>
     <message>
         <source>匹配内容为空</source>

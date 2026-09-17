@@ -1,4 +1,5 @@
 #include "app/core/app_i18n.h"
+#include "app/serial/virtual_serial_pair.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
@@ -6,6 +7,10 @@ using namespace WorkbenchPagePrivate;
 
 void WorkbenchPage::scheduleReconnect()
 {
+    if (VirtualSerialPair::isVirtualPort(m_lastConfig.portName) && !VirtualSerialPair::instance()->isEnabled()) {
+        m_reconnectTimer.stop();
+        return;
+    }
     if (m_lastConfig.portName.isEmpty() || m_manualDisconnect || !m_autoReconnectCheck->isChecked()) {
         return;
     }
@@ -17,6 +22,10 @@ void WorkbenchPage::scheduleReconnect()
 
 void WorkbenchPage::attemptReconnect()
 {
+    if (VirtualSerialPair::isVirtualPort(m_lastConfig.portName) && !VirtualSerialPair::instance()->isEnabled()) {
+        m_reconnectTimer.stop();
+        return;
+    }
     if (m_serial.isOpen()) {
         m_reconnectTimer.stop();
         return;

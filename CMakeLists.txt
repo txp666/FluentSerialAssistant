@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.12
+    VERSION 0.1.13
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -103,8 +103,12 @@ add_executable(FluentSerialAssistant
     src/app/core/update_checker.h
     src/app/serial/serial_controller.cpp
     src/app/serial/serial_controller.h
+    src/app/serial/virtual_serial_pair.cpp
+    src/app/serial/virtual_serial_pair.h
     src/app/view/app_page.cpp
     src/app/view/app_page.h
+    src/app/view/data_table_model.cpp
+    src/app/view/data_table_model.h
     src/app/view/data_table_window.cpp
     src/app/view/data_table_window.h
     src/app/view/main_window.cpp
@@ -175,6 +179,29 @@ target_link_libraries(FluentSerialAssistant
         FluentSerialControlClient
         FluentSerialPlotParser
 )
+
+include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    # Exercise the real workbench without reading or modifying user settings.
+    get_target_property(workbench_test_sources FluentSerialAssistant SOURCES)
+    list(REMOVE_ITEM workbench_test_sources src/main.cpp src/app/core/app_settings.cpp)
+    list(FILTER workbench_test_sources EXCLUDE REGEX "(app_icon\\.rc|app_icon\\.icns)$")
+    add_library(FluentSerialTestSupport STATIC ${workbench_test_sources} tests/test_app_settings.cpp)
+    target_include_directories(FluentSerialTestSupport PUBLIC src src/app)
+    target_compile_options(FluentSerialTestSupport PUBLIC $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+    target_compile_definitions(FluentSerialTestSupport PRIVATE
+        FLUENT_SERIAL_ASSISTANT_VERSION="${PROJECT_VERSION}"
+    )
+    get_target_property(workbench_test_libraries FluentSerialAssistant LINK_LIBRARIES)
+    target_link_libraries(FluentSerialTestSupport PUBLIC ${workbench_test_libraries})
+    foreach(test_name IN ITEMS data_table_model workbench_data_table auto_reply virtual_serial_pair virtual_serial_workbench)
+        add_executable(tst_${test_name} tests/tst_${test_name}.cpp)
+        target_link_libraries(tst_${test_name} PRIVATE FluentSerialTestSupport Qt6::Test)
+        add_test(NAME ${test_name} COMMAND tst_${test_name})
+        set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)
+    endforeach()
+endif()
 
 add_executable(fluentserial-cli
     src/cli/main.cpp

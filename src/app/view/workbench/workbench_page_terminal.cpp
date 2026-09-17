@@ -320,7 +320,7 @@ void WorkbenchPage::recordReceivedBytes(const QByteArray &data)
             m_receiveCaptureFile.flush();
         }
     }
-    updateCounters();
+    m_countersDirty = true;
 }
 
 void WorkbenchPage::processBufferedFrameData(const QByteArray &data)
@@ -429,7 +429,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
             separator.timestamp = now;
             separator.direction = RecordDirection::FrameBreak;
             m_records.append(separator);
-            m_pendingRecordIndexes.append(m_records.size() - 1);
+            m_pendingRecordIndexes.append(m_firstRecordIndex + m_records.size() - 1);
         }
     }
 
@@ -451,7 +451,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
         }
     }
     m_records.append(record);
-    m_pendingRecordIndexes.append(m_records.size() - 1);
+    m_pendingRecordIndexes.append(m_firstRecordIndex + m_records.size() - 1);
     writeAutoLogRecord(record);
     appendQuickPlotRecord(record);
     if (direction == RecordDirection::Rx) {
@@ -475,11 +475,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     }
 
     trimRecords();
-    if (m_dataTableWindow) {
-        refreshDataTableWindow();
-    }
-    updateCounters();
-    flushPendingLines();
+    m_countersDirty = true;
 }
 
 void WorkbenchPage::trimRecords()
@@ -487,16 +483,11 @@ void WorkbenchPage::trimRecords()
     const int maxRecords = maxRecordCount();
     while (m_records.size() > maxRecords) {
         m_records.removeFirst();
+        ++m_firstRecordIndex;
         m_terminalStartRecord = qMax(0, m_terminalStartRecord - 1);
-
-        QList<int> adjusted;
-        adjusted.reserve(m_pendingRecordIndexes.size());
-        for (int index : m_pendingRecordIndexes) {
-            if (index > 0) {
-                adjusted.append(index - 1);
-            }
-        }
-        m_pendingRecordIndexes = adjusted;
+    }
+    while (!m_pendingRecordIndexes.isEmpty() && m_pendingRecordIndexes.first() < m_firstRecordIndex) {
+        m_pendingRecordIndexes.removeFirst();
     }
 }
 
@@ -704,7 +695,8 @@ void WorkbenchPage::flushPendingLines()
     cursor.beginEditBlock();
     bool hasOutput = !m_terminalView->document()->isEmpty();
     bool wrote = false;
-    for (int index : m_pendingRecordIndexes) {
+    for (qint64 recordId : m_pendingRecordIndexes) {
+        const qint64 index = recordId - m_firstRecordIndex;
         if (index >= m_terminalStartRecord && index >= 0 && index < m_records.size()) {
             if (!recordMatchesTerminalFilter(m_records.at(index))) {
                 continue;

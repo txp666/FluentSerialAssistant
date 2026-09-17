@@ -157,8 +157,9 @@ void WorkbenchPage::startScript()
     auto *runner = new ScriptRunner;
     const QString fileName = m_scriptFilePath.isEmpty() ? QStringLiteral("script.js") : m_scriptFilePath;
     QPointer<WorkbenchPage> page(this);
+    const quint64 generation = m_connectionGeneration;
 
-    runner->setSendTextCallback([page](const QString &payload, const QString &lineEnding, QString *error) {
+    runner->setSendTextCallback([page, generation](const QString &payload, const QString &lineEnding, QString *error) {
         if (!page) {
             if (error) {
                 *error = AppI18n::text("脚本窗口已关闭");
@@ -169,7 +170,14 @@ void WorkbenchPage::startScript()
         bool ok = false;
         QString localError;
         QMetaObject::invokeMethod(
-            page, [&]() { ok = page->sendScriptPayload(payload, QStringLiteral("text"), lineEnding, &localError); },
+            page,
+            [&]() {
+                if (generation != page->m_connectionGeneration || !page->m_serial.isOpen()) {
+                    localError = AppI18n::text("串口已断开");
+                    return;
+                }
+                ok = page->sendScriptPayload(payload, QStringLiteral("text"), lineEnding, &localError);
+            },
             Qt::BlockingQueuedConnection);
         if (error) {
             *error = localError;
@@ -177,7 +185,7 @@ void WorkbenchPage::startScript()
         return ok;
     });
 
-    runner->setSendHexCallback([page](const QString &payload, const QString &lineEnding, QString *error) {
+    runner->setSendHexCallback([page, generation](const QString &payload, const QString &lineEnding, QString *error) {
         if (!page) {
             if (error) {
                 *error = AppI18n::text("脚本窗口已关闭");
@@ -188,7 +196,14 @@ void WorkbenchPage::startScript()
         bool ok = false;
         QString localError;
         QMetaObject::invokeMethod(
-            page, [&]() { ok = page->sendScriptPayload(payload, QStringLiteral("hex"), lineEnding, &localError); },
+            page,
+            [&]() {
+                if (generation != page->m_connectionGeneration || !page->m_serial.isOpen()) {
+                    localError = AppI18n::text("串口已断开");
+                    return;
+                }
+                ok = page->sendScriptPayload(payload, QStringLiteral("hex"), lineEnding, &localError);
+            },
             Qt::BlockingQueuedConnection);
         if (error) {
             *error = localError;

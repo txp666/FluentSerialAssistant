@@ -158,7 +158,8 @@ void ScriptRunner::requestStop()
 
 void ScriptRunner::runScript(const QString &script, const QString &fileName)
 {
-    m_stopRequested.store(false);
+    // Each workbench run owns a new runner. Preserve cancellation requested
+    // before the worker thread has entered this method.
     emit started();
 
     if (script.trimmed().isEmpty()) {
@@ -170,6 +171,9 @@ void ScriptRunner::runScript(const QString &script, const QString &fileName)
     {
         QMutexLocker locker(&m_engineMutex);
         m_engine = &engine;
+        if (stopRequested()) {
+            engine.setInterrupted(true);
+        }
     }
 
     ScriptBridge bridge;

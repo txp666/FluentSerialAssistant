@@ -3,6 +3,7 @@
 #include "app/core/app_i18n.h"
 #include "app/core/font_preferences.h"
 #include "app/core/update_checker.h"
+#include "app/serial/virtual_serial_pair.h"
 #include "app/view/fluent_tooltip_helper.h"
 
 #include <FluentQtWidgets/Dialogs/Dialog.h>
@@ -223,6 +224,24 @@ SettingsPage::SettingsPage(QWidget *parent)
     personalization->addSettingCards(
         {themeModeCard, languageCard, themeColorCard, uiFontCard, importFontCard, m_updateCard});
     addSection(QString(), personalization);
+
+    auto *testGroup = new SettingCardGroup(QString(), this);
+    hideGroupTitle(testGroup);
+    auto *virtualPair = VirtualSerialPair::instance();
+    auto *virtualPairCard =
+        new SwitchSettingCard(FluentIcon::Connect, AppI18n::text("内置虚拟串口对"),
+                              AppI18n::text("两个会话分别连接 VIRTUAL-A 和 VIRTUAL-B，即可双向收发。\n"
+                                            "仅在本应用内可用，不模拟波特率和流控；关闭后断开虚拟连接。"),
+                              testGroup);
+    virtualPairCard->setObjectName(QStringLiteral("virtualSerialPairSwitch"));
+    virtualPairCard->setFixedHeight(92);
+    connect(virtualPairCard, &SettingCard::contentChanged, virtualPairCard,
+            [virtualPairCard]() { virtualPairCard->setFixedHeight(92); });
+    virtualPairCard->setChecked(virtualPair->isEnabled());
+    connect(virtualPairCard, &SwitchSettingCard::checkedChanged, virtualPair, &VirtualSerialPair::setEnabled);
+    connect(virtualPair, &VirtualSerialPair::enabledChanged, virtualPairCard, &SwitchSettingCard::setChecked);
+    testGroup->addSettingCard(virtualPairCard);
+    addSection(QString(), testGroup);
 
     auto *terminalGroup = new SettingCardGroup(QString(), this);
     hideGroupTitle(terminalGroup);

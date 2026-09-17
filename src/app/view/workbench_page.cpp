@@ -16,7 +16,12 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
 
     setupSerialSignals();
 
-    connect(&m_flushTimer, &QTimer::timeout, this, &WorkbenchPage::flushPendingLines);
+    connect(&m_flushTimer, &QTimer::timeout, this, [this]() {
+        flushPendingLines();
+        if (m_countersDirty) {
+            updateCounters();
+        }
+    });
     m_flushTimer.start(FlushIntervalMs);
     connect(&m_loopTimer, &QTimer::timeout, this, &WorkbenchPage::sendCurrentPayload);
     m_reconnectTimer.setInterval(ReconnectIntervalMs);
@@ -78,7 +83,12 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
     updateHistoryCombo();
 
     if (allowAutoOpen && m_autoOpenCheck && m_autoOpenCheck->isChecked() && !currentSerialConfig().portName.isEmpty()) {
-        QTimer::singleShot(250, this, &WorkbenchPage::onConnectClicked);
+        const QString autoOpenPort = currentSerialConfig().portName;
+        QTimer::singleShot(250, this, [this, autoOpenPort]() {
+            if (!m_serial.isOpen() && currentSerialConfig().portName == autoOpenPort) {
+                onConnectClicked();
+            }
+        });
     }
 }
 WorkbenchPage::~WorkbenchPage()

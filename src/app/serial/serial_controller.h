@@ -37,6 +37,7 @@ class SerialController : public QObject
 
   public:
     explicit SerialController(QObject *parent = nullptr);
+    ~SerialController() override;
 
     static QList<SerialPortDescriptor> availablePorts();
 
@@ -59,4 +60,7 @@ class SerialController : public QObject
 
   private:
     QSerialPort m_port;
+    QString m_virtualPortName;
+    QString m_virtualError;
+    bool m_virtualOpen = false;
 };

@@ -1,4 +1,5 @@
 #include "app/core/app_i18n.h"
+#include "app/serial/virtual_serial_pair.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
@@ -7,6 +8,8 @@ using namespace WorkbenchPagePrivate;
 void WorkbenchPage::setupSerialSignals()
 {
     connect(&m_serial, &SerialController::opened, this, [this](const QString &portName) {
+        ++m_connectionGeneration;
+        m_autoReplyBuffer.clear();
         m_reconnectTimer.stop();
         m_manualDisconnect = false;
         m_lastRxTimestamp = QDateTime();
@@ -25,6 +28,13 @@ void WorkbenchPage::setupSerialSignals()
         showSuccess(AppI18n::text("连接成功"), AppI18n::text("%1 已打开").arg(portName));
     });
     connect(&m_serial, &SerialController::closed, this, [this]() {
+        ++m_connectionGeneration;
+        m_autoReplyBuffer.clear();
+        if (VirtualSerialPair::isVirtualPort(m_lastConfig.portName) && !VirtualSerialPair::instance()->isEnabled()) {
+            m_manualDisconnect = true;
+            m_reconnectTimer.stop();
+            stopScript();
+        }
         flushRxFrameBuffer();
         if (m_fileSendFile.isOpen()) {
             m_fileSendTimer.stop();
@@ -54,6 +64,13 @@ void WorkbenchPage::setupSerialSignals()
             showError(AppI18n::text("串口错误"), message);
         }
     });
+    connect(VirtualSerialPair::instance(), &VirtualSerialPair::enabledChanged, this, [this](bool enabled) {
+        if (!enabled && VirtualSerialPair::isVirtualPort(m_lastConfig.portName)) {
+            m_manualDisconnect = true;
+            m_reconnectTimer.stop();
+        }
+        refreshPorts();
+    });
 }
 
 void WorkbenchPage::refreshPorts()
@@ -71,6 +88,13 @@ void WorkbenchPage::refreshPorts()
         }
     }
 
+    // Refreshing an unrelated virtual pair must preserve a manually opened device.
+    if (m_serial.isOpen() && selectedIndex < 0) {
+        m_portCombo->addItem(m_serial.portName(), QIcon(), m_serial.portName());
+        m_portCombo->setCurrentIndex(m_portCombo->count() - 1);
+        return;
+    }
+
     if (m_ports.isEmpty()) {
         m_portCombo->addItem(AppI18n::text("未发现串口"));
         m_portCombo->setItemEnabled(0, false);
@@ -78,7 +102,8 @@ void WorkbenchPage::refreshPorts()
         return;
     }
 
-    m_portCombo->setCurrentIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    const bool removedVirtualPort = selectedIndex < 0 && VirtualSerialPair::isVirtualPort(previousPort);
+    m_portCombo->setCurrentIndex(removedVirtualPort ? -1 : (selectedIndex >= 0 ? selectedIndex : 0));
 }
 
 void WorkbenchPage::restoreSettings()
@@ -140,6 +165,8 @@ void WorkbenchPage::restoreSettings()
     const int portIndex = m_portCombo->findData(portName);
     if (portIndex >= 0) {
         m_portCombo->setCurrentIndex(portIndex);
+    } else if (VirtualSerialPair::isVirtualPort(portName)) {
+        m_portCombo->setCurrentIndex(-1);
     }
     m_baudCombo->setCurrentText(baudRate);
     m_dataBitsCombo->setCurrentText(dataBits);
@@ -478,7 +505,7 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     }
     setNumberEditValue(m_autoReplyDelayEdit, numberEditValue(source.m_autoReplyDelayEdit, 0, 0, 600000), 0, 600000);
     m_autoReplyEnabledCheck->setChecked(source.m_autoReplyEnabledCheck->isChecked());
-    updateAutoReplyTable();
+    updateAutoReplyTable(source.m_autoReplyList->currentRow());
 
     m_filePathEdit->setText(source.m_filePathEdit->text());
     setNumberEditValue(m_fileChunkSizeEdit, numberEditValue(source.m_fileChunkSizeEdit, DefaultFileChunkSize, 1, 65536),
@@ -489,6 +516,7 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     updateFileProgress();
 
     m_records.clear();
+    m_firstRecordIndex = 0;
     m_pendingRecordIndexes.clear();
     m_terminalSearchMatches.clear();
     m_terminalCurrentSearchMatch = -1;
@@ -530,6 +558,7 @@ void WorkbenchPage::updateConnectionUi(bool connected)
 
 void WorkbenchPage::updateCounters()
 {
+    m_countersDirty = false;
     m_rxCounterLabel->setText(formatBytes(m_rxCount));
     m_txCounterLabel->setText(formatBytes(m_txCount));
     if (m_terminalSummaryLabel) {

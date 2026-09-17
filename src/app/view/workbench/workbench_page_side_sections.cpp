@@ -898,11 +898,11 @@ QWidget *WorkbenchPage::createAutoReplySection()
 
     auto *editRow = new QHBoxLayout;
     editRow->setSpacing(8);
-    m_autoReplyLoadButton = new PushButton(icon(FluentIcon::Edit), AppI18n::text("填入"), section);
+    m_autoReplyNewButton = new PushButton(icon(FluentIcon::Add), AppI18n::text("新建"), section);
     m_autoReplyDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), section);
-    setButtonRowControlPolicy(m_autoReplyLoadButton);
+    setButtonRowControlPolicy(m_autoReplyNewButton);
     setButtonRowControlPolicy(m_autoReplyDeleteButton);
-    editRow->addWidget(m_autoReplyLoadButton);
+    editRow->addWidget(m_autoReplyNewButton);
     editRow->addWidget(m_autoReplyDeleteButton);
     root->addLayout(editRow);
 
@@ -916,8 +916,7 @@ QWidget *WorkbenchPage::createAutoReplySection()
         updateAutoReplyActionState();
     });
     connect(m_autoReplySaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentAutoReplyRule);
-    connect(m_autoReplyLoadButton, &PushButton::clicked, this,
-            [this]() { applyAutoReplyRule(m_autoReplyList->currentRow()); });
+    connect(m_autoReplyNewButton, &PushButton::clicked, this, &WorkbenchPage::startNewAutoReplyRule);
     connect(m_autoReplyDeleteButton, &PushButton::clicked, this, &WorkbenchPage::removeSelectedAutoReplyRule);
     connect(m_autoReplyUpButton, &ToolButton::clicked, this, [this]() { moveSelectedAutoReplyRule(-1); });
     connect(m_autoReplyDownButton, &ToolButton::clicked, this, [this]() { moveSelectedAutoReplyRule(1); });

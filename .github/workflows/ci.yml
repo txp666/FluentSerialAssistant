@@ -68,6 +68,9 @@ jobs:
       - name: Build
         run: cmake --build build/ci --parallel
 
+      - name: Test
+        run: ctest --test-dir build/ci --output-on-failure
+
       - name: Check artifact
         shell: pwsh
         run: |

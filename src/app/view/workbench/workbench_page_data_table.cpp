@@ -14,6 +14,17 @@ void WorkbenchPage::showDataTableWindow()
         m_dataTableWindow = new DataTableWindow(this);
         connect(m_dataTableWindow, &DataTableWindow::refreshRequested, this, &WorkbenchPage::refreshDataTableWindow);
         connect(m_dataTableWindow, &DataTableWindow::locateRequested, this, &WorkbenchPage::locateRecordInTerminal);
+        connect(&m_dataTableTimer, &QTimer::timeout, this, &WorkbenchPage::flushDataTableWindow);
+        m_dataTableTimer.start(50);
+        const auto refreshVisibleTable = [this]() {
+            if (m_dataTableWindow->isVisible()) {
+                refreshDataTableWindow();
+            }
+        };
+        connect(m_checksumAlgorithmCombo, &FluentQt::ComboBox::currentIndexChanged, this, refreshVisibleTable);
+        connect(m_checksumByteOrderCombo, &FluentQt::ComboBox::currentIndexChanged, this, refreshVisibleTable);
+        connect(FluentQt::FluentConfig::instance(), &FluentQt::FluentConfig::localeNameChanged, this,
+                refreshVisibleTable);
     }
 
     refreshDataTableWindow();
@@ -26,7 +37,31 @@ void WorkbenchPage::refreshDataTableWindow()
 {
     if (m_dataTableWindow) {
         m_dataTableWindow->setRecords(dataTableRecords());
+        m_dataTableNextRecordIndex = m_firstRecordIndex + m_records.size();
     }
+}
+
+void WorkbenchPage::flushDataTableWindow()
+{
+    if (!m_dataTableWindow || !m_dataTableWindow->isVisible()) {
+        return;
+    }
+
+    const qint64 nextRecordIndex = m_firstRecordIndex + m_records.size();
+    if (m_dataTableNextRecordIndex == nextRecordIndex) {
+        return;
+    }
+    const int first = static_cast<int>(qMax(m_firstRecordIndex, m_dataTableNextRecordIndex) - m_firstRecordIndex);
+    QVector<DataTableRecord> rows;
+    rows.reserve(m_records.size() - first);
+    for (int i = first; i < m_records.size(); ++i) {
+        const SessionRecord &record = m_records.at(i);
+        if (record.direction != RecordDirection::FrameBreak) {
+            rows.append(dataTableRecord(i, record));
+        }
+    }
+    m_dataTableWindow->appendRecords(rows, m_firstRecordIndex);
+    m_dataTableNextRecordIndex = nextRecordIndex;
 }
 
 QVector<DataTableRecord> WorkbenchPage::dataTableRecords() const
@@ -46,7 +81,7 @@ QVector<DataTableRecord> WorkbenchPage::dataTableRecords() const
 DataTableRecord WorkbenchPage::dataTableRecord(int recordIndex, const SessionRecord &record) const
 {
     DataTableRecord row;
-    row.recordIndex = recordIndex;
+    row.recordIndex = m_firstRecordIndex + recordIndex;
     row.timestamp = record.timestamp;
     row.direction = directionText(record.direction);
     row.source = record.sourceLabel;
@@ -62,14 +97,16 @@ DataTableRecord WorkbenchPage::dataTableRecord(int recordIndex, const SessionRec
     return row;
 }
 
-void WorkbenchPage::locateRecordInTerminal(int recordIndex)
+void WorkbenchPage::locateRecordInTerminal(qint64 recordId)
 {
-    if (!m_terminalView || recordIndex < 0 || recordIndex >= m_records.size() ||
-        m_records.at(recordIndex).direction == RecordDirection::FrameBreak) {
+    const qint64 offset = recordId - m_firstRecordIndex;
+    if (!m_terminalView || offset < 0 || offset >= m_records.size() ||
+        m_records.at(static_cast<int>(offset)).direction == RecordDirection::FrameBreak) {
         showWarning(AppI18n::text("无法定位"), AppI18n::text("记录已被清理或不存在"));
         return;
     }
 
+    const int recordIndex = static_cast<int>(offset);
     if (m_terminalFilterCombo && m_terminalFilterCombo->currentData().toString() != QStringLiteral("all")) {
         const int allIndex = m_terminalFilterCombo->findData(QStringLiteral("all"));
         if (allIndex >= 0) {

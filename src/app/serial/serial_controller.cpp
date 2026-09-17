@@ -1,5 +1,6 @@
 #include "app/serial/serial_controller.h"
 #include "app/core/app_i18n.h"
+#include "app/serial/virtual_serial_pair.h"
 
 #include <QtSerialPort/QSerialPortInfo>
 
@@ -56,6 +57,13 @@ SerialController::SerialController(QObject *parent) : QObject(parent)
     });
 }
 
+SerialController::~SerialController()
+{
+    if (m_virtualOpen) {
+        VirtualSerialPair::instance()->release(this);
+    }
+}
+
 QList<SerialPortDescriptor> SerialController::availablePorts()
 {
     QList<SerialPortDescriptor> descriptors;
@@ -73,20 +81,49 @@ QList<SerialPortDescriptor> SerialController::availablePorts()
         descriptor.productIdentifier = info.productIdentifier();
         descriptors.append(descriptor);
     }
+    if (VirtualSerialPair::instance()->isEnabled()) {
+        SerialPortDescriptor first;
+        first.portName = VirtualSerialPair::portAName();
+        first.description = AppI18n::text("内置虚拟串口 A（连接 B）");
+        descriptors.append(first);
+        SerialPortDescriptor second;
+        second.portName = VirtualSerialPair::portBName();
+        second.description = AppI18n::text("内置虚拟串口 B（连接 A）");
+        descriptors.append(second);
+    }
     return descriptors;
 }
 
-bool SerialController::isOpen() const { return m_port.isOpen(); }
+bool SerialController::isOpen() const { return m_virtualOpen || m_port.isOpen(); }
 
-QString SerialController::portName() const { return m_port.portName(); }
+QString SerialController::portName() const
+{
+    return m_virtualPortName.isEmpty() ? m_port.portName() : m_virtualPortName;
+}
 
-QString SerialController::errorString() const { return m_port.errorString(); }
+QString SerialController::errorString() const
+{
+    return m_virtualPortName.isEmpty() ? m_port.errorString() : m_virtualError;
+}
 
 bool SerialController::openPort(const SerialPortConfig &config)
 {
-    if (m_port.isOpen()) {
+    if (isOpen()) {
         closePort();
     }
+
+    m_virtualError.clear();
+    if (VirtualSerialPair::isVirtualPort(config.portName)) {
+        m_virtualPortName = config.portName;
+        if (!VirtualSerialPair::instance()->acquire(config.portName, this, &m_virtualError)) {
+            emit errorOccurred(m_virtualError);
+            return false;
+        }
+        m_virtualOpen = true;
+        emit opened(config.portName);
+        return true;
+    }
+    m_virtualPortName.clear();
 
     m_port.setPortName(config.portName);
     m_port.setBaudRate(config.baudRate);
@@ -108,6 +145,12 @@ bool SerialController::openPort(const SerialPortConfig &config)
 
 void SerialController::closePort()
 {
+    if (m_virtualOpen) {
+        m_virtualOpen = false;
+        VirtualSerialPair::instance()->release(this);
+        emit closed();
+        return;
+    }
     if (!m_port.isOpen()) {
         return;
     }
@@ -117,11 +160,25 @@ void SerialController::closePort()
 
 bool SerialController::writeData(const QByteArray &data, QString *error)
 {
-    if (!m_port.isOpen()) {
+    if (!isOpen()) {
         if (error) {
             *error = AppI18n::text("串口未连接");
         }
         return false;
+    }
+    if (m_virtualOpen) {
+        if (!VirtualSerialPair::instance()->write(this, data, &m_virtualError)) {
+            if (error) {
+                *error = m_virtualError;
+            }
+            emit errorOccurred(m_virtualError);
+            return false;
+        }
+        m_virtualError.clear();
+        if (!data.isEmpty()) {
+            emit writeQueued(data.size());
+        }
+        return true;
     }
     const qint64 written = m_port.write(data);
     if (written < 0) {
@@ -136,6 +193,9 @@ bool SerialController::writeData(const QByteArray &data, QString *error)
 
 bool SerialController::setRequestToSend(bool enabled)
 {
+    if (m_virtualOpen) {
+        return true;
+    }
     if (!m_port.isOpen()) {
         return false;
     }
@@ -148,6 +208,9 @@ bool SerialController::setRequestToSend(bool enabled)
 
 bool SerialController::setDataTerminalReady(bool enabled)
 {
+    if (m_virtualOpen) {
+        return true;
+    }
     if (!m_port.isOpen()) {
         return false;
     }
