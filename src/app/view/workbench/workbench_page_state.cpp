@@ -583,18 +583,14 @@ void WorkbenchPage::updateCounters()
 
         if (query.text.isEmpty()) {
             m_terminalSummaryLabel->setText(AppI18n::text("显示 %1 条").arg(visibleRecords));
-            m_terminalSummaryLabel->setToolTip(QString());
         } else if (!query.valid) {
             m_terminalSummaryLabel->setText(AppI18n::text("正则无效"));
-            m_terminalSummaryLabel->setToolTip(query.errorMessage);
         } else if (m_terminalSearchMatches.isEmpty()) {
             m_terminalSummaryLabel->setText(AppI18n::text("匹配 0 · %1 条").arg(visibleRecords));
-            m_terminalSummaryLabel->setToolTip(QString());
         } else {
             const int current = qBound(0, m_terminalCurrentSearchMatch, m_terminalSearchMatches.size() - 1) + 1;
             m_terminalSummaryLabel->setText(
                 AppI18n::text("匹配 %1/%2").arg(current).arg(m_terminalSearchMatches.size()));
-            m_terminalSummaryLabel->setToolTip(AppI18n::text("显示 %1 条").arg(visibleRecords));
         }
     }
 }

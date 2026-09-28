@@ -3,6 +3,7 @@
 #include "app/view/workbench/workbench_page_internal.h"
 
 #include <QtCore/QThread>
+#include <QtGui/QHideEvent>
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
@@ -112,6 +113,14 @@ WorkbenchPage::~WorkbenchPage()
     closeAutoLog();
     closeReceiveCapture();
     m_serial.closePort();
+}
+
+void WorkbenchPage::hideEvent(QHideEvent *event)
+{
+    if (m_terminalSearchWindow) {
+        m_terminalSearchWindow->hide();
+    }
+    AppPage::hideEvent(event);
 }
 
 bool WorkbenchPage::eventFilter(QObject *watched, QEvent *event)

@@ -266,7 +266,10 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
         m_rxFrameBuffer.clear();
         m_terminalStartRecord = m_records.size();
         m_pendingRecordIndexes.clear();
+        m_terminalSearchMatches.clear();
+        resetTerminalSearchNavigation();
         m_terminalView->clear();
+        updateCounters();
     });
     connect(m_resetCountersButton, &PushButton::clicked, this, [this]() {
         m_rxCount = 0;

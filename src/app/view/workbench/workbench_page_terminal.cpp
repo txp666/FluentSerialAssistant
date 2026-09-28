@@ -491,7 +491,7 @@ void WorkbenchPage::trimRecords()
     }
 }
 
-void WorkbenchPage::renderTerminal()
+void WorkbenchPage::renderTerminal(bool navigateToMatch)
 {
     if (!m_terminalView) {
         return;
@@ -499,8 +499,11 @@ void WorkbenchPage::renderTerminal()
 
     const TerminalSearchQuery query = terminalSearchQuery();
     const int previousSearchMatch = m_terminalCurrentSearchMatch;
+    const int previousScroll = m_terminalView->verticalScrollBar()->value();
+    const int previousHorizontalScroll = m_terminalView->horizontalScrollBar()->value();
     m_terminalSearchMatches.clear();
-    m_terminalView->document()->setMaximumBlockCount(maxRecordCount());
+    // Keep match positions stable until the entire batch has been inserted.
+    m_terminalView->document()->setMaximumBlockCount(0);
     m_terminalView->clear();
 
     QTextCursor cursor = m_terminalView->textCursor();
@@ -518,21 +521,55 @@ void WorkbenchPage::renderTerminal()
         }
     }
     cursor.endEditBlock();
+    m_terminalCurrentSearchMatch = -1;
+    trimTerminalDocument();
 
     m_pendingRecordIndexes.clear();
-    if (!query.text.isEmpty() && query.valid && !m_terminalSearchMatches.isEmpty()) {
-        m_terminalCurrentSearchMatch =
-            previousSearchMatch >= 0 ? qBound(0, previousSearchMatch, m_terminalSearchMatches.size() - 1) : 0;
+    if (m_terminalSearchMatches.isEmpty()) {
+        m_terminalCurrentSearchMatch = -1;
+    } else if (previousSearchMatch >= 0) {
+        m_terminalCurrentSearchMatch = qMin(previousSearchMatch, m_terminalSearchMatches.size() - 1);
+    }
+    if (navigateToMatch && !m_terminalSearchMatches.isEmpty()) {
         selectTerminalSearchMatch();
         return;
     }
 
-    m_terminalCurrentSearchMatch = -1;
     if (!m_autoScrollCheck || m_autoScrollCheck->isChecked()) {
         cursor.movePosition(QTextCursor::End);
         m_terminalView->setTextCursor(cursor);
+        m_terminalView->ensureCursorVisible();
+        m_terminalView->verticalScrollBar()->setValue(m_terminalView->verticalScrollBar()->maximum());
+    } else {
+        m_terminalView->verticalScrollBar()->setValue(previousScroll);
+        m_terminalView->horizontalScrollBar()->setValue(previousHorizontalScroll);
     }
     updateCounters();
+}
+
+void WorkbenchPage::trimTerminalDocument()
+{
+    auto *document = m_terminalView->document();
+    const int previousLength = document->characterCount();
+    document->setMaximumBlockCount(maxRecordCount());
+    const int removedCharacters = previousLength - document->characterCount();
+    if (removedCharacters <= 0) {
+        return;
+    }
+
+    // QTextDocument prunes whole blocks from the beginning. Drop any match
+    // whose start was removed, including matches spanning the trim boundary.
+    int removedMatches = 0;
+    while (removedMatches < m_terminalSearchMatches.size() &&
+           m_terminalSearchMatches.at(removedMatches).position < removedCharacters) {
+        ++removedMatches;
+    }
+    m_terminalSearchMatches.remove(0, removedMatches);
+    for (TerminalSearchMatch &match : m_terminalSearchMatches) {
+        match.position -= removedCharacters;
+    }
+    m_terminalCurrentSearchMatch =
+        m_terminalCurrentSearchMatch >= removedMatches ? m_terminalCurrentSearchMatch - removedMatches : -1;
 }
 
 void WorkbenchPage::insertTextWithSearchHighlights(QTextCursor &cursor, const QString &line, int start, int length,
@@ -684,12 +721,13 @@ void WorkbenchPage::flushPendingLines()
     if (m_pauseCheck->isChecked() || m_pendingRecordIndexes.isEmpty()) {
         return;
     }
-    if (!terminalSearchText().isEmpty()) {
-        renderTerminal();
-        return;
-    }
-
     const TerminalSearchQuery query = terminalSearchQuery();
+    const bool autoScroll = !m_autoScrollCheck || m_autoScrollCheck->isChecked();
+    QTextCursor readingAnchor = m_terminalView->cursorForPosition(QPoint(0, 0));
+    readingAnchor.setKeepPositionOnInsert(true);
+    const int anchorY = m_terminalView->cursorRect(readingAnchor).top();
+    const int horizontalScroll = m_terminalView->horizontalScrollBar()->value();
+    m_terminalView->document()->setMaximumBlockCount(0);
     QTextCursor cursor = m_terminalView->textCursor();
     cursor.movePosition(QTextCursor::End);
     cursor.beginEditBlock();
@@ -711,14 +749,24 @@ void WorkbenchPage::flushPendingLines()
         }
     }
     cursor.endEditBlock();
+    trimTerminalDocument();
     m_pendingRecordIndexes.clear();
     if (!wrote) {
         return;
     }
 
-    if (!m_autoScrollCheck || m_autoScrollCheck->isChecked()) {
+    if (autoScroll) {
         cursor.movePosition(QTextCursor::End);
         m_terminalView->setTextCursor(cursor);
+        m_terminalView->ensureCursorVisible();
+        m_terminalView->verticalScrollBar()->setValue(m_terminalView->verticalScrollBar()->maximum());
+    } else {
+        // The cursor follows retained text through head pruning, so a reader
+        // stays on the same line even when the oldest log blocks are removed.
+        auto *scrollBar = m_terminalView->verticalScrollBar();
+        const int currentAnchorY = m_terminalView->cursorRect(readingAnchor).top();
+        scrollBar->setValue(scrollBar->value() + currentAnchorY - anchorY);
+        m_terminalView->horizontalScrollBar()->setValue(horizontalScroll);
     }
     updateCounters();
 }

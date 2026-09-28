@@ -17,6 +17,7 @@
 #include <QtGui/QColor>
 
 class QEvent;
+class QHideEvent;
 class QTextCharFormat;
 class QTextCursor;
 class QThread;
@@ -31,6 +32,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     Q_OBJECT
 
     friend class WorkbenchDataTableTest;
+    friend class TerminalSearchTest;
 
   public:
     explicit WorkbenchPage(QWidget *parent = nullptr, bool restoreSavedSession = true, bool allowAutoOpen = true);
@@ -59,6 +61,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     friend class VirtualSerialWorkbenchTest;
 
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
     QWidget *createWorkbench();
     QWidget *createConnectionSection();
@@ -265,7 +268,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true,
                       const QString &sourceLabel = QString());
     void trimRecords();
-    void renderTerminal();
+    void renderTerminal(bool navigateToMatch = false);
+    void trimTerminalDocument();
     void insertTextWithSearchHighlights(QTextCursor &cursor, const QString &line, int start, int length,
                                         const QTextCharFormat &format, const QList<SearchMatchRange> &ranges);
     bool appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious,
@@ -423,6 +427,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::ComboBox *m_flowControlCombo = nullptr;
     FluentQt::SegmentedWidget *m_displayModeSegment = nullptr;
     FluentQt::SearchLineEdit *m_terminalSearchEdit = nullptr;
+    QWidget *m_terminalSearchWindow = nullptr;
+    bool m_terminalSearchWindowPositioned = false;
     FluentQt::ComboBox *m_terminalFilterCombo = nullptr;
     FluentQt::ComboBox *m_receiveEncodingCombo = nullptr;
     FluentQt::ComboBox *m_frameModeCombo = nullptr;
