@@ -110,6 +110,15 @@ void WorkbenchSessionsPage::setTerminalFontFamily(const QString &family)
     }
 }
 
+void WorkbenchSessionsPage::reloadTerminalColors()
+{
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (auto *session = qobject_cast<WorkbenchPage *>(m_tabs->widget(i))) {
+            session->reloadTerminalColors();
+        }
+    }
+}
+
 WorkbenchPage *WorkbenchSessionsPage::addSession(WorkbenchPage *source, bool restoreSavedSession)
 {
     auto *session = new WorkbenchPage(m_tabs->stackedWidget(), restoreSavedSession, restoreSavedSession);

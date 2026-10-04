@@ -4,6 +4,7 @@
 #include "app/core/checksum_utils.h"
 #include "app/core/modbus_utils.h"
 #include "app/core/protocol_template.h"
+#include "app/core/terminal_color_rules.h"
 #include "app/serial/serial_controller.h"
 #include "app/view/app_page.h"
 
@@ -33,6 +34,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
 
     friend class WorkbenchDataTableTest;
     friend class TerminalSearchTest;
+    friend class TerminalColorsTest;
 
   public:
     explicit WorkbenchPage(QWidget *parent = nullptr, bool restoreSavedSession = true, bool allowAutoOpen = true);
@@ -52,6 +54,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
 
   public slots:
     void setTerminalFontFamily(const QString &family);
+    void reloadTerminalColors();
 
   signals:
     void settingsRequested();
@@ -240,7 +243,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QString autoLogFormatKey() const;
     ExportFormat autoLogFormat() const;
     qint64 autoLogMaxFileBytes() const;
-    QString formatRecordLine(const SessionRecord &record) const;
+    QString formatRecordLine(const SessionRecord &record, int *contentStart = nullptr) const;
+    void applyTerminalColorConfig(const AppTerminal::ColorConfig &config);
     QColor selectedTxColor() const;
     QByteArray payloadWithOptionalChecksum(const QByteArray &payload, bool *ok = nullptr);
     void calculateChecksumForCurrentPayload();
@@ -379,6 +383,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QList<AutoReplyRule> m_autoReplyRules;
     QList<AppProtocol::ProtocolTemplate> m_protocolTemplates;
     QList<TerminalSearchMatch> m_terminalSearchMatches;
+    AppTerminal::ColorConfig m_terminalColorConfig;
+    AppTerminal::ColorMatcher m_terminalColorMatcher;
     SerialPortConfig m_lastConfig;
     QByteArray m_rxFrameBuffer;
     QByteArray m_autoReplyBuffer;

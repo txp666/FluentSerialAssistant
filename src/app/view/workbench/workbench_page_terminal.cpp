@@ -228,8 +228,11 @@ QString WorkbenchPage::exportSuffix(ExportFormat format) const
     return QStringLiteral("txt");
 }
 
-QString WorkbenchPage::formatRecordLine(const SessionRecord &record) const
+QString WorkbenchPage::formatRecordLine(const SessionRecord &record, int *contentStart) const
 {
+    if (contentStart) {
+        *contentStart = 0;
+    }
     if (record.direction == RecordDirection::FrameBreak) {
         return {};
     }
@@ -248,14 +251,24 @@ QString WorkbenchPage::formatRecordLine(const SessionRecord &record) const
     if (!record.sourceLabel.trimmed().isEmpty()) {
         marker = QStringLiteral("%1[%2]").arg(marker, record.sourceLabel.trimmed());
     }
+    QString prefix = marker;
     if (m_timestampCheck && m_timestampCheck->isChecked()) {
-        return payload.isEmpty()
-                   ? QStringLiteral("%1 %2").arg(record.timestamp.toString(QStringLiteral("HH:mm:ss.zzz")), marker)
-                   : QStringLiteral("%1 %2 %3")
-                         .arg(record.timestamp.toString(QStringLiteral("HH:mm:ss.zzz")), marker, payload);
+        prefix = QStringLiteral("%1 %2").arg(record.timestamp.toString(QStringLiteral("HH:mm:ss.zzz")), marker);
     }
+    if (!payload.isEmpty()) {
+        prefix += QLatin1Char(' ');
+    }
+    if (contentStart) {
+        *contentStart = prefix.size();
+    }
+    return prefix + payload;
+}
 
-    return payload.isEmpty() ? marker : QStringLiteral("%1 %2").arg(marker, payload);
+void WorkbenchPage::applyTerminalColorConfig(const AppTerminal::ColorConfig &config)
+{
+    m_terminalColorConfig = config;
+    m_terminalColorMatcher.setConfig(config);
+    renderTerminal();
 }
 
 QColor WorkbenchPage::selectedTxColor() const
@@ -581,7 +594,12 @@ void WorkbenchPage::insertTextWithSearchHighlights(QTextCursor &cursor, const QS
 
     const int end = start + length;
     int position = start;
-    for (const SearchMatchRange &range : ranges) {
+    const auto first = std::lower_bound(ranges.cbegin(), ranges.cend(), start,
+                                        [](const SearchMatchRange &range, int offset) {
+                                            return range.start + range.length <= offset;
+                                        });
+    for (auto iterator = first; iterator != ranges.cend() && iterator->start < end; ++iterator) {
+        const SearchMatchRange &range = *iterator;
         const int rangeStart = qMax(start, range.start);
         const int rangeEnd = qMin(end, range.start + range.length);
         if (rangeEnd <= position || rangeEnd <= rangeStart) {
@@ -621,7 +639,8 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
     if (record.direction == RecordDirection::Tx) {
         format.setForeground(selectedTxColor());
     }
-    const QString line = formatRecordLine(record);
+    int contentStart = 0;
+    const QString line = formatRecordLine(record, &contentStart);
     const int lineDocumentStart = cursor.position();
     const QList<SearchMatchRange> searchRanges = terminalSearchRanges(line, query);
     for (const SearchMatchRange &range : searchRanges) {
@@ -646,32 +665,44 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
         insertTextWithSearchHighlights(cursor, line, position, markerIndex - position, format, searchRanges);
         insertTextWithSearchHighlights(cursor, line, markerIndex, marker.size(), markerFormat, searchRanges);
 
-        const int afterMarker = markerIndex + marker.size();
-        int prefixStart = afterMarker;
-        while (prefixStart < line.size() && line.at(prefixStart).isSpace()) {
-            ++prefixStart;
-        }
+        position = markerIndex + marker.size();
+    }
 
-        const int prefixEnd = espIdfLogPrefixEnd(line, prefixStart);
-        if (prefixEnd > prefixStart) {
+    insertTextWithSearchHighlights(cursor, line, position, contentStart - position, format, searchRanges);
+    int prefixStart = contentStart;
+    while (prefixStart < line.size() && line.at(prefixStart).isSpace()) {
+        ++prefixStart;
+    }
+    const int prefixEnd = m_terminalColorConfig.espIdfEnabled ? espIdfLogPrefixEnd(line, prefixStart) : -1;
+
+    // Default and ESP-IDF colors fill the gaps between custom matches. Each
+    // segment still passes through the search-background formatter.
+    const auto insertBaseRange = [&](int start, int end) {
+        const int levelStart = qMax(start, prefixStart);
+        const int levelEnd = qMin(end, prefixEnd);
+        if (levelEnd > levelStart) {
+            insertTextWithSearchHighlights(cursor, line, start, levelStart - start, format, searchRanges);
             QTextCharFormat levelFormat = format;
             levelFormat.setForeground(terminalEspIdfLogLevelColor(line.at(prefixStart)));
-            insertTextWithSearchHighlights(cursor, line, afterMarker, prefixStart - afterMarker, format, searchRanges);
-            insertTextWithSearchHighlights(cursor, line, prefixStart, prefixEnd - prefixStart, levelFormat,
-                                           searchRanges);
-            insertTextWithSearchHighlights(cursor, line, prefixEnd, line.size() - prefixEnd, format, searchRanges);
+            insertTextWithSearchHighlights(cursor, line, levelStart, levelEnd - levelStart, levelFormat, searchRanges);
+            insertTextWithSearchHighlights(cursor, line, levelEnd, end - levelEnd, format, searchRanges);
         } else {
-            insertTextWithSearchHighlights(cursor, line, afterMarker, line.size() - afterMarker, format, searchRanges);
+            insertTextWithSearchHighlights(cursor, line, start, end - start, format, searchRanges);
         }
-        return true;
+    };
+    position = contentStart;
+    const auto colorRanges = m_terminalColorMatcher.hasRules()
+                                 ? m_terminalColorMatcher.ranges(line.mid(contentStart))
+                                 : QVector<AppTerminal::ColorSpan>{};
+    for (const auto &range : colorRanges) {
+        const int start = contentStart + range.start;
+        insertBaseRange(position, start);
+        QTextCharFormat customFormat = format;
+        customFormat.setForeground(range.color);
+        insertTextWithSearchHighlights(cursor, line, start, range.length, customFormat, searchRanges);
+        position = start + range.length;
     }
-
-    if (position > 0) {
-        insertTextWithSearchHighlights(cursor, line, position, line.size() - position, format, searchRanges);
-        return true;
-    }
-
-    insertTextWithSearchHighlights(cursor, line, 0, line.size(), format, searchRanges);
+    insertBaseRange(position, line.size());
     return true;
 }
 

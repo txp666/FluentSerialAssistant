@@ -8,7 +8,7 @@
     ·
     <a href="https://github.com/txp666/FluentSerialAssistant/releases">Downloads</a>
     ·
-    <a href=".github/workflows/ci.yml">Cross-platform CI</a>
+    <a href=".github/workflows/release.yml">Cross-platform release builds</a>
     ·
     <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
     ·
@@ -36,6 +36,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - Protocol templates for headers, length fields, commands, payloads, and checksums.
 - Unified RX/TX records with pause, automatic scrolling, clearing, and counter reset.
 - Keyword, regular-expression, case-sensitive, direction-filtered terminal search.
+- Terminal colors in Settings: toggle ESP-IDF, common log levels, success/failure, or AT response presets, or define keyword/regex colors with case sensitivity, matched-text or whole-line scope, and rule priority. Settings persist and apply to all terminal sessions.
 - Multi-channel real-time plotting from line-aware numbers, delimited values, multi-word/Unicode key-value pairs, nested JSON, and typed binary frame or payload fields. The UI, CLI, and MCP share a persistent parser configuration with field selection and CSV export.
 - A sortable and filterable frame table with HEX/text copying and terminal navigation.
 - Multiple independent serial sessions in tabs.
@@ -71,7 +72,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 
 ```text
 .
-├── .github/workflows/        # GitHub Actions CI and release workflows
+├── .github/workflows/        # Tests and packaging on GitHub Release publication
 ├── docs/                     # Images, release notes, and signing documentation
 ├── packaging/windows/        # Inno Setup definition and translations
 ├── scripts/                  # Packaging and helper scripts
@@ -149,7 +150,9 @@ Windows tasks reuse the MinGW presets in `CMakePresets.json`. macOS and Linux ta
 
 ## Packaging and releases
 
-Pushing a `vX.Y.Z` tag that matches the CMake project version builds and publishes:
+GitHub Actions runs only when a GitHub Release is published. Commits, pull requests, tag pushes, and manual dispatch do not trigger builds on their own.
+
+Update the CMake version, changelog, and `docs/release-notes/vX.Y.Z.md`, then push the code and matching `vX.Y.Z` tag. Create and publish a GitHub Release for that tag without marking it as the latest release. The workflow checks out the tagged code, runs the tests, and builds:
 
 - Windows x64: an administrator-elevated Inno Setup installer that defaults to Program Files:
   `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe`
@@ -157,6 +160,8 @@ Pushing a `vX.Y.Z` tag that matches the CMake project version builds and publish
 - Linux x64 and arm64 Debian packages:
   `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb`
 - A matching `.sha256` checksum for every package.
+
+After every platform has built successfully and the assets pass verification, the workflow uploads the packages and release notes to that Release and marks it as latest. Keep the previous release as latest while packages are building so the in-app updater does not discover an incomplete set of installers.
 
 Windows releases support free open-source Authenticode signing through SignPath Foundation. The workflow signs `FluentSerialAssistant.exe`, builds the Inno Setup installer, and then signs the installer. See the [SignPath setup guide](docs/signing/SIGNPATH_SETUP.md).
 

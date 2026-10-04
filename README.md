@@ -8,7 +8,7 @@
     ·
     <a href="https://github.com/txp666/FluentSerialAssistant/releases">下载</a>
     ·
-    <a href=".github/workflows/ci.yml">三平台 CI</a>
+    <a href=".github/workflows/release.yml">三平台发布构建</a>
     ·
     <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
     ·
@@ -55,6 +55,7 @@ Fluent 串口助手是一个基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的�
 - 循环发送：支持毫秒级发送间隔。
 - 文件发送：支持选择文件后按块发送，可配置块大小和块间隔，并显示进度。
 - 自动日志：支持 TXT、CSV、BIN 自动记录收发数据，文件名包含时间、串口名和波特率，并可按单文件大小滚动。
+- 内容着色：在设置页面勾选 ESP-IDF、通用日志等级、成功与失败、AT 指令响应等示例，或按关键词、正则表达式自定义颜色；支持区分大小写、匹配内容或整行着色、规则优先级，配置会保存并应用于所有终端会话。
 - 应用更新：启动自动检查新版本，先展示更新说明，确认后下载、校验并安装；设置中可手动检查和重试。
 - 导出记录：支持 TXT、CSV、BIN。
 - 接收保存：可将接收原始数据保存到文件。
@@ -82,7 +83,7 @@ Fluent 串口助手是一个基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的�
 
 ```text
 .
-├── .github/workflows/        # GitHub Actions CI
+├── .github/workflows/        # GitHub Release 测试与打包工作流
 ├── docs/images/              # README 截图和文档图片
 ├── scripts/                  # 发布和辅助脚本
 ├── src/
@@ -172,7 +173,9 @@ Windows 下任务复用 `CMakePresets.json` 中的 MinGW 预设；macOS 和 Linu
 
 ## 打包发布
 
-推送与 CMake 版本一致的 `vX.Y.Z` 标签后，GitHub Actions 会生成并发布：
+GitHub Actions 仅在 GitHub Release 正式发布时触发；提交推送、Pull Request、标签推送和手动操作均不会单独触发构建。
+
+发布前同步 CMake 版本、变更记录和 `docs/release-notes/vX.Y.Z.md`，推送代码及对应的 `vX.Y.Z` 标签，再创建并发布该标签的 GitHub Release。创建时不要标记为最新版本；工作流会检出标签对应的代码，运行测试，并构建以下安装包：
 
 - Windows x64：请求管理员权限并默认安装到 Program Files 的 Inno Setup 安装程序
   `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe`
@@ -180,6 +183,8 @@ Windows 下任务复用 `CMakePresets.json` 中的 MinGW 预设；macOS 和 Linu
 - Linux x64 / arm64：Debian 安装包
   `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb`
 - 每个安装包对应的 `.sha256` 校验文件
+
+所有平台完成构建并通过产物校验后，工作流会将安装包和更新说明上传到该 Release，再将其标记为最新版本。打包过程中请保留上一版本为最新版本，避免应用内更新检测到尚未齐全的安装包。
 
 Windows 发布支持 SignPath Foundation 的免费开源 Authenticode 签名。签名会先应用到
 `FluentSerialAssistant.exe`，再构建并签署 Inno Setup 安装程序。申请和仓库配置见

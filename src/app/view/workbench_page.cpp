@@ -14,6 +14,7 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
 {
     contentLayout()->setAlignment(Qt::Alignment());
     contentLayout()->addWidget(createWorkbench(), 1);
+    reloadTerminalColors();
 
     setupSerialSignals();
 
@@ -113,6 +114,11 @@ WorkbenchPage::~WorkbenchPage()
     closeAutoLog();
     closeReceiveCapture();
     m_serial.closePort();
+}
+
+void WorkbenchPage::reloadTerminalColors()
+{
+    applyTerminalColorConfig(AppTerminal::loadColorConfig());
 }
 
 void WorkbenchPage::hideEvent(QHideEvent *event)

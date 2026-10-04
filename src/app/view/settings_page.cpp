@@ -2,9 +2,11 @@
 
 #include "app/core/app_i18n.h"
 #include "app/core/font_preferences.h"
+#include "app/core/terminal_color_rules.h"
 #include "app/core/update_manager.h"
 #include "app/serial/virtual_serial_pair.h"
 #include "app/view/fluent_tooltip_helper.h"
+#include "app/view/terminal_color_dialog.h"
 
 #include <FluentQtWidgets/Dialogs/Dialog.h>
 #include <FluentQtWidgets/Dialogs/FolderListDialog.h>
@@ -273,6 +275,10 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     auto *terminalFontSizeCard =
         new RangeSettingCard(8, 28, AppFontPreferences::currentTerminalFontPointSize(), FluentIcon::FontSize,
                              AppI18n::text("终端字号"), AppI18n::text("设置终端记录的字体大小"), terminalGroup);
+    auto *terminalColorCard =
+        new PushSettingCard(AppI18n::text("配置"), FluentIcon::Palette, AppI18n::text("内容着色"),
+                            AppI18n::text("选择着色示例或自定义规则，适用于所有终端会话"), terminalGroup);
+    terminalColorCard->setObjectName(QStringLiteral("terminalColorSettingsCard"));
 
     const QString exportFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
     auto *exportFolderCard = new PushSettingCard(AppI18n::text("选择目录"), FluentIcon::Folder,
@@ -297,6 +303,14 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     connect(terminalFontSizeCard, &RangeSettingCard::valueChanged, this, [this](int value) {
         AppFontPreferences::setTerminalFontPointSize(value);
         emit terminalFontChanged(AppFontPreferences::currentTerminalFontFamily());
+    });
+    connect(terminalColorCard, &PushSettingCard::clicked, this, [this]() {
+        TerminalColorDialog dialog(AppTerminal::loadColorConfig(), window());
+        if (dialog.exec() != QDialog::Accepted) {
+            return;
+        }
+        AppTerminal::saveColorConfig(dialog.config());
+        emit terminalColorsChanged();
     });
     connect(importFontCard, &PushSettingCard::clicked, this, [this, importFontCard, uiFontCard, terminalFontCard]() {
         const QString filePath =
@@ -340,8 +354,8 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
         exportFolderCard->setContent(folder);
     });
 
-    terminalGroup->addSettingCards(
-        {displayModeCard, lineEndingCard, maxRecordsCard, terminalFontCard, terminalFontSizeCard, exportFolderCard});
+    terminalGroup->addSettingCards({displayModeCard, lineEndingCard, maxRecordsCard, terminalFontCard,
+                                    terminalFontSizeCard, terminalColorCard, exportFolderCard});
     addSection(QString(), terminalGroup);
 }
 

@@ -4,6 +4,98 @@
 <context>
     <name>AppText</name>
     <message>
+        <source>ESP-IDF 日志</source>
+        <translation>ESP-IDF 日志</translation>
+    </message>
+    <message>
+        <source>通用日志等级</source>
+        <translation>通用日志等级</translation>
+    </message>
+    <message>
+        <source>成功与失败</source>
+        <translation>成功与失败</translation>
+    </message>
+    <message>
+        <source>AT 指令响应</source>
+        <translation>AT 指令响应</translation>
+    </message>
+    <message>
+        <source>选择着色示例或自定义规则，适用于所有终端会话</source>
+        <translation>选择着色示例或自定义规则，适用于所有终端会话</translation>
+    </message>
+    <message>
+        <source>勾选示例即可启用对应配色，也可添加自定义规则。</source>
+        <translation>勾选示例即可启用对应配色，也可添加自定义规则。</translation>
+    </message>
+    <message>
+        <source>示例预设</source>
+        <translation>示例预设</translation>
+    </message>
+    <message>
+        <source>按行匹配正文；自定义规则优先于预设，上方规则优先。双击匹配内容可编辑。</source>
+        <translation>按行匹配正文；自定义规则优先于预设，上方规则优先。双击匹配内容可编辑。</translation>
+    </message>
+    <message>
+        <source>关键词</source>
+        <translation>关键词</translation>
+    </message>
+    <message>
+        <source>内容着色</source>
+        <translation>内容着色</translation>
+    </message>
+    <message>
+        <source>内容颜色</source>
+        <translation>内容颜色</translation>
+    </message>
+    <message>
+        <source>匹配内容不能为空。</source>
+        <translation>匹配内容不能为空。</translation>
+    </message>
+    <message>
+        <source>匹配方式</source>
+        <translation>匹配方式</translation>
+    </message>
+    <message>
+        <source>区分大小写</source>
+        <translation>区分大小写</translation>
+    </message>
+    <message>
+        <source>启用自定义着色</source>
+        <translation>启用自定义着色</translation>
+    </message>
+    <message>
+        <source>整行</source>
+        <translation>整行</translation>
+    </message>
+    <message>
+        <source>正则表达式无效：%1</source>
+        <translation>正则表达式无效：%1</translation>
+    </message>
+    <message>
+        <source>添加规则</source>
+        <translation>添加规则</translation>
+    </message>
+    <message>
+        <source>着色范围</source>
+        <translation>着色范围</translation>
+    </message>
+    <message>
+        <source>第 %1 条规则：%2</source>
+        <translation>第 %1 条规则：%2</translation>
+    </message>
+    <message>
+        <source>请选择有效颜色。</source>
+        <translation>请选择有效颜色。</translation>
+    </message>
+    <message>
+        <source>配置</source>
+        <translation>配置</translation>
+    </message>
+    <message>
+        <source>颜色</source>
+        <translation>颜色</translation>
+    </message>
+    <message>
         <source>简体中文</source>
         <translation>简体中文</translation>
     </message>

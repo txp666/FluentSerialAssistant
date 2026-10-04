@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.15
+    VERSION 0.1.16
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -99,6 +99,8 @@ add_executable(FluentSerialAssistant
     src/app/core/script_runner.h
     src/app/core/text_encoding.cpp
     src/app/core/text_encoding.h
+    src/app/core/terminal_color_rules.cpp
+    src/app/core/terminal_color_rules.h
     src/app/core/update_checker.cpp
     src/app/core/update_checker.h
     src/app/core/update_release.cpp
@@ -128,6 +130,8 @@ add_executable(FluentSerialAssistant
     src/app/view/quick_plot_window.h
     src/app/view/settings_page.cpp
     src/app/view/settings_page.h
+    src/app/view/terminal_color_dialog.cpp
+    src/app/view/terminal_color_dialog.h
     src/app/view/update_dialog.cpp
     src/app/view/update_dialog.h
     src/app/view/workbench_page.cpp
@@ -210,8 +214,9 @@ if(BUILD_TESTING)
     )
     get_target_property(workbench_test_libraries FluentSerialAssistant LINK_LIBRARIES)
     target_link_libraries(FluentSerialTestSupport PUBLIC ${workbench_test_libraries})
-    foreach(test_name IN ITEMS data_table_model workbench_data_table terminal_search auto_reply virtual_serial_pair virtual_serial_workbench
-                               update_downloader update_installer update_ui update_manager)
+    foreach(test_name IN ITEMS data_table_model workbench_data_table terminal_search terminal_colors auto_reply
+                               virtual_serial_pair virtual_serial_workbench update_downloader update_installer
+                               update_ui update_manager)
         add_executable(tst_${test_name} tests/tst_${test_name}.cpp)
         target_link_libraries(tst_${test_name} PRIVATE FluentSerialTestSupport Qt6::Test)
         add_test(NAME ${test_name} COMMAND tst_${test_name})

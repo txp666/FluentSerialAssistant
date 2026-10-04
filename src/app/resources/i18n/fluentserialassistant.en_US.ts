@@ -4,6 +4,98 @@
 <context>
     <name>AppText</name>
     <message>
+        <source>ESP-IDF 日志</source>
+        <translation>ESP-IDF logs</translation>
+    </message>
+    <message>
+        <source>通用日志等级</source>
+        <translation>Common log levels</translation>
+    </message>
+    <message>
+        <source>成功与失败</source>
+        <translation>Success and failure</translation>
+    </message>
+    <message>
+        <source>AT 指令响应</source>
+        <translation>AT responses</translation>
+    </message>
+    <message>
+        <source>选择着色示例或自定义规则，适用于所有终端会话</source>
+        <translation>Choose color presets or custom rules for all terminal sessions</translation>
+    </message>
+    <message>
+        <source>勾选示例即可启用对应配色，也可添加自定义规则。</source>
+        <translation>Select presets to enable their colors, or add your own rules.</translation>
+    </message>
+    <message>
+        <source>示例预设</source>
+        <translation>Example presets</translation>
+    </message>
+    <message>
+        <source>按行匹配正文；自定义规则优先于预设，上方规则优先。双击匹配内容可编辑。</source>
+        <translation>Match content line by line. Custom rules override presets; earlier rules take priority. Double-click match text to edit.</translation>
+    </message>
+    <message>
+        <source>关键词</source>
+        <translation>Keyword</translation>
+    </message>
+    <message>
+        <source>内容着色</source>
+        <translation>Content colors</translation>
+    </message>
+    <message>
+        <source>内容颜色</source>
+        <translation>Content color</translation>
+    </message>
+    <message>
+        <source>匹配内容不能为空。</source>
+        <translation>Match text cannot be empty.</translation>
+    </message>
+    <message>
+        <source>匹配方式</source>
+        <translation>Match type</translation>
+    </message>
+    <message>
+        <source>区分大小写</source>
+        <translation>Match case</translation>
+    </message>
+    <message>
+        <source>启用自定义着色</source>
+        <translation>Enable custom colors</translation>
+    </message>
+    <message>
+        <source>整行</source>
+        <translation>Whole line</translation>
+    </message>
+    <message>
+        <source>正则表达式无效：%1</source>
+        <translation>Invalid regular expression: %1</translation>
+    </message>
+    <message>
+        <source>添加规则</source>
+        <translation>Add rule</translation>
+    </message>
+    <message>
+        <source>着色范围</source>
+        <translation>Color scope</translation>
+    </message>
+    <message>
+        <source>第 %1 条规则：%2</source>
+        <translation>Rule %1: %2</translation>
+    </message>
+    <message>
+        <source>请选择有效颜色。</source>
+        <translation>Please choose a valid color.</translation>
+    </message>
+    <message>
+        <source>配置</source>
+        <translation>Configure</translation>
+    </message>
+    <message>
+        <source>颜色</source>
+        <translation>Color</translation>
+    </message>
+    <message>
         <source>简体中文</source>
         <translation>Simplified Chinese</translation>
     </message>

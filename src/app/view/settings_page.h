@@ -13,6 +13,7 @@ class SettingsPage : public AppPage
   signals:
     void terminalRequested();
     void terminalFontChanged(const QString &family);
+    void terminalColorsChanged();
     void updateDialogRequested();
 
   private slots:

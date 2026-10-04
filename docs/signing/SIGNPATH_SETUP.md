@@ -25,10 +25,10 @@ Suggested application details:
   serial devices, inspect and export traffic, build protocol packets, plot
   incoming data, automate test sequences, and run local serial scripts through
   a modern desktop interface.`
-- Reputation: `The public GPL-3.0 repository has published eight GitHub
-  Releases, uses reproducible tag-triggered release automation and
-  cross-platform GitHub Actions builds, and currently has four stars and one
-  fork. Repository: https://github.com/txp666/FluentSerialAssistant`
+- Reputation: `The public GPL-3.0 repository publishes GitHub Releases with
+  cross-platform GitHub Actions builds and tests. Publishing a release starts
+  automation against its tag; installation packages are attached only after
+  validation. Repository: https://github.com/txp666/FluentSerialAssistant`
 - Maintainer type: `Individual maintainer(s)`
 - Build system: `GitHub Actions`
 - Code signing policy:
@@ -72,13 +72,25 @@ After acceptance:
 8. Add the SignPath organization ID as the GitHub Actions repository variable
    `SIGNPATH_ORGANIZATION_ID`.
 
-The release workflow detects these two settings. If both are present, it:
+The release workflow runs only for GitHub's `release.published` event. Create
+the release for a tag matching the CMake version and initially leave it without
+the latest designation (`gh release create ... --latest=false`). Ordinary code
+pushes, pull requests, and tag pushes do not start the workflow. Each platform
+checks out the release tag, builds the application, and must pass CTest before
+packaging or signing.
+
+The workflow detects the two SignPath settings above. If both are present, it:
 
 1. uploads the staged Windows application as a short-lived GitHub artifact;
 2. submits it to SignPath and verifies the returned application signature;
 3. builds the Inno Setup installer from the signed application;
 4. submits the installer to SignPath and verifies its signature;
-5. generates the final SHA-256 checksum and publishes the release.
+5. generates the final SHA-256 checksum for the signed installer.
+
+After all platform jobs succeed, the workflow verifies all expected packages
+and their checksums, attaches them to the already-published release, and marks
+it as the latest release. Uploading assets and updating the release do not
+trigger another run because the workflow listens only for `published` events.
 
 SignPath Foundation requires a human approver to approve each signing request.
 The release job waits up to one hour for each approval.

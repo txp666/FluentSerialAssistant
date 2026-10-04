@@ -1,16 +1,18 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  release:
+    types: [published]
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name }}
 
 permissions:
   actions: read
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.release.tag_name }}
   cancel-in-progress: false
 
 jobs:
@@ -25,6 +27,7 @@ jobs:
       - name: Check out sources and submodules
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.release.tag_name }}
           submodules: recursive
           fetch-depth: 0
 
@@ -40,14 +43,21 @@ jobs:
           cmake -S . -B build/release
           -G "Visual Studio 17 2022"
           -A x64
+          -DBUILD_TESTING=ON
 
       - name: Build
         run: cmake --build build/release --config Release --parallel
 
+      - name: Test
+        run: ctest --test-dir build/release -C Release --output-on-failure --no-tests=error
+
       - name: Validate release tag
         shell: pwsh
         run: |
-          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+            throw "Release tag must have the form vMAJOR.MINOR.PATCH."
+          }
+          $tagVersion = $env:RELEASE_TAG.Substring(1)
           $configuredVersion = (Get-Content -LiteralPath "build/release/FluentSerialAssistant-version.txt" -Raw).Trim()
           if ($tagVersion -ne $configuredVersion) {
             throw "Tag version '$tagVersion' does not match CMake version '$configuredVersion'."
@@ -217,6 +227,7 @@ jobs:
       - name: Check out sources and submodules
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.release.tag_name }}
           submodules: recursive
           fetch-depth: 0
 
@@ -233,14 +244,19 @@ jobs:
           -G Ninja
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_OSX_ARCHITECTURES=arm64
+          -DBUILD_TESTING=ON
 
       - name: Build
         run: cmake --build build/release --parallel
 
+      - name: Test
+        run: ctest --test-dir build/release --output-on-failure --no-tests=error
+
       - name: Validate release tag and architecture
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${RELEASE_TAG#v}"
           configured_version="$(tr -d '[:space:]' < build/release/FluentSerialAssistant-version.txt)"
           test "$version" = "$configured_version"
           test "$(uname -m)" = "arm64"
@@ -287,6 +303,7 @@ jobs:
       - name: Check out sources and submodules
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.release.tag_name }}
           submodules: recursive
           fetch-depth: 0
 
@@ -312,14 +329,19 @@ jobs:
           cmake -S . -B build/release
           -G Ninja
           -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
 
       - name: Build
         run: cmake --build build/release --parallel
 
+      - name: Test
+        run: ctest --test-dir build/release --output-on-failure --no-tests=error
+
       - name: Validate release tag and architecture
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${RELEASE_TAG#v}"
           configured_version="$(tr -d '[:space:]' < build/release/FluentSerialAssistant-version.txt)"
           test "$version" = "$configured_version"
           test "$(uname -m)" = "${{ matrix.uname }}"
@@ -368,6 +390,8 @@ jobs:
     steps:
       - name: Check out release notes
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Download release artifacts
         uses: actions/download-artifact@v8
@@ -379,7 +403,7 @@ jobs:
       - name: Verify release assets
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_TAG#v}"
           expected=(
             "dist/FluentSerialAssistant-$version-windows-x64-setup.exe"
             "dist/FluentSerialAssistant-$version-windows-x64-setup.exe.sha256"
@@ -398,7 +422,7 @@ jobs:
       - name: Prepare release notes
         shell: bash
         run: |
-          cp "docs/release-notes/$GITHUB_REF_NAME.md" release-body.md
+          cp "docs/release-notes/$RELEASE_TAG.md" release-body.md
           printf '\n\n## Code signing policy\n\n' >> release-body.md
           printf '%s\n' \
             "Free Windows code signing is provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/), after approval of the project's open-source application." \
@@ -409,6 +433,8 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name }}
+          make_latest: true
           body_path: release-body.md
           files: dist/*
           fail_on_unmatched_files: true

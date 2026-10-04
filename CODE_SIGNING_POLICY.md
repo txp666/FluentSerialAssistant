@@ -10,8 +10,8 @@ by [SignPath Foundation](https://signpath.org/).
 
 Only release artifacts built from the public
 [txp666/FluentSerialAssistant](https://github.com/txp666/FluentSerialAssistant)
-repository by the tag-triggered GitHub Actions release workflow may be
-submitted for signing.
+repository by the GitHub Actions workflow triggered when a GitHub Release is
+published may be submitted for signing. Every job checks out that release's tag.
 
 The following project-owned files are signed:
 
@@ -33,11 +33,19 @@ signing policy.
 ## Build and release controls
 
 - Release builds run only on GitHub-hosted runners.
+- Publishing a GitHub Release triggers the workflow; ordinary pushes, pull
+  requests, and tag pushes do not.
 - A release tag must match the version declared by CMake.
+- Tests must pass on each platform before its packaging or signing steps run.
 - The application is signed before Inno Setup creates the installer.
 - The completed installer is submitted for a separate signature.
-- The workflow verifies both Authenticode signatures before publishing.
+- The workflow verifies both Authenticode signatures before uploading assets.
 - SHA-256 checksum files are generated only after signing is complete.
+- After all platform jobs pass, the workflow verifies the complete set of
+  packages and checksums, uploads them to the triggering release, and marks it
+  as the latest release. The release is initially published without the latest
+  designation so users continue to receive the previous complete version
+  while the new packages are being built.
 
 The SignPath artifact configurations used by the release workflow are stored
 under [`signing/signpath`](signing/signpath).
