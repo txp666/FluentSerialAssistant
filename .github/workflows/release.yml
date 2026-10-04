@@ -430,12 +430,18 @@ jobs:
             'See the [project code signing policy](https://github.com/txp666/FluentSerialAssistant/blob/main/CODE_SIGNING_POLICY.md).' \
             >> release-body.md
 
-      - name: Publish GitHub release
+      - name: Upload GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          make_latest: true
+          make_latest: false
           body_path: release-body.md
           files: dist/*
           fail_on_unmatched_files: true
           overwrite_files: true
+
+      - name: Mark complete release as latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --latest
