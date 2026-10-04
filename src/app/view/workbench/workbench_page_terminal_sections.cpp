@@ -2,12 +2,34 @@
 
 #include "app/core/app_i18n.h"
 
+#include <QtGui/QFontDatabase>
+#include <QtGui/QPainter>
 #include <QtGui/QShortcut>
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
 namespace {
+
+// Keep the full value for accessibility and tooltips when the header has to elide it.
+template <typename Label> class TerminalStatLabel : public Label
+{
+  public:
+    TerminalStatLabel(const QString &text, QWidget *parent) : Label(text, parent) {}
+
+  protected:
+    void paintEvent(QPaintEvent *event) override
+    {
+        if (this->fontMetrics().horizontalAdvance(this->text()) <= this->contentsRect().width()) {
+            Label::paintEvent(event);
+            return;
+        }
+        QPainter painter(this);
+        painter.setPen(this->palette().color(QPalette::WindowText));
+        painter.drawText(this->contentsRect(), this->alignment(),
+                         this->fontMetrics().elidedText(this->text(), Qt::ElideRight, this->contentsRect().width()));
+    }
+};
 
 bool isReceiveHexMode(const QString &mode) { return mode == QStringLiteral("hex"); }
 
@@ -27,21 +49,75 @@ QWidget *WorkbenchPage::createTerminalSection()
     auto *root = cardBody(section, 10);
     section->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX"), section), 0, Qt::AlignVCenter);
-    m_rxCounterLabel = new StrongBodyLabel(QStringLiteral("0 B"), section);
-    section->headerLayout()->addWidget(m_rxCounterLabel, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX"), section), 0, Qt::AlignVCenter);
-    m_txCounterLabel = new StrongBodyLabel(QStringLiteral("0 B"), section);
-    section->headerLayout()->addWidget(m_txCounterLabel, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("RX/s"), section), 0, Qt::AlignVCenter);
-    m_rxRateLabel = new StrongBodyLabel(QStringLiteral("0 B/s"), section);
-    section->headerLayout()->addWidget(m_rxRateLabel, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(new BodyLabel(QStringLiteral("TX/s"), section), 0, Qt::AlignVCenter);
-    m_txRateLabel = new StrongBodyLabel(QStringLiteral("0 B/s"), section);
-    section->headerLayout()->addWidget(m_txRateLabel, 0, Qt::AlignVCenter);
-    m_connectionTimeLabel = new CaptionLabel(AppI18n::text("未连接"), section);
-    section->headerLayout()->addWidget(m_connectionTimeLabel, 0, Qt::AlignVCenter);
-    section->headerLayout()->addStretch(1);
+    m_terminalStatsWidget = new QWidget(section);
+    m_terminalStatsWidget->setObjectName(QStringLiteral("terminalStatistics"));
+    m_terminalStatsWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    m_terminalStatsWidget->setMinimumWidth(0);
+    m_terminalStatsWidget->setFixedHeight(38);
+    m_terminalStatsWidget->installEventFilter(this);
+    AppUi::installFluentToolTip(m_terminalStatsWidget);
+    const auto createGroup = [this](const QString &name, const QString &description, const QString &lightBackground,
+                                    const QString &darkBackground) {
+        auto *group = new QWidget(m_terminalStatsWidget);
+        group->setObjectName(name);
+        group->setAccessibleName(description);
+        group->setAttribute(Qt::WA_StyledBackground);
+        const QString style = QStringLiteral("QWidget#%1 { background-color: %2; border-radius: 5px; }");
+        FluentStyleSheet::setCustomStyleSheet(group, style.arg(name, lightBackground), style.arg(name, darkBackground));
+        AppUi::installFluentToolTip(group);
+        m_terminalStatsGroups.append(group);
+        return group;
+    };
+    auto *receiveGroup = createGroup(QStringLiteral("terminalReceiveStats"), AppI18n::text("接收"),
+                                     QStringLiteral("rgba(0, 121, 107, 12)"), QStringLiteral("rgba(79, 214, 191, 14)"));
+    auto *sendGroup = createGroup(QStringLiteral("terminalSendStats"), AppI18n::text("发送"),
+                                  QStringLiteral("rgba(177, 86, 15, 12)"), QStringLiteral("rgba(255, 185, 115, 14)"));
+    auto *connectionGroup = createGroup(QStringLiteral("terminalConnectionStats"), AppI18n::text("连接状态"),
+                                        QStringLiteral("rgba(0, 0, 0, 5)"), QStringLiteral("rgba(255, 255, 255, 5)"));
+    auto *receiveDirection = new StrongBodyLabel(QStringLiteral("R↓"), receiveGroup);
+    receiveDirection->setAccessibleName(AppI18n::text("接收"));
+    receiveDirection->setTextColor(QColor(0, 121, 107), QColor(79, 214, 191));
+    auto *sendDirection = new StrongBodyLabel(QStringLiteral("T↑"), sendGroup);
+    sendDirection->setAccessibleName(AppI18n::text("发送"));
+    sendDirection->setTextColor(QColor(177, 86, 15), QColor(255, 185, 115));
+    m_rxCounterLabel = new TerminalStatLabel<StrongBodyLabel>(QStringLiteral("0 B"), receiveGroup);
+    m_txCounterLabel = new TerminalStatLabel<StrongBodyLabel>(QStringLiteral("0 B"), sendGroup);
+    m_rxRateLabel = new TerminalStatLabel<StrongBodyLabel>(QStringLiteral("0 B/s"), receiveGroup);
+    m_txRateLabel = new TerminalStatLabel<StrongBodyLabel>(QStringLiteral("0 B/s"), sendGroup);
+    m_connectionStatusLabel = new TerminalStatLabel<CaptionLabel>(AppI18n::text("未连接"), connectionGroup);
+    m_connectionTimeLabel = new TerminalStatLabel<CaptionLabel>(QStringLiteral("—"), connectionGroup);
+    m_connectionTimeLabel->setAccessibleName(AppI18n::text("连接时长"));
+    auto *receiveTotal = new CaptionLabel(AppI18n::text("累计"), receiveGroup);
+    auto *sendTotal = new CaptionLabel(AppI18n::text("累计"), sendGroup);
+    QFont valueFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    valueFont.setPixelSize(14);
+    valueFont.setWeight(QFont::DemiBold);
+    for (auto *label : {m_rxCounterLabel, m_txCounterLabel, m_rxRateLabel, m_txRateLabel}) {
+        label->setFont(valueFont);
+        label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    }
+    valueFont.setPixelSize(11);
+    valueFont.setWeight(QFont::Normal);
+    for (FluentLabelBase *label : QList<FluentLabelBase *>{m_rxCounterLabel, m_txCounterLabel, m_connectionTimeLabel}) {
+        label->setFont(valueFont);
+    }
+    for (FluentLabelBase *label :
+         QList<FluentLabelBase *>{receiveTotal, sendTotal, m_rxCounterLabel, m_txCounterLabel, m_connectionTimeLabel}) {
+        label->setPixelFontSize(11);
+        label->setTextColor(QColor(100, 100, 100), QColor(170, 170, 170));
+    }
+    m_terminalStatsLabels = {receiveDirection,        m_rxRateLabel,        receiveTotal, m_rxCounterLabel,
+                             sendDirection,           m_txRateLabel,        sendTotal,    m_txCounterLabel,
+                             m_connectionStatusLabel, m_connectionTimeLabel};
+    section->headerLayout()->addWidget(m_terminalStatsWidget, 1, Qt::AlignVCenter);
+
+    auto *actions = new QWidget(section);
+    actions->setObjectName(QStringLiteral("terminalHeaderActions"));
+    auto *actionLayout = new QHBoxLayout(actions);
+    actionLayout->setContentsMargins(0, 0, 0, 0);
+    actionLayout->setSpacing(4);
+    actionLayout->setSizeConstraint(QLayout::SetFixedSize);
+    section->headerLayout()->addWidget(actions, 0, Qt::AlignVCenter);
 
     auto *searchButton = new TransparentToolButton(icon(FluentIcon::Search), section);
     searchButton->setObjectName(QStringLiteral("terminalSearchButton"));
@@ -60,17 +136,18 @@ QWidget *WorkbenchPage::createTerminalSection()
     AppUi::setFluentToolTip(settingsButton, AppI18n::text("设置"));
     for (ToolButton *button : {searchButton, plotButton, dataTableButton, themeButton, languageButton,
                                m_receiveModeButton, settingsButton}) {
+        button->setProperty("terminalHeaderAction", true);
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
         button->setIconSize(QSize(16, 16));
+        const QString buttonStyle =
+            QStringLiteral("QToolButton[terminalHeaderAction=\"true\"] { min-width: 32px; max-width: 32px; "
+                           "min-height: 32px; max-height: 32px; padding: 0px; }");
+        FluentStyleSheet::setCustomStyleSheet(button, buttonStyle, buttonStyle);
     }
-    section->headerLayout()->addSpacing(4);
-    section->headerLayout()->addWidget(searchButton, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(plotButton, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(dataTableButton, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(themeButton, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(languageButton, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(m_receiveModeButton, 0, Qt::AlignVCenter);
-    section->headerLayout()->addWidget(settingsButton, 0, Qt::AlignVCenter);
+    for (ToolButton *button : {searchButton, plotButton, dataTableButton, themeButton, languageButton,
+                               m_receiveModeButton, settingsButton}) {
+        actionLayout->addWidget(button);
+    }
 
     m_terminalView = new TextBrowser(section);
     m_terminalView->setReadOnly(true);
@@ -237,6 +314,99 @@ QWidget *WorkbenchPage::createTerminalSection()
     updateReceiveModeButton();
 
     return section;
+}
+
+void WorkbenchPage::updateTerminalHeaderLayout()
+{
+    if (!m_terminalStatsWidget || m_terminalStatsLabels.size() != 10) {
+        return;
+    }
+
+    constexpr int padding = 6;
+    constexpr int labelGap = 4;
+    const int available = m_terminalStatsWidget->width();
+    const auto sampleWidth = [](FluentLabelBase *label, const QString &sample, int pixels) {
+        QFont font = label->font();
+        font.setPixelSize(pixels);
+        return QFontMetrics(font).horizontalAdvance(sample) + 2;
+    };
+    const int totalCaptionWidth = qMax(sampleWidth(m_terminalStatsLabels.at(2), AppI18n::text("累计"), 11),
+                                       sampleWidth(m_terminalStatsLabels.at(6), AppI18n::text("累计"), 11));
+    const int counterWidth = sampleWidth(m_rxCounterLabel, QStringLiteral("999.9 MB"), 11);
+    const int statusWidth = qMax(sampleWidth(m_connectionStatusLabel, AppI18n::text("已连接"), 12),
+                                 sampleWidth(m_connectionStatusLabel, AppI18n::text("未连接"), 12));
+    const int timeWidth = sampleWidth(m_connectionTimeLabel, QStringLiteral("999:59:59"), 11);
+    const int desiredConnectionWidth = 2 * padding + qMax(statusWidth, timeWidth);
+    int fontSize = 14;
+    int groupGap = 8;
+    int directionWidth = 0;
+    int rateWidth = 0;
+    int trafficWidth = 0;
+    // The same fixed templates determine all three groups, regardless of live data.
+    for (int mode = 0; mode < 2; ++mode) {
+        fontSize = mode == 0 ? 14 : 12;
+        groupGap = mode == 0 ? 8 : 6;
+        directionWidth = qMax(sampleWidth(m_terminalStatsLabels.at(0), QStringLiteral("R↓"), fontSize),
+                              sampleWidth(m_terminalStatsLabels.at(4), QStringLiteral("T↑"), fontSize));
+        rateWidth = sampleWidth(m_rxRateLabel, QStringLiteral("999.9 MB/s"), fontSize);
+        trafficWidth =
+            2 * padding + qMax(directionWidth + labelGap + rateWidth, totalCaptionWidth + labelGap + counterWidth);
+        if (2 * trafficWidth + 2 * groupGap + desiredConnectionWidth <= available) {
+            break;
+        }
+    }
+    int connectionWidth = qMin(desiredConnectionWidth, qMax(0, available - 2 * trafficWidth - 2 * groupGap));
+    if (connectionWidth < 32) {
+        connectionWidth = 0;
+    }
+    const int connectionSpace = connectionWidth > 0 ? connectionWidth + groupGap : 0;
+    trafficWidth = qMin(trafficWidth, qMax(0, (available - groupGap - connectionSpace) / 2));
+    const int groupWidths[] = {trafficWidth, trafficWidth, connectionWidth};
+    int groupX = 0;
+    for (int index = 0; index < m_terminalStatsGroups.size(); ++index) {
+        auto *group = m_terminalStatsGroups.at(index);
+        group->setGeometry(groupX, 0, groupWidths[index], 38);
+        group->setVisible(groupWidths[index] > 0);
+        groupX += groupWidths[index] + groupGap;
+    }
+
+    bool elided = false;
+    const auto place = [&elided](FluentLabelBase *label, const QRect &bounds, int pixels) {
+        if (label->pixelFontSize() != pixels) {
+            label->setPixelFontSize(pixels);
+        }
+        label->setGeometry(bounds);
+        label->setVisible(bounds.width() > 0);
+        elided |= label->fontMetrics().horizontalAdvance(label->text()) > bounds.width();
+    };
+    for (int offset : {0, 4}) {
+        const int innerWidth = qMax(0, trafficWidth - 2 * padding);
+        const int actualDirectionWidth = qMin(directionWidth, innerWidth);
+        const int actualRateWidth = qMin(rateWidth, qMax(0, innerWidth - directionWidth - labelGap));
+        const int actualCaptionWidth = qMin(totalCaptionWidth, innerWidth);
+        const int actualCounterWidth = qMin(counterWidth, qMax(0, innerWidth - totalCaptionWidth - labelGap));
+        place(m_terminalStatsLabels.at(offset), QRect(padding, 2, actualDirectionWidth, 18), fontSize);
+        place(m_terminalStatsLabels.at(offset + 1),
+              QRect(trafficWidth - padding - actualRateWidth, 2, actualRateWidth, 18), fontSize);
+        place(m_terminalStatsLabels.at(offset + 2), QRect(padding, 21, actualCaptionWidth, 14), 11);
+        place(m_terminalStatsLabels.at(offset + 3),
+              QRect(trafficWidth - padding - actualCounterWidth, 21, actualCounterWidth, 14), 11);
+    }
+    const int connectionInnerWidth = qMax(0, connectionWidth - 2 * padding);
+    place(m_connectionStatusLabel, QRect(padding, 2, connectionInnerWidth, 18), 12);
+    place(m_connectionTimeLabel, QRect(padding, 21, connectionInnerWidth, 14), 11);
+
+    const QString receiveDetails =
+        AppI18n::text("接收速率：%1\n累计接收：%2").arg(m_rxRateLabel->text(), m_rxCounterLabel->text());
+    const QString sendDetails =
+        AppI18n::text("发送速率：%1\n累计发送：%2").arg(m_txRateLabel->text(), m_txCounterLabel->text());
+    const QString connectionDetails =
+        m_connectionStatusLabel->text() + QLatin1Char(' ') + m_connectionTimeLabel->text();
+    m_terminalStatsGroups.at(0)->setToolTip(receiveDetails);
+    m_terminalStatsGroups.at(1)->setToolTip(sendDetails);
+    m_terminalStatsGroups.at(2)->setToolTip(connectionDetails);
+    m_terminalStatsWidget->setToolTip(
+        elided ? receiveDetails + QLatin1Char('\n') + sendDetails + QLatin1Char('\n') + connectionDetails : QString());
 }
 
 void WorkbenchPage::positionTerminalSearchBar()

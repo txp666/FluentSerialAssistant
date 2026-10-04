@@ -1792,6 +1792,38 @@ JSON 对象：递归读取对象和数组中的数值
         <translation>收发筛选</translation>
     </message>
     <message>
+        <source>接收</source>
+        <translation>接收</translation>
+    </message>
+    <message>
+        <source>累计</source>
+        <translation>累计</translation>
+    </message>
+    <message>
+        <source>已连接</source>
+        <translation>已连接</translation>
+    </message>
+    <message>
+        <source>连接状态</source>
+        <translation>连接状态</translation>
+    </message>
+    <message>
+        <source>连接时长</source>
+        <translation>连接时长</translation>
+    </message>
+    <message>
+        <source>接收速率：%1
+累计接收：%2</source>
+        <translation>接收速率：%1
+累计接收：%2</translation>
+    </message>
+    <message>
+        <source>发送速率：%1
+累计发送：%2</source>
+        <translation>发送速率：%1
+累计发送：%2</translation>
+    </message>
+    <message>
         <source>搜索终端内容</source>
         <translation>搜索终端内容</translation>
     </message>

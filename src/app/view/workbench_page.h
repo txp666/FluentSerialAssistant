@@ -224,6 +224,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QByteArray frameBoundaryPattern(bool *ok = nullptr) const;
     QString checksumAlgorithmKey() const;
     AppChecksum::ByteOrder checksumByteOrder() const;
+    void updateTerminalHeaderLayout();
     void positionTerminalSearchBar();
     void showTerminalSearchBar();
     void hideTerminalSearchBar();
@@ -429,6 +430,9 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::ComboBox *m_stopBitsCombo = nullptr;
     FluentQt::ComboBox *m_flowControlCombo = nullptr;
     FluentQt::SegmentedWidget *m_displayModeSegment = nullptr;
+    QWidget *m_terminalStatsWidget = nullptr;
+    QList<FluentQt::FluentLabelBase *> m_terminalStatsLabels;
+    QList<QWidget *> m_terminalStatsGroups;
     FluentQt::LineEdit *m_terminalSearchEdit = nullptr;
     QWidget *m_terminalSearchBar = nullptr;
     FluentQt::ComboBox *m_terminalFilterCombo = nullptr;
@@ -577,6 +581,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::CaptionLabel *m_scriptStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_autoReplyStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_terminalSummaryLabel = nullptr;
+    FluentQt::CaptionLabel *m_connectionStatusLabel = nullptr;
     FluentQt::CaptionLabel *m_connectionTimeLabel = nullptr;
     FluentQt::CaptionLabel *m_fileStatusLabel = nullptr;
     FluentQt::StrongBodyLabel *m_rxCounterLabel = nullptr;

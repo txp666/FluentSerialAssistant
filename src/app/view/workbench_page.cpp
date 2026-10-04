@@ -125,6 +125,9 @@ void WorkbenchPage::hideEvent(QHideEvent *event)
 
 bool WorkbenchPage::eventFilter(QObject *watched, QEvent *event)
 {
+    if (watched == m_terminalStatsWidget && (event->type() == QEvent::Resize || event->type() == QEvent::FontChange)) {
+        updateTerminalHeaderLayout();
+    }
     if ((watched == m_terminalView || watched == m_terminalSearchEdit) && event->type() == QEvent::KeyPress &&
         m_terminalSearchBar && m_terminalSearchBar->isVisible() &&
         static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {

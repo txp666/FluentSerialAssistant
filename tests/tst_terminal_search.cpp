@@ -1,3 +1,4 @@
+#include "app/core/app_i18n.h"
 #include "app/core/app_settings.h"
 #include "app/view/workbench_page.h"
 
@@ -5,6 +6,7 @@
 
 #include <QtCore/QDir>
 #include <QtCore/QPointer>
+#include <QtCore/QScopeGuard>
 #include <QtGui/QHelpEvent>
 #include <QtGui/QKeySequence>
 #include <QtGui/QPixmap>
@@ -121,6 +123,244 @@ class TerminalSearchTest : public QObject
         settings.setValue(QStringLiteral("terminal/maxRecords"), 1000);
         settings.sync();
         FluentQt::ThemeManager::instance()->setTheme(FluentQt::Theme::Light);
+    }
+
+    void terminalHeaderKeepsActionsVisibleAndRestoresStatistics_data()
+    {
+        QTest::addColumn<QString>("locale");
+        QTest::addColumn<bool>("dark");
+        QTest::newRow("chinese-light") << QStringLiteral("zh_CN") << false;
+        QTest::newRow("english-light") << QStringLiteral("en_US") << false;
+        QTest::newRow("chinese-dark") << QStringLiteral("zh_CN") << true;
+        QTest::newRow("english-dark") << QStringLiteral("en_US") << true;
+    }
+
+    void terminalHeaderKeepsActionsVisibleAndRestoresStatistics()
+    {
+        QFETCH(QString, locale);
+        QFETCH(bool, dark);
+        const QString originalLocale = FluentQt::FluentConfig::instance()->localeName();
+        const auto restoreLocale = qScopeGuard([originalLocale]() { AppI18n::applyLocale(originalLocale); });
+        AppI18n::applyLocale(locale);
+        FluentQt::ThemeManager::instance()->setTheme(dark ? FluentQt::Theme::Dark : FluentQt::Theme::Light);
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, false);
+        auto *statistics = page.m_terminalStatsWidget;
+        auto *actions = page.findChild<QWidget *>(QStringLiteral("terminalHeaderActions"));
+        QVERIFY(statistics);
+        QVERIFY(actions);
+        QCOMPARE(page.m_terminalStatsLabels.size(), 10);
+        QCOMPARE(page.m_terminalStatsGroups.size(), 3);
+        QCOMPARE(statistics->height(), 38);
+        QCOMPARE(page.m_terminalStatsLabels.at(2)->text(),
+                 locale == QStringLiteral("en_US") ? QStringLiteral("Total") : QStringLiteral("累计"));
+        const auto buttons = actions->findChildren<FluentQt::ToolButton *>(QString(), Qt::FindDirectChildrenOnly);
+        QCOMPARE(buttons.size(), 7);
+        QWidget *header = actions->parentWidget();
+        QCOMPARE(statistics->parentWidget(), header);
+        const QString connectedText = AppI18n::text("已连接");
+        QCOMPARE(connectedText,
+                 locale == QStringLiteral("en_US") ? QStringLiteral("Connected") : QStringLiteral("已连接"));
+        const QString disconnectedText = AppI18n::text("未连接");
+        const QString connectionText = QStringLiteral("123:45:56");
+        const QString regularConnectionText = QStringLiteral("03:41");
+
+        const auto verifyVisibleHeader = [&]() {
+            const QRect statisticsBounds(statistics->mapTo(page.viewport(), QPoint()), statistics->size());
+            const QRect actionBounds(actions->mapTo(page.viewport(), QPoint()), actions->size());
+            QVERIFY(page.viewport()->rect().contains(statisticsBounds));
+            QVERIFY(page.viewport()->rect().contains(actionBounds));
+            QVERIFY(statisticsBounds.right() < actionBounds.left());
+            QList<QRect> buttonBounds;
+            for (auto *button : buttons) {
+                QVERIFY(button->isVisible());
+                QCOMPARE(button->size(), QSize(32, 32));
+                const QRect bounds(button->mapTo(page.viewport(), QPoint()), button->size());
+                QVERIFY(page.viewport()->rect().contains(bounds));
+                QVERIFY(actionBounds.contains(bounds));
+                for (const QRect &other : buttonBounds) {
+                    QVERIFY(!bounds.intersects(other));
+                }
+                buttonBounds.append(bounds);
+            }
+        };
+        const auto verifyStatisticsBounds = [&]() {
+            QList<QRect> groupBounds;
+            for (auto *group : page.m_terminalStatsGroups) {
+                QCOMPARE(group->parentWidget(), statistics);
+                if (group->width() == 0 || !group->isVisible()) {
+                    continue;
+                }
+                const QRect bounds(group->mapTo(statistics, QPoint()), group->size());
+                QVERIFY(statistics->rect().contains(bounds));
+                for (const QRect &other : groupBounds) {
+                    QVERIFY(!bounds.intersects(other));
+                }
+                groupBounds.append(bounds);
+            }
+            QList<QRect> labelBounds;
+            for (auto *label : page.m_terminalStatsLabels) {
+                QVERIFY(page.m_terminalStatsGroups.contains(label->parentWidget()));
+                if (label->width() == 0 || !label->isVisible()) {
+                    continue;
+                }
+                const QRect bounds(label->mapTo(statistics, QPoint()), label->size());
+                QVERIFY(statistics->rect().contains(bounds));
+                QVERIFY(label->parentWidget()->rect().contains(label->geometry()));
+                for (const QRect &other : labelBounds) {
+                    QVERIFY(!bounds.intersects(other));
+                }
+                labelBounds.append(bounds);
+            }
+        };
+        struct HeaderPresentation
+        {
+            QList<QRect> groupBounds;
+            QList<bool> groupVisibility;
+            QList<QRect> labelBounds;
+            QList<QFont> labelFonts;
+            QList<bool> labelVisibility;
+            QRect statisticsBounds;
+            QRect actionBounds;
+        };
+        const auto capturePresentation = [&]() {
+            HeaderPresentation presentation;
+            for (auto *group : page.m_terminalStatsGroups) {
+                presentation.groupBounds.append(group->geometry());
+                presentation.groupVisibility.append(group->isVisible());
+            }
+            for (auto *label : page.m_terminalStatsLabels) {
+                presentation.labelBounds.append(label->geometry());
+                presentation.labelFonts.append(label->font());
+                presentation.labelVisibility.append(label->isVisible());
+            }
+            presentation.statisticsBounds = statistics->geometry();
+            presentation.actionBounds = actions->geometry();
+            return presentation;
+        };
+        const auto verifyStablePresentation = [&](const HeaderPresentation &expected) {
+            for (int index = 0; index < page.m_terminalStatsGroups.size(); ++index) {
+                auto *group = page.m_terminalStatsGroups.at(index);
+                QCOMPARE(group->geometry(), expected.groupBounds.at(index));
+                QCOMPARE(group->isVisible(), expected.groupVisibility.at(index));
+            }
+            for (int index = 0; index < page.m_terminalStatsLabels.size(); ++index) {
+                auto *label = page.m_terminalStatsLabels.at(index);
+                QCOMPARE(label->geometry(), expected.labelBounds.at(index));
+                QCOMPARE(label->font(), expected.labelFonts.at(index));
+                QCOMPARE(label->isVisible(), expected.labelVisibility.at(index));
+            }
+            QCOMPARE(statistics->geometry(), expected.statisticsBounds);
+            QCOMPARE(actions->geometry(), expected.actionBounds);
+        };
+        const auto restoreUsualStatistics = [&]() {
+            page.m_rxCount = 7500;
+            page.m_txCount = 0;
+            page.m_rxRateLabel->setText(QStringLiteral("40 B/s"));
+            page.m_txRateLabel->setText(QStringLiteral("0 B/s"));
+            page.m_connectionStatusLabel->setText(connectedText);
+            page.m_connectionTimeLabel->setText(regularConnectionText);
+            page.updateCounters();
+            QCoreApplication::processEvents();
+        };
+        struct StatisticsValues
+        {
+            qint64 rxCount;
+            qint64 txCount;
+            QString rxRate;
+            QString txRate;
+            QString connectionStatus;
+            QString connectionTime;
+        };
+        const QList<StatisticsValues> statisticsChanges{
+            {0, 0, QStringLiteral("0 B/s"), QStringLiteral("0 B/s"), disconnectedText, QStringLiteral("—")},
+            {9, 999, QStringLiteral("1 B/s"), QStringLiteral("999 B/s"), connectedText, QStringLiteral("00:09")},
+            {1536, 1023, QStringLiteral("1.5 KB/s"), QStringLiteral("999 B/s"), connectedText, QStringLiteral("09:59")},
+            {1024 * 1024 - 1, 1024, QStringLiteral("999.9 KB/s"), QStringLiteral("1 KB/s"), connectedText,
+             QStringLiteral("59:59")},
+            {1024 * 1024, 15 * 1024 * 1024, QStringLiteral("1 MB/s"), QStringLiteral("15.5 MB/s"), connectedText,
+             QStringLiteral("01:00:00")},
+            {0, 0, QStringLiteral("0 B/s"), QStringLiteral("0 B/s"), disconnectedText, QStringLiteral("—")},
+            {Q_INT64_C(987654) * 1024 * 1024, Q_INT64_C(123456) * 1024 * 1024, QStringLiteral("987.6 MB/s"),
+             QStringLiteral("123.4 MB/s"), connectedText, connectionText},
+        };
+        const auto verifyChangingStatistics = [&]() {
+            const HeaderPresentation baseline = capturePresentation();
+            for (const auto &values : statisticsChanges) {
+                page.m_rxCount = values.rxCount;
+                page.m_txCount = values.txCount;
+                page.m_rxRateLabel->setText(values.rxRate);
+                page.m_txRateLabel->setText(values.txRate);
+                page.m_connectionStatusLabel->setText(values.connectionStatus);
+                page.m_connectionTimeLabel->setText(values.connectionTime);
+                page.updateCounters();
+                QCoreApplication::processEvents();
+                verifyStablePresentation(baseline);
+                verifyStatisticsBounds();
+                QCOMPARE(page.m_connectionStatusLabel->text(), values.connectionStatus);
+                QCOMPARE(page.m_connectionTimeLabel->text(), values.connectionTime);
+            }
+        };
+
+        const QString directory = qEnvironmentVariable("FLUENT_TERMINAL_SEARCH_CAPTURE_DIR");
+        if (!directory.isEmpty()) {
+            QVERIFY(QDir().mkpath(directory));
+        }
+        for (int width : {1440, 1120, 1040, 980, 1440}) {
+            page.resize(width, 900);
+            QCoreApplication::processEvents();
+            restoreUsualStatistics();
+            verifyVisibleHeader();
+            verifyStatisticsBounds();
+            if (!directory.isEmpty()) {
+                QVERIFY(header->grab().save(QDir(directory).filePath(
+                    QStringLiteral("terminal-header-%1-%2-%3.png")
+                        .arg(width)
+                        .arg(locale, dark ? QStringLiteral("dark") : QStringLiteral("light")))));
+            }
+            // Live values must never move the slots or change their presentation.
+            verifyChangingStatistics();
+            verifyVisibleHeader();
+            QCOMPARE(page.m_connectionTimeLabel->text(), connectionText);
+            if (!directory.isEmpty()) {
+                QVERIFY(header->grab().save(QDir(directory).filePath(
+                    QStringLiteral("terminal-header-%1-%2-%3-large.png")
+                        .arg(width)
+                        .arg(locale, dark ? QStringLiteral("dark") : QStringLiteral("light")))));
+            }
+        }
+        restoreUsualStatistics();
+        QCOMPARE(page.m_rxRateLabel->font().pixelSize(), 14);
+        QCOMPARE(page.m_txRateLabel->font().pixelSize(), 14);
+        QCOMPARE(page.m_rxCounterLabel->font().pixelSize(), 11);
+        QCOMPARE(page.m_txCounterLabel->font().pixelSize(), 11);
+        QCOMPARE(page.m_connectionTimeLabel->font().pixelSize(), 11);
+        QVERIFY(statistics->toolTip().isEmpty());
+
+        // Exercise the final elision fallback independently of platform window minima.
+        for (int width : {180, 260, 340, 420, 900}) {
+            statistics->resize(width, statistics->height());
+            page.updateTerminalHeaderLayout();
+            QCoreApplication::processEvents();
+            verifyChangingStatistics();
+            verifyStatisticsBounds();
+            QCOMPARE(page.m_connectionTimeLabel->text(), connectionText);
+            if (width <= 260) {
+                QVERIFY(statistics->toolTip().contains(page.m_rxCounterLabel->text()));
+                QVERIFY(statistics->toolTip().contains(page.m_txCounterLabel->text()));
+                QVERIFY(statistics->toolTip().contains(connectionText));
+            }
+        }
+        restoreUsualStatistics();
+        QCOMPARE(page.m_rxRateLabel->font().pixelSize(), 14);
+        QCOMPARE(page.m_txRateLabel->font().pixelSize(), 14);
+        QCOMPARE(page.m_rxCounterLabel->font().pixelSize(), 11);
+        QCOMPARE(page.m_txCounterLabel->font().pixelSize(), 11);
+        QCOMPARE(page.m_connectionTimeLabel->font().pixelSize(), 11);
+        for (auto *label : page.m_terminalStatsLabels) {
+            QVERIFY(label->width() >= label->fontMetrics().horizontalAdvance(label->text()));
+        }
+        QVERIFY(statistics->toolTip().isEmpty());
     }
 
     void searchBarStaysOpenDuringTerminalAndDropdownInteraction()

@@ -561,6 +561,7 @@ void WorkbenchPage::updateCounters()
     m_countersDirty = false;
     m_rxCounterLabel->setText(formatBytes(m_rxCount));
     m_txCounterLabel->setText(formatBytes(m_txCount));
+    updateTerminalHeaderLayout();
     if (m_terminalSummaryLabel) {
         const TerminalSearchQuery query = terminalSearchQuery();
         m_terminalSearchEdit->setError(!query.valid);
@@ -601,10 +602,13 @@ void WorkbenchPage::updateRateStats()
     }
     if (m_serial.isOpen() && m_connectionStartedAt.isValid()) {
         const qint64 seconds = m_connectionStartedAt.secsTo(QDateTime::currentDateTime());
-        m_connectionTimeLabel->setText(AppI18n::text("已连接 %1").arg(formatDuration(seconds)));
+        m_connectionStatusLabel->setText(AppI18n::text("已连接"));
+        m_connectionTimeLabel->setText(formatDuration(seconds));
     } else {
-        m_connectionTimeLabel->setText(AppI18n::text("未连接"));
+        m_connectionStatusLabel->setText(AppI18n::text("未连接"));
+        m_connectionTimeLabel->setText(QStringLiteral("—"));
     }
+    updateTerminalHeaderLayout();
 }
 
 void WorkbenchPage::updateHistoryCombo()
