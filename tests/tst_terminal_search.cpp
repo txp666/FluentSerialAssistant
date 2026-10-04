@@ -6,6 +6,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QPointer>
 #include <QtGui/QHelpEvent>
+#include <QtGui/QKeySequence>
 #include <QtGui/QPixmap>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextCursor>
@@ -13,6 +14,7 @@
 #include <QtGui/QTextLayout>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QTest>
+#include <QtWidgets/QApplication>
 #include <QtWidgets/QScrollBar>
 #include <QtWidgets/QToolTip>
 
@@ -84,7 +86,7 @@ class TerminalSearchTest : public QObject
         return true;
     }
 
-    static bool captureSearchWindow(QWidget *window)
+    static bool captureSearchBar(WorkbenchPage &page)
     {
         const QString directory = qEnvironmentVariable("FLUENT_TERMINAL_SEARCH_CAPTURE_DIR");
         if (directory.isEmpty()) {
@@ -97,7 +99,10 @@ class TerminalSearchTest : public QObject
         const QString theme = FluentQt::ThemeManager::instance()->effectiveTheme() == FluentQt::Theme::Dark
                                   ? QStringLiteral("dark")
                                   : QStringLiteral("light");
-        return window->grab().save(QDir(directory).filePath(QStringLiteral("terminal-search-%1.png").arg(theme)));
+        const QDir output(directory);
+        return page.m_terminalSearchBar->grab().save(
+                   output.filePath(QStringLiteral("terminal-search-%1.png").arg(theme))) &&
+               page.grab().save(output.filePath(QStringLiteral("terminal-search-page-%1.png").arg(theme)));
     }
 
   private slots:
@@ -118,34 +123,37 @@ class TerminalSearchTest : public QObject
         FluentQt::ThemeManager::instance()->setTheme(FluentQt::Theme::Light);
     }
 
-    void searchWindowStaysOpenDuringTerminalAndDropdownInteraction()
+    void searchBarStaysOpenDuringTerminalAndDropdownInteraction()
     {
         WorkbenchPage page(nullptr, false, false);
         prepareHistory(page, false);
         auto *searchButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchButton"));
         QVERIFY(searchButton);
+        QPointer<QWidget> searchBar = page.m_terminalSearchBar;
+        QVERIFY(searchBar);
+        QVERIFY(!searchBar->isVisible());
+        QCOMPARE(searchBar->objectName(), QStringLiteral("terminalSearchBar"));
+        QCOMPARE(searchBar->parentWidget(), page.m_terminalView->viewport());
+        QVERIFY(!searchBar->isWindow());
+        const QSize viewportSize = page.m_terminalView->viewport()->size();
+        const int readingPosition = page.m_terminalView->verticalScrollBar()->value();
         searchButton->click();
-        QPointer<QWidget> searchWindow = page.m_terminalSearchEdit->window();
-        QVERIFY(searchWindow != &page);
-        QCOMPARE(searchWindow->objectName(), QStringLiteral("terminalSearchWindow"));
-        QTRY_VERIFY(searchWindow->isVisible());
-        QCOMPARE(searchWindow->windowType(), Qt::Tool);
-        QCOMPARE(searchWindow->windowModality(), Qt::NonModal);
-        QVERIFY(searchWindow->windowFlags().testFlag(Qt::WindowTitleHint));
-        QVERIFY(!searchWindow->windowFlags().testFlag(Qt::FramelessWindowHint));
+        QTRY_VERIFY(searchBar->isVisible());
+        QCOMPARE(page.m_terminalView->viewport()->size(), viewportSize);
+        QCOMPARE(page.m_terminalView->verticalScrollBar()->value(), readingPosition);
 
         QTest::mouseClick(page.m_terminalView->viewport(), Qt::LeftButton, Qt::NoModifier, QPoint(20, 20));
         QCoreApplication::processEvents();
-        QVERIFY(searchWindow && searchWindow->isVisible());
+        QVERIFY(searchBar && searchBar->isVisible());
         QTest::mouseClick(page.m_sendEdit->viewport(), Qt::LeftButton, Qt::NoModifier, QPoint(20, 20));
         QCoreApplication::processEvents();
-        QVERIFY(searchWindow && searchWindow->isVisible());
+        QVERIFY(searchBar && searchBar->isVisible());
 
         QTest::mouseClick(page.m_terminalFilterCombo, Qt::LeftButton);
         QTRY_VERIFY(page.m_terminalFilterCombo->dropMenu());
         QPointer<FluentQt::ComboBoxMenu> menu = page.m_terminalFilterCombo->dropMenu();
         QTRY_VERIFY(menu && menu->isVisible());
-        QVERIFY(searchWindow && searchWindow->isVisible());
+        QVERIFY(searchBar && searchBar->isVisible());
         const int receiveIndex = page.m_terminalFilterCombo->findData(QStringLiteral("rx"));
         QVERIFY(receiveIndex >= 0);
         auto *item = menu->view()->item(receiveIndex);
@@ -155,52 +163,90 @@ class TerminalSearchTest : public QObject
         QTest::mouseClick(menu->view()->viewport(), Qt::LeftButton, Qt::NoModifier, itemRect.center());
         QTRY_COMPARE(page.m_terminalFilterCombo->currentData().toString(), QStringLiteral("rx"));
         QTRY_VERIFY(!menu || !menu->isVisible());
-        QVERIFY(searchWindow && searchWindow->isVisible());
+        QVERIFY(searchBar && searchBar->isVisible());
         QCOMPARE(page.m_terminalSearchEdit->text(), QStringLiteral("needle"));
         QCOMPARE(page.m_terminalSearchMatches.size(), 3);
     }
 
-    void searchWindowReopensAtItsMovedPositionWithTheSameQuery()
+    void searchBarCannotBeDraggedAndReopensWithTheSameQuery()
     {
         WorkbenchPage page(nullptr, false, false);
         prepareHistory(page, false);
         auto *searchButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchButton"));
         QVERIFY(searchButton);
         searchButton->click();
-        QPointer<QWidget> searchWindow = page.m_terminalSearchEdit->window();
-        QVERIFY(searchWindow != &page);
-        QTRY_VERIFY(searchWindow->isVisible());
-        QVERIFY(!searchWindow->testAttribute(Qt::WA_DeleteOnClose));
-        const QPoint originalPosition = searchWindow->pos();
-        searchWindow->move(originalPosition + QPoint(37, 23));
+        QPointer<QWidget> searchBar = page.m_terminalSearchBar;
+        QTRY_VERIFY(searchBar->isVisible());
+        QVERIFY(!searchBar->testAttribute(Qt::WA_DeleteOnClose));
+        const auto anchorOffset = [&page, searchBar]() {
+            return QPoint(page.m_terminalView->viewport()->width() - searchBar->x() - searchBar->width(),
+                          searchBar->y());
+        };
+        const QPoint originalOffset = anchorOffset();
+        QTest::mousePress(searchBar, Qt::LeftButton, Qt::NoModifier, QPoint(3, 3));
+        QTest::mouseMove(searchBar, QPoint(40, 26));
+        QTest::mouseRelease(searchBar, Qt::LeftButton, Qt::NoModifier, QPoint(40, 26));
         QCoreApplication::processEvents();
-        const QPoint movedPosition = searchWindow->pos();
-        QVERIFY(movedPosition != originalPosition);
+        // Hover can hide the native scrollbar and widen the viewport. The bar
+        // must remain anchored to its edge rather than to an absolute X value.
+        QCOMPARE(anchorOffset(), originalOffset);
         page.m_terminalSearchNextButton->click();
         QCOMPARE(page.m_terminalCurrentSearchMatch, 1);
 
-        QVERIFY(searchWindow->close());
+        auto *closeButton = searchBar->findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchClose"));
+        QVERIFY(closeButton);
+        const QSize viewportSize = page.m_terminalView->viewport()->size();
+        const int readingPosition = page.m_terminalView->verticalScrollBar()->value();
+        closeButton->click();
         QCoreApplication::processEvents();
-        QVERIFY(searchWindow);
-        QVERIFY(!searchWindow->isVisible());
+        QVERIFY(searchBar);
+        QVERIFY(!searchBar->isVisible());
+        QCOMPARE(page.m_terminalView->viewport()->size(), viewportSize);
+        QCOMPARE(page.m_terminalView->verticalScrollBar()->value(), readingPosition);
         QCOMPARE(page.m_terminalSearchEdit->text(), QStringLiteral("needle"));
         searchButton->click();
-        QTRY_VERIFY(searchWindow->isVisible());
-        QCOMPARE(page.m_terminalSearchEdit->window(), searchWindow.data());
-        QCOMPARE(searchWindow->pos(), movedPosition);
+        QTRY_VERIFY(searchBar->isVisible());
+        QCOMPARE(page.m_terminalSearchBar, searchBar.data());
+        QCOMPARE(anchorOffset(), originalOffset);
         QCOMPARE(page.m_terminalSearchEdit->text(), QStringLiteral("needle"));
         QCOMPARE(page.m_terminalSearchMatches.size(), 3);
         QCOMPARE(page.m_terminalCurrentSearchMatch, 1);
     }
 
-    void searchWindowRowsAndEmbeddedIconsAreVerticallyCentered_data()
+    void searchBarFollowsTheViewportTopRightWhenResized()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        prepareHistory(page, false);
+        auto *searchButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchButton"));
+        QVERIFY(searchButton);
+        searchButton->click();
+        auto *searchBar = page.m_terminalSearchBar;
+        QTRY_VERIFY(searchBar->isVisible());
+
+        const QList<QSize> sizes{QSize(1440, 900), QSize(1120, 900), QSize(980, 900)};
+        for (const QSize &size : sizes) {
+            page.resize(size);
+            QCoreApplication::processEvents();
+            const QRect viewport = page.m_terminalView->viewport()->rect();
+            QVERIFY(viewport.contains(searchBar->geometry()));
+            QCOMPARE(searchBar->y(), 8);
+            QCOMPARE(searchBar->geometry().right(), viewport.right() - 8);
+            QCOMPARE(searchBar->height(), 44);
+            QVERIFY(searchBar->width() <= 560);
+            QVERIFY(searchBar->width() <= viewport.width() - 16);
+        }
+        QCOMPARE(page.m_terminalSearchEdit->text(), QStringLiteral("needle"));
+        QCOMPARE(page.m_terminalSearchMatches.size(), 3);
+    }
+
+    void searchBarControlsAndEmbeddedOptionsAreVerticallyCentered_data()
     {
         QTest::addColumn<bool>("dark");
         QTest::newRow("light") << false;
         QTest::newRow("dark") << true;
     }
 
-    void searchWindowRowsAndEmbeddedIconsAreVerticallyCentered()
+    void searchBarControlsAndEmbeddedOptionsAreVerticallyCentered()
     {
         QFETCH(bool, dark);
         FluentQt::ThemeManager::instance()->setTheme(dark ? FluentQt::Theme::Dark : FluentQt::Theme::Light);
@@ -209,61 +255,50 @@ class TerminalSearchTest : public QObject
         auto *searchButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchButton"));
         QVERIFY(searchButton);
         searchButton->click();
-        auto *searchWindow = page.m_terminalSearchEdit->window();
-        QVERIFY(searchWindow != &page);
-        QTRY_VERIFY(searchWindow->isVisible());
-        searchWindow->activateWindow();
+        auto *searchBar = page.m_terminalSearchBar;
+        QTRY_VERIFY(searchBar->isVisible());
+        page.activateWindow();
         page.m_terminalSearchEdit->setFocus();
         QCoreApplication::processEvents();
-        QVERIFY(captureSearchWindow(searchWindow));
+        QVERIFY(captureSearchBar(page));
 
-        const auto centerY = [searchWindow](QWidget *widget) {
-            return widget->mapTo(searchWindow, widget->rect().center()).y();
+        const auto centerY = [searchBar](QWidget *widget) {
+            return widget->mapTo(searchBar, widget->rect().center()).y();
         };
-        const QList<QWidget *> searchRow{page.m_terminalSearchEdit, page.m_terminalSearchPrevButton,
-                                         page.m_terminalSearchNextButton};
-        const QList<QWidget *> optionsRow{page.m_terminalSearchCaseCheck, page.m_terminalSearchRegexCheck,
-                                          page.m_terminalFilterCombo, page.m_terminalSummaryLabel};
-        for (const auto &row : {searchRow, optionsRow}) {
-            const int expectedCenter = centerY(row.first());
-            for (auto *widget : row) {
-                QVERIFY(widget->isVisible());
-                QVERIFY2(qAbs(centerY(widget) - expectedCenter) <= 1,
-                         qPrintable(QStringLiteral("%1 center Y=%2, row center Y=%3")
-                                        .arg(widget->objectName())
-                                        .arg(centerY(widget))
-                                        .arg(expectedCenter)));
-                const QRect bounds(widget->mapTo(searchWindow, QPoint()), widget->size());
-                QVERIFY2(searchWindow->rect().contains(bounds), qPrintable(widget->objectName()));
-            }
+        auto *closeButton = searchBar->findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchClose"));
+        QVERIFY(closeButton);
+        const QList<QWidget *> searchRow{page.m_terminalSearchEdit,       page.m_terminalSearchPrevButton,
+                                         page.m_terminalSearchNextButton, page.m_terminalSearchCaseCheck,
+                                         page.m_terminalSearchRegexCheck, page.m_terminalFilterCombo,
+                                         page.m_terminalSummaryLabel,     closeButton};
+        const int expectedCenter = centerY(searchRow.first());
+        for (auto *widget : searchRow) {
+            QVERIFY(widget->isVisible());
+            QVERIFY2(qAbs(centerY(widget) - expectedCenter) <= 1,
+                     qPrintable(QStringLiteral("%1 center Y=%2, row center Y=%3")
+                                    .arg(widget->objectName())
+                                    .arg(centerY(widget))
+                                    .arg(expectedCenter)));
+            const QRect bounds(widget->mapTo(searchBar, QPoint()), widget->size());
+            QVERIFY2(searchBar->rect().contains(bounds), qPrintable(widget->objectName()));
         }
-        QVERIFY(centerY(optionsRow.first()) > centerY(searchRow.first()));
 
-        const int editCenter = centerY(page.m_terminalSearchEdit);
-        auto *embeddedSearch = page.m_terminalSearchEdit->searchButton();
-        auto *embeddedClear = page.m_terminalSearchEdit->clearButton();
-        QVERIFY(embeddedSearch->isVisible());
-        QTRY_VERIFY(embeddedClear->isVisible());
-        for (QWidget *button : {embeddedSearch, embeddedClear}) {
-            QVERIFY2(qAbs(centerY(button) - editCenter) <= 1,
-                     qPrintable(QStringLiteral("Embedded search icon center Y=%1, input center Y=%2")
-                                    .arg(centerY(button))
-                                    .arg(editCenter)));
+        QVERIFY(!page.m_terminalSearchEdit->clearButton()->isVisible());
+        for (QWidget *button : {page.m_terminalSearchCaseCheck, page.m_terminalSearchRegexCheck}) {
             const QRect bounds(button->mapTo(page.m_terminalSearchEdit, QPoint()), button->size());
             QVERIFY(page.m_terminalSearchEdit->rect().contains(bounds));
         }
     }
 
-    void searchWindowDoesNotShowOrLeaveBehindHoverTooltips()
+    void searchBarDoesNotShowOrLeaveBehindHoverTooltips()
     {
         WorkbenchPage page(nullptr, false, false);
         prepareHistory(page, false);
         auto *searchButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchButton"));
         QVERIFY(searchButton);
         searchButton->click();
-        QPointer<QWidget> searchWindow = page.m_terminalSearchEdit->window();
-        QVERIFY(searchWindow != &page);
-        QTRY_VERIFY(searchWindow->isVisible());
+        QPointer<QWidget> searchBar = page.m_terminalSearchBar;
+        QTRY_VERIFY(searchBar->isVisible());
 
         for (int state = 0; state < 3; ++state) {
             if (state == 1) {
@@ -274,8 +309,8 @@ class TerminalSearchTest : public QObject
                 page.m_terminalSearchEdit->setText(QStringLiteral("["));
                 QVERIFY(!page.terminalSearchQuery().valid);
             }
-            auto widgets = searchWindow->findChildren<QWidget *>();
-            widgets.prepend(searchWindow);
+            auto widgets = searchBar->findChildren<QWidget *>();
+            widgets.prepend(searchBar);
             for (auto *widget : widgets) {
                 QVERIFY2(
                     widget->toolTip().isEmpty(),
@@ -291,57 +326,102 @@ class TerminalSearchTest : public QObject
             // visible behavior without depending on that component detail.
             QCoreApplication::processEvents();
             QVERIFY(!QToolTip::isVisible());
-            for (auto *tooltip : searchWindow->findChildren<FluentQt::ToolTip *>()) {
+            for (auto *tooltip : searchBar->findChildren<FluentQt::ToolTip *>()) {
                 QVERIFY(!tooltip->isVisible());
             }
         }
 
-        QVERIFY(searchWindow->close());
+        QVERIFY(searchBar->close());
         QTest::qWait(350);
-        QVERIFY(searchWindow && !searchWindow->isVisible());
+        QVERIFY(searchBar && !searchBar->isVisible());
         QVERIFY(!QToolTip::isVisible());
-        for (auto *tooltip : searchWindow->findChildren<FluentQt::ToolTip *>()) {
+        for (auto *tooltip : searchBar->findChildren<FluentQt::ToolTip *>()) {
             QVERIFY(!tooltip->isVisible());
         }
     }
 
-    void searchWindowFollowsPageLifetimeAndClosesWithEscape()
+    void searchBarFollowsPageLifetimeAndClosesWithEscape()
     {
-        QPointer<QWidget> searchWindow;
+        QPointer<QWidget> searchBar;
         {
             WorkbenchPage page(nullptr, false, false);
             prepareHistory(page, false);
             auto *searchButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchButton"));
             QVERIFY(searchButton);
             searchButton->click();
-            searchWindow = page.m_terminalSearchEdit->window();
-            QVERIFY(searchWindow != &page);
-            QTRY_VERIFY(searchWindow->isVisible());
-            searchWindow->move(searchWindow->pos() + QPoint(37, 23));
-            QCoreApplication::processEvents();
-            const QPoint movedPosition = searchWindow->pos();
+            searchBar = page.m_terminalSearchBar;
+            QTRY_VERIFY(searchBar->isVisible());
 
             page.hide();
             QTRY_VERIFY(!page.isVisible());
-            QTRY_VERIFY(searchWindow && !searchWindow->isVisible());
+            QTRY_VERIFY(searchBar && !searchBar->isVisible());
             page.show();
             QCoreApplication::processEvents();
+            QVERIFY(!searchBar->isVisible());
             searchButton->click();
-            QTRY_VERIFY(searchWindow->isVisible());
-            QCOMPARE(page.m_terminalSearchEdit->window(), searchWindow.data());
+            QTRY_VERIFY(searchBar->isVisible());
+            QCOMPARE(page.m_terminalSearchBar, searchBar.data());
             QCOMPARE(page.m_terminalSearchEdit->text(), QStringLiteral("needle"));
-            QCOMPARE(searchWindow->pos(), movedPosition);
 
-            searchWindow->activateWindow();
+            page.activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(&page));
+            if (QGuiApplication::platformName() == QStringLiteral("offscreen")) {
+                // Offscreen can retain an active QWindow after hide/show without
+                // reactivating the QWidget focus chain. Supply that activation
+                // before checking Escape's actual focus hand-off.
+                QT_WARNING_PUSH
+                QT_WARNING_DISABLE_DEPRECATED
+                QApplication::setActiveWindow(&page);
+                QT_WARNING_POP
+            }
+            QTRY_VERIFY(page.isActiveWindow());
             page.m_terminalSearchEdit->setFocus();
-            QCoreApplication::processEvents();
+            QTRY_VERIFY(page.m_terminalSearchEdit->hasFocus());
             QTest::keyClick(page.m_terminalSearchEdit, Qt::Key_Escape);
-            QTRY_VERIFY(searchWindow && !searchWindow->isVisible());
+            QTRY_VERIFY(searchBar && !searchBar->isVisible());
+            QTRY_VERIFY(page.m_terminalView->hasFocus());
             QCOMPARE(page.m_terminalSearchEdit->text(), QStringLiteral("needle"));
             searchButton->click();
-            QTRY_VERIFY(searchWindow->isVisible());
+            QTRY_VERIFY(searchBar->isVisible());
+            page.m_terminalView->setFocus();
+            QCoreApplication::processEvents();
+            QTest::keyClick(page.m_terminalView, Qt::Key_Escape);
+            QTRY_VERIFY(!searchBar->isVisible());
+            QVERIFY(page.m_terminalView->hasFocus());
         }
-        QTRY_VERIFY(searchWindow.isNull());
+        QTRY_VERIFY(searchBar.isNull());
+    }
+
+    void findShortcutFocusesTheQueryAndEnterNavigatesBothDirections()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        prepareHistory(page, false);
+        page.activateWindow();
+        page.m_terminalView->setFocus();
+        QCoreApplication::processEvents();
+        QVERIFY(!page.m_terminalSearchBar->isVisible());
+        QTest::keySequence(page.m_terminalView, QKeySequence(QKeySequence::Find));
+        QTRY_VERIFY(page.m_terminalSearchBar->isVisible());
+        QTRY_VERIFY(page.m_terminalSearchEdit->hasFocus());
+        QCOMPARE(page.m_terminalSearchEdit->selectedText(), QStringLiteral("needle"));
+        QCOMPARE(page.m_terminalCurrentSearchMatch, 0);
+
+        QTest::keyClick(page.m_terminalSearchEdit, Qt::Key_Return);
+        QCOMPARE(page.m_terminalCurrentSearchMatch, 1);
+        QVERIFY(page.m_terminalView->textCursor().block().text().contains(QStringLiteral("record-0150")));
+        QTest::keyClick(page.m_terminalSearchEdit, Qt::Key_Return, Qt::ShiftModifier);
+        QCOMPARE(page.m_terminalCurrentSearchMatch, 0);
+        QTest::keyClick(page.m_terminalSearchEdit, Qt::Key_Enter, Qt::ShiftModifier);
+        QCOMPARE(page.m_terminalCurrentSearchMatch, 2);
+        QTest::keyClick(page.m_terminalSearchEdit, Qt::Key_Enter);
+        QCOMPARE(page.m_terminalCurrentSearchMatch, 0);
+        QVERIFY(page.m_terminalSearchEdit->hasFocus());
+
+        page.m_sendEdit->setFocus();
+        QCoreApplication::processEvents();
+        QTest::keySequence(page.m_sendEdit, QKeySequence(QKeySequence::Find));
+        QTRY_VERIFY(page.m_terminalSearchEdit->hasFocus());
+        QCOMPARE(page.m_terminalSearchEdit->selectedText(), QStringLiteral("needle"));
     }
 
     void liveAppendKeepsReadingPositionWithAutoScrollOff()

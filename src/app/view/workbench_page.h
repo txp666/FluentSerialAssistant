@@ -224,6 +224,9 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QByteArray frameBoundaryPattern(bool *ok = nullptr) const;
     QString checksumAlgorithmKey() const;
     AppChecksum::ByteOrder checksumByteOrder() const;
+    void positionTerminalSearchBar();
+    void showTerminalSearchBar();
+    void hideTerminalSearchBar();
     QString terminalSearchText() const;
     QString terminalDirectionFilter() const;
     bool terminalSearchCaseSensitive() const;
@@ -426,9 +429,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::ComboBox *m_stopBitsCombo = nullptr;
     FluentQt::ComboBox *m_flowControlCombo = nullptr;
     FluentQt::SegmentedWidget *m_displayModeSegment = nullptr;
-    FluentQt::SearchLineEdit *m_terminalSearchEdit = nullptr;
-    QWidget *m_terminalSearchWindow = nullptr;
-    bool m_terminalSearchWindowPositioned = false;
+    FluentQt::LineEdit *m_terminalSearchEdit = nullptr;
+    QWidget *m_terminalSearchBar = nullptr;
     FluentQt::ComboBox *m_terminalFilterCombo = nullptr;
     FluentQt::ComboBox *m_receiveEncodingCombo = nullptr;
     FluentQt::ComboBox *m_frameModeCombo = nullptr;
@@ -540,8 +542,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::CheckBox *m_autoReplyEnabledCheck = nullptr;
     FluentQt::CheckBox *m_checksumAppendCheck = nullptr;
     FluentQt::CheckBox *m_autoReconnectCheck = nullptr;
-    FluentQt::CheckBox *m_terminalSearchCaseCheck = nullptr;
-    FluentQt::CheckBox *m_terminalSearchRegexCheck = nullptr;
+    FluentQt::ToolButton *m_terminalSearchCaseCheck = nullptr;
+    FluentQt::ToolButton *m_terminalSearchRegexCheck = nullptr;
     FluentQt::CheckBox *m_autoOpenCheck = nullptr;
     FluentQt::CheckBox *m_rtsCheck = nullptr;
     FluentQt::CheckBox *m_dtrCheck = nullptr;

@@ -1780,6 +1780,18 @@ Content: %4</translation>
         <translation>Terminal Search</translation>
     </message>
     <message>
+        <source>无结果</source>
+        <translation>No results</translation>
+    </message>
+    <message>
+        <source>关闭搜索</source>
+        <translation>Close search</translation>
+    </message>
+    <message>
+        <source>收发筛选</source>
+        <translation>Direction filter</translation>
+    </message>
+    <message>
         <source>搜索终端内容</source>
         <translation>Search terminal content</translation>
     </message>

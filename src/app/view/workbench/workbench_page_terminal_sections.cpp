@@ -2,8 +2,6 @@
 
 #include "app/core/app_i18n.h"
 
-#include <QtGui/QGuiApplication>
-#include <QtGui/QScreen>
 #include <QtGui/QShortcut>
 
 using namespace FluentQt;
@@ -74,98 +72,6 @@ QWidget *WorkbenchPage::createTerminalSection()
     section->headerLayout()->addWidget(m_receiveModeButton, 0, Qt::AlignVCenter);
     section->headerLayout()->addWidget(settingsButton, 0, Qt::AlignVCenter);
 
-    // A search stays open while the user reads the terminal or changes focus.
-    // The native tool-window title bar also provides dragging and an explicit close action.
-    auto *searchPanel = new QWidget(this, Qt::Tool | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
-    m_terminalSearchWindow = searchPanel;
-    searchPanel->setObjectName(QStringLiteral("terminalSearchWindow"));
-    searchPanel->setWindowTitle(AppI18n::text("终端搜索"));
-    searchPanel->setWindowIcon(icon(FluentIcon::Search));
-    searchPanel->setAttribute(Qt::WA_QuitOnClose, false);
-    searchPanel->setAttribute(Qt::WA_MacAlwaysShowToolWindow, true);
-    FluentStyleSheet::setCustomStyleSheet(
-        searchPanel, QStringLiteral("QWidget#terminalSearchWindow { background-color: #f9f9f9; }"),
-        QStringLiteral("QWidget#terminalSearchWindow { background-color: #202020; }"));
-    auto *searchLayout = new QVBoxLayout(searchPanel);
-    searchLayout->setContentsMargins(12, 12, 12, 12);
-    searchLayout->setSpacing(10);
-    searchLayout->setSizeConstraint(QLayout::SetFixedSize);
-
-    auto *closeSearch = new QShortcut(QKeySequence(Qt::Key_Escape), searchPanel);
-    connect(closeSearch, &QShortcut::activated, searchPanel, &QWidget::close);
-
-    auto *searchRow = new QHBoxLayout;
-    searchRow->setSpacing(8);
-    m_terminalSearchEdit = new SearchLineEdit(searchPanel);
-    m_terminalSearchEdit->setObjectName(QStringLiteral("terminalSearchEdit"));
-    m_terminalSearchEdit->setPlaceholderText(AppI18n::text("搜索终端内容"));
-    m_terminalSearchEdit->setClearButtonEnabled(true);
-    m_terminalSearchEdit->setFixedHeight(CompactControlHeight);
-    m_terminalSearchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    const QString searchEditStyle =
-        QStringLiteral("QLineEdit#terminalSearchEdit { min-height: 30px; max-height: 30px; }");
-    FluentStyleSheet::setCustomStyleSheet(m_terminalSearchEdit, searchEditStyle, searchEditStyle);
-    m_terminalSearchEdit->hBoxLayout()->setContentsMargins(4, 0, 4, 0);
-    for (auto *button : {m_terminalSearchEdit->clearButton(), m_terminalSearchEdit->searchButton()}) {
-        button->setFixedSize(28, 24);
-        m_terminalSearchEdit->hBoxLayout()->setAlignment(button, Qt::AlignRight | Qt::AlignVCenter);
-    }
-    m_terminalSearchPrevButton = new TransparentToolButton(icon(FluentIcon::Up), searchPanel);
-    m_terminalSearchPrevButton->setObjectName(QStringLiteral("terminalSearchPrevious"));
-    m_terminalSearchPrevButton->setAccessibleName(AppI18n::text("上一个匹配"));
-    m_terminalSearchNextButton = new TransparentToolButton(icon(FluentIcon::Down), searchPanel);
-    m_terminalSearchNextButton->setObjectName(QStringLiteral("terminalSearchNext"));
-    m_terminalSearchNextButton->setAccessibleName(AppI18n::text("下一个匹配"));
-    for (ToolButton *button : {m_terminalSearchPrevButton, m_terminalSearchNextButton}) {
-        button->setEnabled(false);
-        button->setFixedSize(CompactControlHeight, CompactControlHeight);
-        button->setIconSize(QSize(16, 16));
-        const QString buttonStyle =
-            QStringLiteral("QToolButton#%1 { min-width: 32px; max-width: 32px; min-height: 32px; "
-                           "max-height: 32px; padding: 0px; }")
-                .arg(button->objectName());
-        FluentStyleSheet::setCustomStyleSheet(button, buttonStyle, buttonStyle);
-    }
-    searchRow->addWidget(m_terminalSearchEdit, 1, Qt::AlignVCenter);
-    searchRow->addWidget(m_terminalSearchPrevButton, 0, Qt::AlignVCenter);
-    searchRow->addWidget(m_terminalSearchNextButton, 0, Qt::AlignVCenter);
-    searchLayout->addLayout(searchRow);
-
-    auto *searchOptionsRow = new QHBoxLayout;
-    searchOptionsRow->setSpacing(8);
-    m_terminalSearchCaseCheck = new CheckBox(QStringLiteral("Aa"), searchPanel);
-    m_terminalSearchCaseCheck->setObjectName(QStringLiteral("terminalSearchCase"));
-    m_terminalSearchCaseCheck->setAccessibleName(AppI18n::text("大小写敏感"));
-    m_terminalSearchCaseCheck->setFixedHeight(CompactControlHeight);
-    setFixedControlWidth(m_terminalSearchCaseCheck, 54);
-    m_terminalSearchRegexCheck = new CheckBox(QStringLiteral(".*"), searchPanel);
-    m_terminalSearchRegexCheck->setObjectName(QStringLiteral("terminalSearchRegex"));
-    m_terminalSearchRegexCheck->setAccessibleName(AppI18n::text("正则搜索"));
-    m_terminalSearchRegexCheck->setFixedHeight(CompactControlHeight);
-    setFixedControlWidth(m_terminalSearchRegexCheck, 54);
-    m_terminalFilterCombo = new ComboBox(searchPanel);
-    m_terminalFilterCombo->setObjectName(QStringLiteral("terminalSearchFilter"));
-    m_terminalFilterCombo->addItem(AppI18n::text("全部"), QIcon(), QStringLiteral("all"));
-    m_terminalFilterCombo->addItem(AppI18n::text("仅接收"), QIcon(), QStringLiteral("rx"));
-    m_terminalFilterCombo->addItem(AppI18n::text("仅发送"), QIcon(), QStringLiteral("tx"));
-    m_terminalFilterCombo->setFixedHeight(CompactControlHeight);
-    setFixedControlWidth(m_terminalFilterCombo, 104);
-    const QString filterStyle =
-        QStringLiteral("QPushButton#terminalSearchFilter { min-height: 30px; max-height: 30px; "
-                       "padding: 0px 31px 0px 11px; }");
-    FluentStyleSheet::setCustomStyleSheet(m_terminalFilterCombo, filterStyle, filterStyle);
-    m_terminalSummaryLabel = new CaptionLabel(AppI18n::text("显示 0 条"), searchPanel);
-    m_terminalSummaryLabel->setObjectName(QStringLiteral("terminalSearchSummary"));
-    m_terminalSummaryLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
-    m_terminalSummaryLabel->setFixedHeight(CompactControlHeight);
-    m_terminalSummaryLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    setFixedControlWidth(m_terminalSummaryLabel, 148);
-    searchOptionsRow->addWidget(m_terminalSearchCaseCheck, 0, Qt::AlignVCenter);
-    searchOptionsRow->addWidget(m_terminalSearchRegexCheck, 0, Qt::AlignVCenter);
-    searchOptionsRow->addWidget(m_terminalFilterCombo, 0, Qt::AlignVCenter);
-    searchOptionsRow->addWidget(m_terminalSummaryLabel, 1, Qt::AlignVCenter);
-    searchLayout->addLayout(searchOptionsRow);
-
     m_terminalView = new TextBrowser(section);
     m_terminalView->setReadOnly(true);
     m_terminalView->setLineWrapMode(QTextEdit::WidgetWidth);
@@ -174,32 +80,128 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_terminalView->document()->setMaximumBlockCount(maxRecordCount());
     m_terminalView->setMinimumHeight(420);
     applyTerminalFont();
-
     root->addWidget(m_terminalView, 1);
 
-    connect(searchButton, &TransparentToolButton::clicked, this, [this, searchButton]() {
-        m_terminalSearchWindow->adjustSize();
-        if (!m_terminalSearchWindowPositioned) {
-            QPoint position = searchButton->mapToGlobal(
-                QPoint(searchButton->width() - m_terminalSearchWindow->width(), searchButton->height() + 8));
-            if (QScreen *screen = QGuiApplication::screenAt(searchButton->mapToGlobal(QPoint(0, 0)))) {
-                const QRect available = screen->availableGeometry();
-                position.setX(qBound(available.left(), position.x(),
-                                     qMax(available.left(), available.right() - m_terminalSearchWindow->width())));
-                position.setY(qBound(available.top(), position.y(),
-                                     qMax(available.top(), available.bottom() - m_terminalSearchWindow->height())));
-            }
-            m_terminalSearchWindow->move(position);
-            m_terminalSearchWindowPositioned = true;
-        }
-        m_terminalSearchWindow->show();
-        m_terminalSearchWindow->raise();
-        m_terminalSearchWindow->activateWindow();
-        if (m_terminalSearchEdit) {
-            m_terminalSearchEdit->setFocus(Qt::OtherFocusReason);
-            m_terminalSearchEdit->selectAll();
-        }
-    });
+    // Keep find controls anchored to the terminal without changing its viewport size.
+    auto *searchPanel = new QWidget(m_terminalView->viewport());
+    m_terminalSearchBar = searchPanel;
+    searchPanel->setObjectName(QStringLiteral("terminalSearchBar"));
+    searchPanel->setAccessibleName(AppI18n::text("终端搜索"));
+    searchPanel->setAttribute(Qt::WA_StyledBackground);
+    searchPanel->setAttribute(Qt::WA_NoMousePropagation);
+    searchPanel->setFixedHeight(44);
+    FluentStyleSheet::setCustomStyleSheet(searchPanel,
+                                          QStringLiteral("QWidget#terminalSearchBar { background-color: rgba(243, 243, "
+                                                         "243, 210); border: 1px solid rgba(180, 180, 180, 150); "
+                                                         "border-radius: 6px; }"),
+                                          QStringLiteral("QWidget#terminalSearchBar { background-color: rgba(37, 37, "
+                                                         "38, 210); border: 1px solid rgba(100, 100, 100, 150); "
+                                                         "border-radius: 6px; }"));
+    auto *searchRow = new QHBoxLayout(searchPanel);
+    searchRow->setContentsMargins(8, 6, 8, 6);
+    searchRow->setSpacing(4);
+
+    m_terminalSearchEdit = new LineEdit(searchPanel);
+    m_terminalSearchEdit->setObjectName(QStringLiteral("terminalSearchEdit"));
+    m_terminalSearchEdit->setPlaceholderText(AppI18n::text("搜索终端内容"));
+    m_terminalSearchEdit->setAccessibleName(AppI18n::text("搜索终端内容"));
+    m_terminalSearchEdit->setFixedHeight(CompactControlHeight);
+    m_terminalSearchEdit->setMinimumWidth(140);
+    m_terminalSearchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    const QString searchEditStyle =
+        QStringLiteral("QLineEdit#terminalSearchEdit { min-height: 30px; max-height: 30px; padding: 0px 8px; }");
+    FluentStyleSheet::setCustomStyleSheet(
+        m_terminalSearchEdit,
+        searchEditStyle + QStringLiteral("QLineEdit#terminalSearchEdit { background-color: #ffffff; }"),
+        searchEditStyle + QStringLiteral("QLineEdit#terminalSearchEdit { background-color: #202020; }"));
+    m_terminalSearchEdit->hBoxLayout()->setContentsMargins(4, 0, 4, 0);
+    m_terminalSearchEdit->hBoxLayout()->setSpacing(2);
+    m_terminalSearchEdit->hBoxLayout()->insertStretch(0, 1);
+    m_terminalSearchEdit->installEventFilter(this);
+
+    const auto createOption = [this](const QString &name, const QString &text, const QString &description) {
+        auto *button = new TransparentToolButton(m_terminalSearchEdit);
+        button->setObjectName(name);
+        button->setText(text);
+        button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        button->setCheckable(true);
+        button->setAccessibleName(description);
+        button->setFixedSize(26, 24);
+        const QString base = QStringLiteral("QToolButton#%1 { min-width: 26px; max-width: 26px; "
+                                            "min-height: 24px; max-height: 24px; padding: 0px; "
+                                            "border: 1px solid transparent; border-radius: 3px; }")
+                                 .arg(name);
+        FluentStyleSheet::setCustomStyleSheet(
+            button,
+            base + QStringLiteral("QToolButton#%1:checked { background-color: #d6eaff; "
+                                  "border-color: #0078d4; color: #005a9e; }")
+                       .arg(name),
+            base + QStringLiteral("QToolButton#%1:checked { background-color: #264f78; "
+                                  "border-color: #75beff; color: #ffffff; }")
+                       .arg(name));
+        m_terminalSearchEdit->hBoxLayout()->addWidget(button, 0, Qt::AlignVCenter);
+        return button;
+    };
+    m_terminalSearchCaseCheck =
+        createOption(QStringLiteral("terminalSearchCase"), QStringLiteral("Aa"), AppI18n::text("大小写敏感"));
+    m_terminalSearchRegexCheck =
+        createOption(QStringLiteral("terminalSearchRegex"), QStringLiteral(".*"), AppI18n::text("正则搜索"));
+    m_terminalSearchEdit->setTextMargins(0, 0, 60, 0);
+
+    m_terminalSummaryLabel = new CaptionLabel(searchPanel);
+    m_terminalSummaryLabel->setObjectName(QStringLiteral("terminalSearchSummary"));
+    m_terminalSummaryLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    m_terminalSummaryLabel->setFixedSize(104, CompactControlHeight);
+    m_terminalSummaryLabel->setAlignment(Qt::AlignCenter);
+    m_terminalSearchPrevButton = new TransparentToolButton(icon(FluentIcon::Up), searchPanel);
+    m_terminalSearchPrevButton->setObjectName(QStringLiteral("terminalSearchPrevious"));
+    m_terminalSearchPrevButton->setAccessibleName(AppI18n::text("上一个匹配"));
+    m_terminalSearchPrevButton->setEnabled(false);
+    m_terminalSearchNextButton = new TransparentToolButton(icon(FluentIcon::Down), searchPanel);
+    m_terminalSearchNextButton->setObjectName(QStringLiteral("terminalSearchNext"));
+    m_terminalSearchNextButton->setAccessibleName(AppI18n::text("下一个匹配"));
+    m_terminalSearchNextButton->setEnabled(false);
+    ToolButton *closeButton = new TransparentToolButton(icon(FluentIcon::Close), searchPanel);
+    closeButton->setObjectName(QStringLiteral("terminalSearchClose"));
+    closeButton->setAccessibleName(AppI18n::text("关闭搜索"));
+    for (ToolButton *button : {m_terminalSearchPrevButton, m_terminalSearchNextButton, closeButton}) {
+        button->setFixedSize(28, 28);
+        button->setIconSize(QSize(16, 16));
+        const QString buttonStyle =
+            QStringLiteral("QToolButton#%1 { min-width: 28px; max-width: 28px; min-height: 28px; "
+                           "max-height: 28px; padding: 0px; }")
+                .arg(button->objectName());
+        FluentStyleSheet::setCustomStyleSheet(button, buttonStyle, buttonStyle);
+    }
+
+    m_terminalFilterCombo = new ComboBox(searchPanel);
+    m_terminalFilterCombo->setObjectName(QStringLiteral("terminalSearchFilter"));
+    m_terminalFilterCombo->setAccessibleName(AppI18n::text("收发筛选"));
+    m_terminalFilterCombo->addItem(AppI18n::text("全部"), QIcon(), QStringLiteral("all"));
+    m_terminalFilterCombo->addItem(AppI18n::text("仅接收"), QIcon(), QStringLiteral("rx"));
+    m_terminalFilterCombo->addItem(AppI18n::text("仅发送"), QIcon(), QStringLiteral("tx"));
+    m_terminalFilterCombo->setFixedSize(88, CompactControlHeight);
+    const QString filterStyle = QStringLiteral("QPushButton#terminalSearchFilter { min-height: 30px; max-height: 30px; "
+                                               "padding: 0px 25px 0px 7px; }");
+    FluentStyleSheet::setCustomStyleSheet(m_terminalFilterCombo, filterStyle, filterStyle);
+    searchRow->addWidget(m_terminalSearchEdit, 1, Qt::AlignVCenter);
+    searchRow->addWidget(m_terminalSummaryLabel, 0, Qt::AlignVCenter);
+    searchRow->addWidget(m_terminalSearchPrevButton, 0, Qt::AlignVCenter);
+    searchRow->addWidget(m_terminalSearchNextButton, 0, Qt::AlignVCenter);
+    searchRow->addWidget(m_terminalFilterCombo, 0, Qt::AlignVCenter);
+    searchRow->addWidget(closeButton, 0, Qt::AlignVCenter);
+    searchPanel->hide();
+    m_terminalView->viewport()->installEventFilter(this);
+
+    connect(searchButton, &ToolButton::clicked, this, &WorkbenchPage::showTerminalSearchBar);
+    connect(closeButton, &ToolButton::clicked, this, &WorkbenchPage::hideTerminalSearchBar);
+    auto *findShortcut = new QShortcut(QKeySequence::Find, this);
+    findShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(findShortcut, &QShortcut::activated, this, &WorkbenchPage::showTerminalSearchBar);
+    auto *closeSearch = new QShortcut(QKeySequence(Qt::Key_Escape), searchPanel);
+    closeSearch->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(closeSearch, &QShortcut::activated, this, &WorkbenchPage::hideTerminalSearchBar);
+    m_terminalView->installEventFilter(this);
     connect(plotButton, &TransparentToolButton::clicked, this, &WorkbenchPage::showQuickPlotWindow);
     connect(dataTableButton, &TransparentToolButton::clicked, this, &WorkbenchPage::showDataTableWindow);
     connect(themeButton, &TransparentToolButton::clicked, this, []() {
@@ -217,23 +219,17 @@ QWidget *WorkbenchPage::createTerminalSection()
         }
     });
     connect(settingsButton, &TransparentToolButton::clicked, this, &WorkbenchPage::settingsRequested);
-    connect(m_terminalSearchEdit, &SearchLineEdit::textChanged, this, [this]() {
+    connect(m_terminalSearchEdit, &LineEdit::textChanged, this, [this]() {
         resetTerminalSearchNavigation();
         renderTerminal(true);
-    });
-    connect(m_terminalSearchEdit, &SearchLineEdit::searchSignal, this,
-            [this](const QString &) { moveTerminalSearchMatch(1); });
-    connect(m_terminalSearchEdit, &SearchLineEdit::clearSignal, this, [this]() {
-        resetTerminalSearchNavigation();
-        renderTerminal();
     });
     connect(m_terminalSearchPrevButton, &ToolButton::clicked, this, [this]() { moveTerminalSearchMatch(-1); });
     connect(m_terminalSearchNextButton, &ToolButton::clicked, this, [this]() { moveTerminalSearchMatch(1); });
-    connect(m_terminalSearchCaseCheck, &CheckBox::toggled, this, [this](bool) {
+    connect(m_terminalSearchCaseCheck, &ToolButton::toggled, this, [this](bool) {
         resetTerminalSearchNavigation();
         renderTerminal(true);
     });
-    connect(m_terminalSearchRegexCheck, &CheckBox::toggled, this, [this](bool) {
+    connect(m_terminalSearchRegexCheck, &ToolButton::toggled, this, [this](bool) {
         resetTerminalSearchNavigation();
         renderTerminal(true);
     });
@@ -241,6 +237,35 @@ QWidget *WorkbenchPage::createTerminalSection()
     updateReceiveModeButton();
 
     return section;
+}
+
+void WorkbenchPage::positionTerminalSearchBar()
+{
+    if (!m_terminalSearchBar || !m_terminalView) {
+        return;
+    }
+    const int margin = 8;
+    const int availableWidth = qMax(0, m_terminalView->viewport()->width() - 2 * margin);
+    m_terminalSearchBar->resize(qMin(560, availableWidth), 44);
+    m_terminalSearchBar->move(qMax(margin, m_terminalView->viewport()->width() - m_terminalSearchBar->width() - margin),
+                              margin);
+}
+
+void WorkbenchPage::showTerminalSearchBar()
+{
+    positionTerminalSearchBar();
+    m_terminalSearchBar->show();
+    m_terminalSearchBar->raise();
+    m_terminalSearchEdit->setFocus(Qt::ShortcutFocusReason);
+    m_terminalSearchEdit->selectAll();
+}
+
+void WorkbenchPage::hideTerminalSearchBar()
+{
+    if (m_terminalSearchBar->isVisible()) {
+        m_terminalSearchBar->hide();
+        m_terminalView->setFocus(Qt::ShortcutFocusReason);
+    }
 }
 
 void WorkbenchPage::updateReceiveModeButton()

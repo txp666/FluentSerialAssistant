@@ -1780,6 +1780,18 @@ JSON 对象：递归读取对象和数组中的数值
         <translation>终端搜索</translation>
     </message>
     <message>
+        <source>无结果</source>
+        <translation>无结果</translation>
+    </message>
+    <message>
+        <source>关闭搜索</source>
+        <translation>关闭搜索</translation>
+    </message>
+    <message>
+        <source>收发筛选</source>
+        <translation>收发筛选</translation>
+    </message>
+    <message>
         <source>搜索终端内容</source>
         <translation>搜索终端内容</translation>
     </message>

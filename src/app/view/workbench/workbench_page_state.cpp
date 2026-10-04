@@ -562,17 +562,8 @@ void WorkbenchPage::updateCounters()
     m_rxCounterLabel->setText(formatBytes(m_rxCount));
     m_txCounterLabel->setText(formatBytes(m_txCount));
     if (m_terminalSummaryLabel) {
-        int visibleRecords = 0;
-        for (const SessionRecord &record : m_records) {
-            if (record.direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
-                continue;
-            }
-            if (record.direction != RecordDirection::FrameBreak && recordMatchesTerminalFilter(record)) {
-                ++visibleRecords;
-            }
-        }
-
         const TerminalSearchQuery query = terminalSearchQuery();
+        m_terminalSearchEdit->setError(!query.valid);
         const bool canNavigate = !query.text.isEmpty() && query.valid && !m_terminalSearchMatches.isEmpty();
         if (m_terminalSearchPrevButton) {
             m_terminalSearchPrevButton->setEnabled(canNavigate);
@@ -582,15 +573,14 @@ void WorkbenchPage::updateCounters()
         }
 
         if (query.text.isEmpty()) {
-            m_terminalSummaryLabel->setText(AppI18n::text("显示 %1 条").arg(visibleRecords));
+            m_terminalSummaryLabel->clear();
         } else if (!query.valid) {
             m_terminalSummaryLabel->setText(AppI18n::text("正则无效"));
         } else if (m_terminalSearchMatches.isEmpty()) {
-            m_terminalSummaryLabel->setText(AppI18n::text("匹配 0 · %1 条").arg(visibleRecords));
+            m_terminalSummaryLabel->setText(AppI18n::text("无结果"));
         } else {
-            const int current = qBound(0, m_terminalCurrentSearchMatch, m_terminalSearchMatches.size() - 1) + 1;
-            m_terminalSummaryLabel->setText(
-                AppI18n::text("匹配 %1/%2").arg(current).arg(m_terminalSearchMatches.size()));
+            const int current = qBound(-1, m_terminalCurrentSearchMatch, m_terminalSearchMatches.size() - 1) + 1;
+            m_terminalSummaryLabel->setText(QStringLiteral("%1/%2").arg(current).arg(m_terminalSearchMatches.size()));
         }
     }
 }

@@ -117,14 +117,30 @@ WorkbenchPage::~WorkbenchPage()
 
 void WorkbenchPage::hideEvent(QHideEvent *event)
 {
-    if (m_terminalSearchWindow) {
-        m_terminalSearchWindow->hide();
+    if (m_terminalSearchBar) {
+        m_terminalSearchBar->hide();
     }
     AppPage::hideEvent(event);
 }
 
 bool WorkbenchPage::eventFilter(QObject *watched, QEvent *event)
 {
+    if ((watched == m_terminalView || watched == m_terminalSearchEdit) && event->type() == QEvent::KeyPress &&
+        m_terminalSearchBar && m_terminalSearchBar->isVisible() &&
+        static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {
+        hideTerminalSearchBar();
+        return true;
+    }
+    if (m_terminalView && watched == m_terminalView->viewport() && event->type() == QEvent::Resize) {
+        positionTerminalSearchBar();
+    }
+    if (watched == m_terminalSearchEdit && event->type() == QEvent::KeyPress) {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+            moveTerminalSearchMatch(keyEvent->modifiers().testFlag(Qt::ShiftModifier) ? -1 : 1);
+            return true;
+        }
+    }
     if (event->type() == QEvent::Wheel) {
         if (forwardSidePanelWheelEvent(watched, static_cast<QWheelEvent *>(event))) {
             return true;
