@@ -26,7 +26,7 @@ class TerminalSearchTest : public QObject
 
     static QByteArray logLine(int number, bool match = false)
     {
-        return QStringLiteral("record-%1: %2")
+        return QStringLiteral("record-%1: %2\n")
             .arg(number, 4, 10, QLatin1Char('0'))
             .arg(match ? QStringLiteral("needle") : QStringLiteral("ordinary log line"))
             .toUtf8();
@@ -487,6 +487,216 @@ class TerminalSearchTest : public QObject
         QCOMPARE(page.m_terminalSearchMatches.size(), 3);
     }
 
+    void fragmentedReceiveLineReflowsExistingTextWhenResized()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, false);
+        page.m_terminalView->setLineWrapMode(QTextEdit::WidgetWidth);
+        const QByteArray payload = QByteArrayLiteral("[66085144][DATA] ms=66085144,status=49,") +
+                                   QByteArrayLiteral("raw=-839382,avg=-839378,").repeated(5) +
+                                   QByteArrayLiteral("needle,nV=-1172598,milli_ue=-195433,log_drop=0,GFx10000=20000");
+        // Serial readyRead notifications may split an application line anywhere,
+        // including leaving its final digit and CR/LF in a separate notification.
+        page.handleReceivedData(payload.left(64));
+        page.flushPendingLines();
+        page.handleReceivedData(payload.mid(64, payload.size() - 65));
+        page.flushPendingLines();
+        page.handleReceivedData(payload.right(1) + QByteArrayLiteral("\r\n"));
+        page.flushPendingLines();
+        QCoreApplication::processEvents();
+
+        auto *document = page.m_terminalView->document();
+        const QString expected = QStringLiteral("« ") + QString::fromUtf8(payload);
+        QCOMPARE(page.m_terminalView->toPlainText(), expected);
+        QCOMPARE(document->blockCount(), 1);
+        const int narrowLines = document->firstBlock().layout()->lineCount();
+        QVERIFY(narrowLines > 1);
+        const QString captureDirectory = qEnvironmentVariable("FLUENT_TERMINAL_SEARCH_CAPTURE_DIR");
+        if (!captureDirectory.isEmpty()) {
+            QVERIFY(QDir().mkpath(captureDirectory));
+            QVERIFY(page.grab().save(QDir(captureDirectory).filePath(QStringLiteral("terminal-wrap-narrow.png"))));
+        }
+        page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
+        QCOMPARE(page.m_terminalSearchMatches.size(), 1);
+        QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("needle"));
+        const int matchPosition = page.m_terminalSearchMatches.first().position;
+        const int selectionAnchor = page.m_terminalView->textCursor().anchor();
+        const int selectionPosition = page.m_terminalView->textCursor().position();
+
+        QSignalSpy changes(document, &QTextDocument::contentsChange);
+        page.resize(1920, 1050);
+        QTRY_VERIFY(document->firstBlock().layout()->lineCount() < narrowLines);
+        const int wideLines = document->firstBlock().layout()->lineCount();
+        if (!captureDirectory.isEmpty()) {
+            QVERIFY(page.grab().save(QDir(captureDirectory).filePath(QStringLiteral("terminal-wrap-wide.png"))));
+        }
+        QCOMPARE(page.m_terminalView->toPlainText(), expected);
+        QCOMPARE(document->blockCount(), 1);
+        QCOMPARE(page.m_terminalSearchMatches.size(), 1);
+        QCOMPARE(page.m_terminalSearchMatches.first().position, matchPosition);
+        QCOMPARE(page.m_terminalView->textCursor().anchor(), selectionAnchor);
+        QCOMPARE(page.m_terminalView->textCursor().position(), selectionPosition);
+        QVERIFY(hasHighlight(document, matchPosition));
+        QVERIFY(changes.isEmpty());
+
+        page.resize(1120, 900);
+        QTRY_VERIFY(document->firstBlock().layout()->lineCount() > wideLines);
+        QCOMPARE(page.m_terminalView->toPlainText(), expected);
+        QCOMPARE(page.m_terminalSearchMatches.first().position, matchPosition);
+        QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("needle"));
+        QVERIFY(changes.isEmpty());
+    }
+
+    void receiveFragmentsPreserveRealLineEndings()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, false);
+        page.handleReceivedData(QByteArrayLiteral("first nee"));
+        page.flushPendingLines();
+        page.handleReceivedData(QByteArrayLiteral("dle\r"));
+        page.flushPendingLines();
+        page.handleReceivedData(QByteArrayLiteral("\nsecond needle\nthird"));
+        page.flushPendingLines();
+        page.handleReceivedData(QByteArrayLiteral(" line\r\n"));
+        page.flushPendingLines();
+
+        const QStringList lines = page.m_terminalView->toPlainText().split(QLatin1Char('\n'));
+        QCOMPARE(lines.size(), 3);
+        // Markers may introduce logical lines, but transport notifications must
+        // neither add newlines nor consume actual device line boundaries.
+        QVERIFY(lines.at(0).endsWith(QStringLiteral("first needle")));
+        QVERIFY(lines.at(1).endsWith(QStringLiteral("second needle")));
+        QVERIFY(lines.at(2).endsWith(QStringLiteral("third line")));
+        page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
+        QCOMPARE(page.m_terminalSearchMatches.size(), 2);
+        QVERIFY(validHighlightedMatches(page));
+        page.m_terminalSearchNextButton->click();
+        QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("needle"));
+        QVERIFY(page.m_terminalView->textCursor().block().text().endsWith(QStringLiteral("second needle")));
+    }
+
+    void activeSearchMatchesAcrossIncrementallyFlushedReceiveFragments()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, false);
+        page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
+        page.handleReceivedData(QByteArrayLiteral("prefix nee"));
+        page.flushPendingLines();
+        QVERIFY(page.m_terminalSearchMatches.isEmpty());
+        page.handleReceivedData(QByteArrayLiteral("dle suffix\r\n"));
+        page.flushPendingLines();
+
+        QCOMPARE(page.m_terminalView->toPlainText(), QStringLiteral("« prefix needle suffix"));
+        QCOMPARE(page.m_terminalSearchMatches.size(), 1);
+        QVERIFY(validHighlightedMatches(page));
+        page.m_terminalSearchNextButton->click();
+        QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("needle"));
+        const int matchPosition = page.m_terminalSearchMatches.first().position;
+        for (int offset = 0; offset < 6; ++offset) {
+            QVERIFY(hasHighlight(page.m_terminalView->document(), matchPosition + offset));
+        }
+    }
+
+    void emptyReceiveLineEndingsKeepRecordMappingBounded()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, false);
+        for (int batch = 0; batch < 15; ++batch) {
+            for (int row = 0; row < 100; ++row) {
+                page.handleReceivedData(QByteArrayLiteral("\r\n"));
+            }
+            page.flushPendingLines();
+            QVERIFY(page.m_terminalRecordRanges.size() <= page.m_records.size());
+            for (auto it = page.m_terminalRecordRanges.cbegin(); it != page.m_terminalRecordRanges.cend(); ++it) {
+                QVERIFY(it.key() >= page.m_firstRecordIndex);
+            }
+        }
+        QCOMPARE(page.m_records.size(), 1000);
+        QCOMPARE(page.m_firstRecordIndex, 500);
+        QVERIFY(page.m_terminalView->toPlainText().isEmpty());
+
+        page.handleReceivedData(QByteArrayLiteral("needle\r\n"));
+        page.flushPendingLines();
+        QVERIFY(page.m_terminalRecordRanges.size() <= page.m_records.size());
+        QVERIFY(page.m_terminalView->toPlainText().endsWith(QStringLiteral("needle")));
+        page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
+        QCOMPARE(page.m_terminalSearchMatches.size(), 1);
+        QVERIFY(validHighlightedMatches(page));
+    }
+
+    void continuousReceiveFragmentsTrimExpiredTextAndKeepSearching()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, false);
+        page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
+        QString retainedText;
+        for (int batch = 0; batch < 15; ++batch) {
+            for (int row = batch * 100; row < (batch + 1) * 100; ++row) {
+                const QString part = QStringLiteral("part-%1;").arg(row, 4, 10, QLatin1Char('0'));
+                page.handleReceivedData(part.toUtf8());
+                if (row >= 500) {
+                    retainedText += part;
+                }
+            }
+            page.flushPendingLines();
+            QVERIFY(page.m_terminalRecordRanges.size() <= page.m_records.size());
+        }
+        QCOMPARE(page.m_records.size(), 1000);
+        QCOMPARE(page.m_firstRecordIndex, 500);
+        QCOMPARE(page.m_terminalView->document()->blockCount(), 1);
+        const QString text = page.m_terminalView->toPlainText();
+        QVERIFY(text.endsWith(retainedText));
+        QVERIFY(text.size() <= retainedText.size() + 2);
+        QVERIFY(!text.contains(QStringLiteral("part-0499;")));
+        QVERIFY(page.m_terminalSearchMatches.isEmpty());
+
+        page.handleReceivedData(QByteArrayLiteral("nee"));
+        page.flushPendingLines();
+        QVERIFY(page.m_terminalSearchMatches.isEmpty());
+        page.handleReceivedData(QByteArrayLiteral("dle\n"));
+        page.flushPendingLines();
+        QCOMPARE(page.m_records.size(), 1000);
+        QCOMPARE(page.m_firstRecordIndex, 502);
+        QVERIFY(!page.m_terminalView->toPlainText().contains(QStringLiteral("part-0501;")));
+        QVERIFY(page.m_terminalView->toPlainText().endsWith(QStringLiteral("part-1499;needle")));
+        QCOMPARE(page.m_terminalSearchMatches.size(), 1);
+        QVERIFY(validHighlightedMatches(page));
+        page.m_terminalSearchNextButton->click();
+        QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("needle"));
+    }
+
+    void resizingWrappedHistoryFollowsTailWithAutoScrollOn()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, true);
+        page.m_terminalView->setLineWrapMode(QTextEdit::WidgetWidth);
+        const QByteArray payload = QByteArrayLiteral(" telemetry value=12345,").repeated(12);
+        for (int row = 0; row < 80; ++row) {
+            page.handleReceivedData(logLine(row).chopped(1) + payload + QByteArrayLiteral("\r\n"));
+        }
+        page.flushPendingLines();
+        QCoreApplication::processEvents();
+
+        auto *document = page.m_terminalView->document();
+        auto *scroll = page.m_terminalView->verticalScrollBar();
+        const QString expected = page.m_terminalView->toPlainText();
+        const int narrowMaximum = scroll->maximum();
+        QVERIFY(narrowMaximum > 0);
+        QCOMPARE(scroll->value(), narrowMaximum);
+        page.resize(1920, 1050);
+        QTRY_VERIFY(scroll->maximum() < narrowMaximum);
+        QTRY_COMPARE(scroll->value(), scroll->maximum());
+        QCOMPARE(page.m_terminalView->toPlainText(), expected);
+        QCOMPARE(document->blockCount(), 80);
+
+        const int wideMaximum = scroll->maximum();
+        page.resize(1120, 900);
+        QTRY_VERIFY(scroll->maximum() > wideMaximum);
+        QTRY_COMPARE(scroll->value(), scroll->maximum());
+        QCOMPARE(page.m_terminalView->toPlainText(), expected);
+        QCOMPARE(page.m_terminalView->textCursor().position(), document->characterCount() - 1);
+    }
+
     void searchBarControlsAndEmbeddedOptionsAreVerticallyCentered_data()
     {
         QTest::addColumn<bool>("dark");
@@ -873,7 +1083,8 @@ class TerminalSearchTest : public QObject
         page.m_terminalView->setLineWrapMode(QTextEdit::WidgetWidth);
         const QByteArray longPayload = QByteArray(" long payload continues across the viewport").repeated(8);
         for (int row = 0; row < 1000; ++row) {
-            page.handleReceivedData(logLine(row, row == 10 || row == 500 || row == 990) + longPayload);
+            page.handleReceivedData(logLine(row, row == 10 || row == 500 || row == 990).chopped(1) + longPayload +
+                                    QByteArrayLiteral("\n"));
         }
         page.flushPendingLines();
         page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
@@ -895,7 +1106,8 @@ class TerminalSearchTest : public QObject
         QVERIFY(readingAnchor.block().layout()->lineCount() > 1);
 
         for (int row = 1000; row < 1100; ++row) {
-            page.handleReceivedData(logLine(row, row == 1010 || row == 1090) + longPayload);
+            page.handleReceivedData(logLine(row, row == 1010 || row == 1090).chopped(1) + longPayload +
+                                    QByteArrayLiteral("\n"));
         }
         page.flushPendingLines();
         QCoreApplication::processEvents();
@@ -964,9 +1176,6 @@ class TerminalSearchTest : public QObject
         page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
         QByteArray frame;
         for (int row = 0; row < 1100; ++row) {
-            if (!frame.isEmpty()) {
-                frame.append('\n');
-            }
             frame.append(logLine(row, row == 10 || row == 150 || row == 1050));
         }
         page.handleReceivedData(frame);
@@ -994,9 +1203,6 @@ class TerminalSearchTest : public QObject
 
         frame.clear();
         for (int row = 1100; row < 1200; ++row) {
-            if (!frame.isEmpty()) {
-                frame.append('\n');
-            }
             frame.append(logLine(row, row == 1150));
         }
         page.handleReceivedData(frame);

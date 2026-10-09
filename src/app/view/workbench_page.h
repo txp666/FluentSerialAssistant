@@ -11,6 +11,7 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QFile>
+#include <QtCore/QHash>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QTimer>
 #include <QtCore/QVariantList>
@@ -106,6 +107,13 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
         QString terminalText;
         QString displayText;
         QString sourceLabel;
+        bool receivedAsStream = false;
+    };
+
+    struct TerminalRecordRange
+    {
+        int position = 0;
+        int length = 0;
     };
 
     struct SendHistoryItem
@@ -276,15 +284,20 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void insertProtocolTemplateExample();
     QString protocolParseSourceLabel(const QByteArray &data);
     void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true,
-                      const QString &sourceLabel = QString());
+                      const QString &sourceLabel = QString(), bool receivedAsStream = false);
     void trimRecords();
     void clearTerminal();
     void renderTerminal(bool navigateToMatch = false);
     void trimTerminalDocument();
     void insertTextWithSearchHighlights(QTextCursor &cursor, const QString &line, int start, int length,
                                         const QTextCharFormat &format, const QList<SearchMatchRange> &ranges);
-    bool appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious,
+    bool appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, qint64 recordId, bool hasPrevious,
                                 const TerminalSearchQuery &query);
+    bool appendStreamRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, qint64 recordId,
+                                      bool hasPrevious, const TerminalSearchQuery &query);
+    void appendStyledTerminalText(QTextCursor &cursor, const SessionRecord &record, const QString &line,
+                                  int contentStart, const TerminalSearchQuery &query);
+    void resetTerminalStream();
     void resetTerminalSearchNavigation();
     void moveTerminalSearchMatch(int direction);
     void selectTerminalSearchMatch();
@@ -386,6 +399,12 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QList<AutoReplyRule> m_autoReplyRules;
     QList<AppProtocol::ProtocolTemplate> m_protocolTemplates;
     QList<TerminalSearchMatch> m_terminalSearchMatches;
+    QHash<qint64, TerminalRecordRange> m_terminalRecordRanges;
+    QString m_terminalStreamSource;
+    int m_terminalStreamContentStart = 0;
+    int m_terminalStreamBreaks = 0;
+    bool m_terminalStreamOpen = false;
+    bool m_terminalStreamLastCR = false;
     AppTerminal::ColorConfig m_terminalColorConfig;
     AppTerminal::ColorMatcher m_terminalColorMatcher;
     SerialPortConfig m_lastConfig;

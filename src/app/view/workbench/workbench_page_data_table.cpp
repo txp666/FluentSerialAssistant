@@ -119,45 +119,15 @@ void WorkbenchPage::locateRecordInTerminal(qint64 recordId)
 
     renderTerminal();
 
-    int blockNumber = -1;
-    bool hasOutput = false;
-    bool found = false;
-    for (int i = m_terminalStartRecord; i < m_records.size(); ++i) {
-        const SessionRecord &record = m_records.at(i);
-        if (!recordMatchesTerminalFilter(record)) {
-            continue;
-        }
-        if (record.direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
-            continue;
-        }
-        if (record.direction == RecordDirection::FrameBreak) {
-            if (hasOutput) {
-                ++blockNumber;
-            }
-            continue;
-        }
-
-        blockNumber = hasOutput ? blockNumber + 1 : 0;
-        hasOutput = true;
-        if (i == recordIndex) {
-            found = true;
-            break;
-        }
-    }
-
-    if (!found || blockNumber < 0) {
+    const auto range = m_terminalRecordRanges.constFind(recordId);
+    if (range == m_terminalRecordRanges.cend()) {
         showWarning(AppI18n::text("无法定位"), AppI18n::text("记录已被过滤或不在当前终端范围内"));
         return;
     }
 
-    const QTextBlock block = m_terminalView->document()->findBlockByNumber(blockNumber);
-    if (!block.isValid()) {
-        showWarning(AppI18n::text("无法定位"), AppI18n::text("记录已被过滤或不在当前终端范围内"));
-        return;
-    }
-
-    QTextCursor cursor(block);
-    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    QTextCursor cursor(m_terminalView->document());
+    cursor.setPosition(range->position);
+    cursor.setPosition(range->position + range->length, QTextCursor::KeepAnchor);
     m_terminalView->setTextCursor(cursor);
     m_terminalView->ensureCursorVisible();
     m_terminalView->setFocus(Qt::OtherFocusReason);

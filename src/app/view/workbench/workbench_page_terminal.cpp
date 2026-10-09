@@ -1,6 +1,8 @@
 #include "app/core/app_i18n.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
+#include <QtGui/QTextBlock>
+
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
@@ -309,7 +311,8 @@ void WorkbenchPage::handleReceivedData(const QByteArray &data)
 
     if (!m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked() ||
         frameBreakModeKey() == QStringLiteral("timeout")) {
-        appendRecord(RecordDirection::Rx, data);
+        appendRecord(RecordDirection::Rx, data, true, QString(),
+                     !m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked());
         return;
     }
 
@@ -427,7 +430,7 @@ void WorkbenchPage::updateFrameControlState()
 }
 
 void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats,
-                                 const QString &sourceLabel)
+                                 const QString &sourceLabel, bool receivedAsStream)
 {
     if (data.isEmpty()) {
         return;
@@ -455,6 +458,7 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     record.terminalText = AppTextEncoding::toTerminalText(decoded);
     record.displayText = AppTextEncoding::toSingleLineText(decoded);
     record.sourceLabel = sourceLabel;
+    record.receivedAsStream = receivedAsStream;
     if (direction == RecordDirection::Rx) {
         const QString protocolLabel = protocolParseSourceLabel(data);
         if (!protocolLabel.isEmpty()) {
@@ -510,6 +514,8 @@ void WorkbenchPage::clearTerminal()
     m_terminalStartRecord = m_records.size();
     m_pendingRecordIndexes.clear();
     m_terminalSearchMatches.clear();
+    m_terminalRecordRanges.clear();
+    resetTerminalStream();
     resetTerminalSearchNavigation();
     m_terminalView->clear();
     updateCounters();
@@ -526,6 +532,8 @@ void WorkbenchPage::renderTerminal(bool navigateToMatch)
     const int previousScroll = m_terminalView->verticalScrollBar()->value();
     const int previousHorizontalScroll = m_terminalView->horizontalScrollBar()->value();
     m_terminalSearchMatches.clear();
+    m_terminalRecordRanges.clear();
+    resetTerminalStream();
     // Keep match positions stable until the entire batch has been inserted.
     m_terminalView->document()->setMaximumBlockCount(0);
     m_terminalView->clear();
@@ -540,7 +548,7 @@ void WorkbenchPage::renderTerminal(bool navigateToMatch)
         if (m_records.at(i).direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
             continue;
         }
-        if (appendRecordToTerminal(cursor, m_records.at(i), hasOutput, query)) {
+        if (appendRecordToTerminal(cursor, m_records.at(i), m_firstRecordIndex + i, hasOutput, query)) {
             hasOutput = true;
         }
     }
@@ -575,8 +583,40 @@ void WorkbenchPage::trimTerminalDocument()
 {
     auto *document = m_terminalView->document();
     const int previousLength = document->characterCount();
+    int firstRetainedPosition = previousLength - 1;
+    bool hasExpiredRecords = false;
+    for (auto it = m_terminalRecordRanges.cbegin(); it != m_terminalRecordRanges.cend(); ++it) {
+        if (it.key() < m_firstRecordIndex) {
+            hasExpiredRecords = true;
+        } else {
+            firstRetainedPosition = qMin(firstRetainedPosition, it.value().position);
+        }
+    }
+    if (hasExpiredRecords && firstRetainedPosition > 0) {
+        // A partial stream line can span many receive records. Bound it by the
+        // same retained-record limit instead of letting one block grow forever.
+        const int lastBlockStart = document->lastBlock().position();
+        if (firstRetainedPosition > lastBlockStart) {
+            m_terminalStreamContentStart =
+                qMax(0, m_terminalStreamContentStart - (firstRetainedPosition - lastBlockStart));
+        }
+        QTextCursor expired(document);
+        expired.setPosition(firstRetainedPosition, QTextCursor::KeepAnchor);
+        expired.removeSelectedText();
+    }
     document->setMaximumBlockCount(maxRecordCount());
     const int removedCharacters = previousLength - document->characterCount();
+    for (auto it = m_terminalRecordRanges.begin(); it != m_terminalRecordRanges.end();) {
+        auto &range = it.value();
+        if (it.key() < m_firstRecordIndex ||
+            (removedCharacters > 0 && range.position + range.length <= removedCharacters)) {
+            it = m_terminalRecordRanges.erase(it);
+        } else {
+            range.length -= qMax(0, removedCharacters - range.position);
+            range.position = qMax(0, range.position - removedCharacters);
+            ++it;
+        }
+    }
     if (removedCharacters <= 0) {
         return;
     }
@@ -605,10 +645,10 @@ void WorkbenchPage::insertTextWithSearchHighlights(QTextCursor &cursor, const QS
 
     const int end = start + length;
     int position = start;
-    const auto first = std::lower_bound(ranges.cbegin(), ranges.cend(), start,
-                                        [](const SearchMatchRange &range, int offset) {
-                                            return range.start + range.length <= offset;
-                                        });
+    const auto first =
+        std::lower_bound(ranges.cbegin(), ranges.cend(), start, [](const SearchMatchRange &range, int offset) {
+            return range.start + range.length <= offset;
+        });
     for (auto iterator = first; iterator != ranges.cend() && iterator->start < end; ++iterator) {
         const SearchMatchRange &range = *iterator;
         const int rangeStart = qMax(start, range.start);
@@ -631,9 +671,14 @@ void WorkbenchPage::insertTextWithSearchHighlights(QTextCursor &cursor, const QS
     }
 }
 
-bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, bool hasPrevious,
-                                           const TerminalSearchQuery &query)
+bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, qint64 recordId,
+                                           bool hasPrevious, const TerminalSearchQuery &query)
 {
+    if (record.receivedAsStream && record.direction == RecordDirection::Rx &&
+        currentDisplayMode() == QStringLiteral("text") && (!m_timestampCheck || !m_timestampCheck->isChecked())) {
+        return appendStreamRecordToTerminal(cursor, record, recordId, hasPrevious, query);
+    }
+    resetTerminalStream();
     if (record.direction == RecordDirection::FrameBreak) {
         if (hasPrevious) {
             cursor.insertBlock();
@@ -646,12 +691,110 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
         cursor.insertBlock();
     }
 
+    int contentStart = 0;
+    const QString line = formatRecordLine(record, &contentStart);
+    const int recordStart = cursor.position();
+    appendStyledTerminalText(cursor, record, line, contentStart, query);
+    m_terminalRecordRanges.insert(recordId, {recordStart, cursor.position() - recordStart});
+    return true;
+}
+
+void WorkbenchPage::resetTerminalStream()
+{
+    m_terminalStreamSource.clear();
+    m_terminalStreamContentStart = 0;
+    m_terminalStreamBreaks = 0;
+    m_terminalStreamOpen = false;
+    m_terminalStreamLastCR = false;
+}
+
+bool WorkbenchPage::appendStreamRecordToTerminal(QTextCursor &cursor, const SessionRecord &record, qint64 recordId,
+                                                 bool hasPrevious, const TerminalSearchQuery &query)
+{
+    if (m_terminalStreamSource != record.sourceLabel) {
+        resetTerminalStream();
+    }
+    m_terminalStreamSource = record.sourceLabel;
+
+    // The record's display text omits trailing line endings. Restore them for
+    // stream layout, without changing the raw records used by export and plots.
+    QString payload = record.terminalText;
+    int lineEndings = 0;
+    for (int index = record.bytes.size() - 1; index >= 0;) {
+        if (record.bytes.at(index) == '\n') {
+            --index;
+            if (index >= 0 && record.bytes.at(index) == '\r') {
+                --index;
+            }
+        } else if (record.bytes.at(index) == '\r') {
+            --index;
+        } else {
+            break;
+        }
+        ++lineEndings;
+    }
+    payload.append(QString(lineEndings, QLatin1Char('\n')));
+    if (m_terminalStreamLastCR && record.bytes.startsWith('\n') && payload.startsWith(QLatin1Char('\n'))) {
+        payload.remove(0, 1);
+    }
+    m_terminalStreamLastCR = record.bytes.endsWith('\r');
+
+    int recordStart = cursor.position();
+    bool started = false;
+    const QStringList parts = payload.split(QLatin1Char('\n'));
+    for (int index = 0; index < parts.size(); ++index) {
+        const QString &part = parts.at(index);
+        if (!part.isEmpty()) {
+            QString line;
+            if (!m_terminalStreamOpen) {
+                if (hasPrevious) {
+                    for (int count = qMax(1, m_terminalStreamBreaks); count > 0; --count) {
+                        cursor.insertBlock();
+                    }
+                }
+                m_terminalStreamBreaks = 0;
+                SessionRecord displayRecord = record;
+                displayRecord.terminalText = part;
+                line = formatRecordLine(displayRecord, &m_terminalStreamContentStart);
+                if (!started) {
+                    recordStart = cursor.position();
+                }
+            } else {
+                if (!started) {
+                    recordStart = cursor.position();
+                }
+                // Only restyle the unfinished logical line. This lets searches
+                // and color rules match across USB/serial read boundaries.
+                const int blockStart = cursor.block().position();
+                while (!m_terminalSearchMatches.isEmpty() && m_terminalSearchMatches.last().position >= blockStart) {
+                    m_terminalSearchMatches.removeLast();
+                }
+                line = cursor.block().text() + part;
+                cursor.movePosition(QTextCursor::StartOfBlock);
+                cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+                cursor.removeSelectedText();
+            }
+            appendStyledTerminalText(cursor, record, line, m_terminalStreamContentStart, query);
+            m_terminalStreamOpen = true;
+            hasPrevious = true;
+            started = true;
+        }
+        if (index + 1 < parts.size()) {
+            m_terminalStreamOpen = false;
+            ++m_terminalStreamBreaks;
+        }
+    }
+    m_terminalRecordRanges.insert(recordId, {recordStart, cursor.position() - recordStart});
+    return true;
+}
+
+void WorkbenchPage::appendStyledTerminalText(QTextCursor &cursor, const SessionRecord &record, const QString &line,
+                                             int contentStart, const TerminalSearchQuery &query)
+{
     QTextCharFormat format;
     if (record.direction == RecordDirection::Tx) {
         format.setForeground(selectedTxColor());
     }
-    int contentStart = 0;
-    const QString line = formatRecordLine(record, &contentStart);
     const int lineDocumentStart = cursor.position();
     const QList<SearchMatchRange> searchRanges = terminalSearchRanges(line, query);
     for (const SearchMatchRange &range : searchRanges) {
@@ -670,7 +813,7 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
     }
 
     const int markerIndex = line.indexOf(marker, position);
-    if (markerIndex >= position) {
+    if (markerIndex >= position && markerIndex < contentStart) {
         QTextCharFormat markerFormat = format;
         markerFormat.setForeground(terminalDirectionMarkerColor(record.direction == RecordDirection::Tx));
         insertTextWithSearchHighlights(cursor, line, position, markerIndex - position, format, searchRanges);
@@ -702,9 +845,8 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
         }
     };
     position = contentStart;
-    const auto colorRanges = m_terminalColorMatcher.hasRules()
-                                 ? m_terminalColorMatcher.ranges(line.mid(contentStart))
-                                 : QVector<AppTerminal::ColorSpan>{};
+    const auto colorRanges = m_terminalColorMatcher.hasRules() ? m_terminalColorMatcher.ranges(line.mid(contentStart))
+                                                               : QVector<AppTerminal::ColorSpan>{};
     for (const auto &range : colorRanges) {
         const int start = contentStart + range.start;
         insertBaseRange(position, start);
@@ -714,7 +856,6 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
         position = start + range.length;
     }
     insertBaseRange(position, line.size());
-    return true;
 }
 
 void WorkbenchPage::resetTerminalSearchNavigation() { m_terminalCurrentSearchMatch = -1; }
@@ -767,6 +908,10 @@ void WorkbenchPage::flushPendingLines()
     const bool autoScroll = !m_autoScrollCheck || m_autoScrollCheck->isChecked();
     QTextCursor readingAnchor = m_terminalView->cursorForPosition(QPoint(0, 0));
     readingAnchor.setKeepPositionOnInsert(true);
+    const int readingAnchorPosition = readingAnchor.position();
+    const QTextCursor previousCursor = m_terminalView->textCursor();
+    const int previousPosition = previousCursor.position();
+    const int previousAnchor = previousCursor.anchor();
     const int anchorY = m_terminalView->cursorRect(readingAnchor).top();
     const int horizontalScroll = m_terminalView->horizontalScrollBar()->value();
     m_terminalView->document()->setMaximumBlockCount(0);
@@ -784,14 +929,16 @@ void WorkbenchPage::flushPendingLines()
             if (m_records.at(index).direction == RecordDirection::Tx && m_showTxCheck && !m_showTxCheck->isChecked()) {
                 continue;
             }
-            if (appendRecordToTerminal(cursor, m_records.at(index), hasOutput, query)) {
+            if (appendRecordToTerminal(cursor, m_records.at(index), recordId, hasOutput, query)) {
                 hasOutput = true;
                 wrote = true;
             }
         }
     }
     cursor.endEditBlock();
+    const int lengthBeforeTrim = m_terminalView->document()->characterCount();
     trimTerminalDocument();
+    const int removedCharacters = lengthBeforeTrim - m_terminalView->document()->characterCount();
     m_pendingRecordIndexes.clear();
     if (!wrote) {
         return;
@@ -803,6 +950,16 @@ void WorkbenchPage::flushPendingLines()
         m_terminalView->ensureCursorVisible();
         m_terminalView->verticalScrollBar()->setValue(m_terminalView->verticalScrollBar()->maximum());
     } else {
+        // Restyling a partial line must not collapse a user's selection or the
+        // reading anchor inside that line.
+        if (previousPosition >= removedCharacters && previousAnchor >= removedCharacters) {
+            QTextCursor restored(m_terminalView->document());
+            restored.setPosition(previousAnchor - removedCharacters);
+            restored.setPosition(previousPosition - removedCharacters, QTextCursor::KeepAnchor);
+            m_terminalView->setTextCursor(restored);
+        }
+        readingAnchor = QTextCursor(m_terminalView->document());
+        readingAnchor.setPosition(qMax(0, readingAnchorPosition - removedCharacters));
         // The cursor follows retained text through head pruning, so a reader
         // stays on the same line even when the oldest log blocks are removed.
         auto *scrollBar = m_terminalView->verticalScrollBar();

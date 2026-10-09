@@ -523,6 +523,8 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
     }
     m_pendingRecordIndexes.clear();
     m_terminalSearchMatches.clear();
+    m_terminalRecordRanges.clear();
+    resetTerminalStream();
     m_terminalCurrentSearchMatch = -1;
     m_terminalStartRecord = 0;
     m_rxCount = 0;

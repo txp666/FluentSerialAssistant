@@ -2,6 +2,7 @@
 #include "app/core/script_runner.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
+#include <QtCore/QPointer>
 #include <QtCore/QThread>
 #include <QtGui/QHideEvent>
 
@@ -142,6 +143,22 @@ bool WorkbenchPage::eventFilter(QObject *watched, QEvent *event)
     }
     if (m_terminalView && watched == m_terminalView->viewport() && event->type() == QEvent::Resize) {
         positionTerminalSearchBar();
+        if (m_autoScrollCheck && m_autoScrollCheck->isChecked() &&
+            !m_terminalView->property("terminalResizeScrollQueued").toBool()) {
+            m_terminalView->setProperty("terminalResizeScrollQueued", true);
+            const QPointer<TextBrowser> terminalView(m_terminalView);
+            QTimer::singleShot(0, this, [this, terminalView]() {
+                if (!terminalView) {
+                    return;
+                }
+                terminalView->setProperty("terminalResizeScrollQueued", false);
+                if (m_autoScrollCheck && m_autoScrollCheck->isChecked()) {
+                    // Let the editor reflow first, then keep the latest text visible.
+                    auto *scrollBar = terminalView->verticalScrollBar();
+                    scrollBar->setValue(scrollBar->maximum());
+                }
+            });
+        }
     }
     if (watched == m_terminalSearchEdit && event->type() == QEvent::KeyPress) {
         auto *keyEvent = static_cast<QKeyEvent *>(event);

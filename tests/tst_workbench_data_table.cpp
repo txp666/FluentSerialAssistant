@@ -7,6 +7,8 @@
 #include <QtCore/QDir>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QSortFilterProxyModel>
+#include <QtGui/QTextBlock>
+#include <QtGui/QTextCursor>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QTest>
 #include <QtWidgets/QApplication>
@@ -214,6 +216,55 @@ class WorkbenchDataTableTest : public QObject
         QVERIFY(!window->m_copyButton->isEnabled());
         QVERIFY(!window->m_copyHexButton->isEnabled());
         QVERIFY(!window->m_locateButton->isEnabled());
+    }
+
+    void locatesReceiveFragmentWithinItsSharedTerminalLine()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.m_flushTimer.stop();
+        page.m_statsTimer.stop();
+        page.m_autoFrameBreakCheck->setChecked(false);
+        page.m_timestampCheck->setChecked(false);
+        page.handleReceivedData(QByteArrayLiteral("first fragment "));
+        page.flushPendingLines();
+        page.handleReceivedData(QByteArrayLiteral("second fragment\r\n"));
+        page.flushPendingLines();
+        QCOMPARE(page.m_records.size(), 2);
+        QCOMPARE(page.m_terminalView->document()->blockCount(), 1);
+        page.showDataTableWindow();
+        auto *window = page.m_dataTableWindow;
+        const QModelIndex selected =
+            window->m_proxy->mapFromSource(window->m_model->index(window->m_model->rowForRecordIndex(1), 0));
+        window->m_table->selectRow(selected.row());
+        window->locateSelectedFrame();
+
+        QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("second fragment"));
+        QCOMPARE(page.m_terminalView->textCursor().blockNumber(), 0);
+        QVERIFY(page.m_terminalView->textCursor().block().text().endsWith(
+            QStringLiteral("first fragment second fragment")));
+    }
+
+    void locatesRecordAfterMultilineTerminalRecord()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.m_flushTimer.stop();
+        page.m_statsTimer.stop();
+        page.m_timestampCheck->setChecked(false);
+        page.m_showTxCheck->setChecked(true);
+        page.appendRecord(WorkbenchPage::RecordDirection::Rx, QByteArrayLiteral("first\nsecond\nthird"));
+        page.appendRecord(WorkbenchPage::RecordDirection::Tx, QByteArrayLiteral("following record"));
+        page.flushPendingLines();
+        QCOMPARE(page.m_records.first().terminalText, QStringLiteral("first\nsecond\nthird"));
+        QCOMPARE(page.m_terminalView->document()->blockCount(), 4);
+        page.showDataTableWindow();
+        auto *window = page.m_dataTableWindow;
+        const QModelIndex selected =
+            window->m_proxy->mapFromSource(window->m_model->index(window->m_model->rowForRecordIndex(1), 0));
+        window->m_table->selectRow(selected.row());
+        window->locateSelectedFrame();
+
+        QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("» following record"));
+        QCOMPARE(page.m_terminalView->textCursor().blockNumber(), 3);
     }
 
     void largeHistoryUsesIncrementalUpdates()

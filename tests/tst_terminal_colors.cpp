@@ -405,7 +405,7 @@ class TerminalColorsTest : public QObject
         page.flushPendingLines();
         auto *document = page.m_terminalView->document();
         const QString text = document->toPlainText();
-        QCOMPARE(text, QStringLiteral("«   ERROR details\nordinary\n  ERROR again"));
+        QCOMPARE(text, QStringLiteral("«   ERROR details\n« ordinary\n«   ERROR again"));
         QCOMPARE(formatAt(document, text.indexOf(QStringLiteral("details"))).foreground().color(), red);
         QCOMPARE(formatAt(document, text.indexOf(QStringLiteral("again"))).foreground().color(), red);
         QVERIFY(formatAt(document, text.indexOf(QStringLiteral("ordinary"))).foreground().color() != red);
@@ -478,7 +478,7 @@ class TerminalColorsTest : public QObject
         WorkbenchPage page(nullptr, false, false);
         preparePage(page);
         for (int i = 0; i < 200; ++i) {
-            page.handleReceivedData(QStringLiteral("record %1 ERROR details").arg(i).toUtf8());
+            page.handleReceivedData(QStringLiteral("record %1 ERROR details\n").arg(i).toUtf8());
         }
         page.flushPendingLines();
         page.m_terminalSearchEdit->setText(QStringLiteral("ERROR"));
