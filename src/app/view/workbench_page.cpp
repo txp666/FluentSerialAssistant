@@ -1,5 +1,6 @@
 #include "app/core/app_i18n.h"
 #include "app/core/script_runner.h"
+#include "app/view/quick_plot_window.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 #include <QtCore/QPointer>
@@ -96,6 +97,13 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
 }
 WorkbenchPage::~WorkbenchPage()
 {
+    const auto plotWindows = m_quickPlotWindows;
+    m_quickPlotWindows.clear();
+    m_quickPlotWindow = nullptr;
+    for (QuickPlotWindow *plotWindow : plotWindows) {
+        disconnect(plotWindow, nullptr, this, nullptr);
+        delete plotWindow;
+    }
     if (m_scriptRunner) {
         m_scriptRunner->requestStop();
     }

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.16
+    VERSION 0.1.17
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
@@ -126,6 +126,8 @@ add_executable(FluentSerialAssistant
     src/app/view/main_window.h
     src/app/view/plot_parser_dialog.cpp
     src/app/view/plot_parser_dialog.h
+    src/app/view/protocol_template_window.cpp
+    src/app/view/protocol_template_window.h
     src/app/view/quick_plot_window.cpp
     src/app/view/quick_plot_window.h
     src/app/view/settings_page.cpp
@@ -214,7 +216,7 @@ if(BUILD_TESTING)
     )
     get_target_property(workbench_test_libraries FluentSerialAssistant LINK_LIBRARIES)
     target_link_libraries(FluentSerialTestSupport PUBLIC ${workbench_test_libraries})
-    foreach(test_name IN ITEMS data_table_model workbench_data_table workbench_quick_plot terminal_search terminal_colors
+    foreach(test_name IN ITEMS data_table_model workbench_data_table workbench_quick_plot protocol_windows terminal_search terminal_colors
                                auto_reply virtual_serial_pair virtual_serial_workbench update_downloader update_installer
                                update_ui update_manager)
         add_executable(tst_${test_name} tests/tst_${test_name}.cpp)

@@ -518,8 +518,8 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
 
     m_records.clear();
     m_firstRecordIndex = 0;
-    if (m_quickPlotWindow) {
-        m_quickPlotWindow->clearData();
+    for (QuickPlotWindow *plotWindow : m_quickPlotWindows) {
+        plotWindow->clearData();
     }
     m_pendingRecordIndexes.clear();
     m_terminalSearchMatches.clear();

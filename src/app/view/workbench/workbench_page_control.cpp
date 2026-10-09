@@ -221,15 +221,31 @@ bool WorkbenchPage::controlShowPlot(const AppPlot::ParserConfig &config, bool cl
         return false;
     }
 
-    showQuickPlotWindow();
-    if (!m_quickPlotWindow || !m_quickPlotWindow->configureParser(config)) {
+    const auto protocolTemplate = currentProtocolTemplateFromUi();
+    const bool usesPayload = config.protocol == AppPlot::Protocol::Binary &&
+                             config.binarySource == AppPlot::BinarySource::Payload;
+    auto *plotWindow = m_quickPlotWindow;
+    if (!plotWindow || !plotWindow->isVisible()) {
+        plotWindow = createQuickPlotWindow(config, usesPayload ? &protocolTemplate : nullptr);
+    } else {
+        plotWindow->setProtocolTemplates(m_protocolTemplates);
+        if (usesPayload) {
+            plotWindow->setProtocolTemplate(protocolTemplate);
+        }
+    }
+    if (!plotWindow || !plotWindow->configureParser(config)) {
         if (error) {
             *error = QStringLiteral("Failed to configure the plot window");
         }
         return false;
     }
     if (clear) {
-        m_quickPlotWindow->clearData();
+        plotWindow->clearData();
     }
+    if (plotWindow->isMinimized()) {
+        plotWindow->showNormal();
+    }
+    plotWindow->raise();
+    plotWindow->activateWindow();
     return true;
 }

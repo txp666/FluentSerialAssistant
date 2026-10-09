@@ -1,35 +1,65 @@
 #include "app/view/workbench/workbench_page_internal.h"
 
 #include "app/view/quick_plot_window.h"
+#include "app/view/plot_parser_dialog.h"
 
 void WorkbenchPage::showQuickPlotWindow()
 {
-    if (!m_quickPlotWindow) {
-        m_quickPlotWindow = new QuickPlotWindow(this);
+    PlotParserDialog dialog(AppPlot::ParserConfig{}, window(), true);
+    dialog.setProtocolTemplates(m_protocolTemplates);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
     }
 
-    if (m_quickPlotWindow->isMinimized()) {
-        m_quickPlotWindow->showNormal();
-    } else {
-        m_quickPlotWindow->show();
+    if (dialog.usesProtocolTemplate()) {
+        const auto protocolTemplate = dialog.protocolTemplate();
+        createQuickPlotWindow(dialog.parserConfig(), &protocolTemplate);
+        return;
     }
-    m_quickPlotWindow->raise();
-    m_quickPlotWindow->activateWindow();
+    createQuickPlotWindow(dialog.parserConfig());
+}
+
+QuickPlotWindow *WorkbenchPage::createQuickPlotWindow(const AppPlot::ParserConfig &config,
+                                                      const AppProtocol::ProtocolTemplate *protocolTemplate)
+{
+    if (config.protocol == AppPlot::Protocol::Binary && config.binarySource == AppPlot::BinarySource::Payload &&
+        !protocolTemplate) {
+        return nullptr;
+    }
+    auto *plotWindow = new QuickPlotWindow(this);
+    plotWindow->setProtocolTemplates(m_protocolTemplates);
+    if (protocolTemplate) {
+        plotWindow->setProtocolTemplate(*protocolTemplate);
+    }
+    if (!plotWindow->configureParser(config)) {
+        delete plotWindow;
+        return nullptr;
+    }
+    plotWindow->setAttribute(Qt::WA_DeleteOnClose);
+    plotWindow->setObjectName(QStringLiteral("quickPlotWindow-%1").arg(m_nextPlotWindowNumber));
+    plotWindow->setWindowTitle(AppI18n::text("曲线 %1").arg(m_nextPlotWindowNumber++));
+    m_quickPlotWindows.append(plotWindow);
+    m_quickPlotWindow = plotWindow;
+    connect(plotWindow, &QObject::destroyed, this, [this, plotWindow]() {
+        m_quickPlotWindows.removeAll(plotWindow);
+        if (m_quickPlotWindow == plotWindow) {
+            m_quickPlotWindow = m_quickPlotWindows.isEmpty() ? nullptr : m_quickPlotWindows.last();
+        }
+    });
+    plotWindow->show();
+    plotWindow->raise();
+    plotWindow->activateWindow();
+    return plotWindow;
 }
 
 void WorkbenchPage::appendQuickPlotRecord(const SessionRecord &record)
 {
-    if (!m_quickPlotWindow || !m_quickPlotWindow->isPlottingActive() || record.direction != RecordDirection::Rx) {
+    if (record.direction != RecordDirection::Rx) {
         return;
     }
-
-    QByteArray payload;
-    if (m_quickPlotWindow->requiresProtocolPayload() && m_protocolEnabledCheck && m_protocolEnabledCheck->isChecked() &&
-        m_protocolTemplateCombo && m_protocolTemplateCombo->currentIndex() >= 0) {
-        const AppProtocol::ParseResult result = AppProtocol::parseFrame(record.bytes, currentProtocolTemplateFromUi());
-        if (result.ok) {
-            payload = result.payload;
+    for (QuickPlotWindow *plotWindow : m_quickPlotWindows) {
+        if (plotWindow->isPlottingActive()) {
+            plotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes);
         }
     }
-    m_quickPlotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes, payload);
 }

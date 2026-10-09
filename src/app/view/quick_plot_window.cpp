@@ -11,7 +11,6 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonParseError>
-#include <QtCore/QSignalBlocker>
 #include <QtCore/QTextStream>
 #include <QtGui/QHideEvent>
 #include <QtGui/QShowEvent>
@@ -66,6 +65,7 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     using namespace FluentQt;
 
     setWindowTitle(AppI18n::text("快速绘图"));
+    setObjectName(QStringLiteral("quickPlotWindow"));
     setMinimumSize(760, 460);
     resize(980, 620);
 
@@ -78,14 +78,9 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
 
     auto *protocolLabel = new BodyLabel(AppI18n::text("协议"), this);
     protocolLabel->setFixedHeight(32);
-    m_protocolCombo = new ComboBox(this);
-    m_protocolCombo->addItem(AppI18n::text("全部数字"), QIcon(), QStringLiteral("numbers"));
-    m_protocolCombo->addItem(AppI18n::text("分隔值"), QIcon(), QStringLiteral("delimited"));
-    m_protocolCombo->addItem(AppI18n::text("键值对"), QIcon(), QStringLiteral("keyValue"));
-    m_protocolCombo->addItem(AppI18n::text("JSON 对象"), QIcon(), QStringLiteral("json"));
-    m_protocolCombo->addItem(AppI18n::text("二进制字段"), QIcon(), QStringLiteral("binary"));
-    m_protocolCombo->setFixedSize(132, 32);
-    m_protocolCombo->setAccessibleDescription(AppI18n::text("选择接收数据如何转换为曲线数据"));
+    m_protocolNameLabel = new BodyLabel(QString(), this);
+    m_protocolNameLabel->setObjectName(QStringLiteral("quickPlotProtocolName"));
+    m_protocolNameLabel->setFixedHeight(32);
     AppSettings settings;
     const QString savedConfig = settings.value(QStringLiteral("plot/parserConfig")).toString();
     QJsonParseError savedConfigError;
@@ -97,13 +92,13 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
             settings.value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
         AppPlot::protocolFromKey(savedProtocol, &m_parserConfig.protocol);
     }
-    const int protocolIndex = m_protocolCombo->findData(AppPlot::protocolKey(m_parserConfig.protocol));
-    m_protocolCombo->setCurrentIndex(protocolIndex >= 0 ? protocolIndex : 0);
+    updateProtocolName();
     auto *protocolHelpButton = new TransparentToolButton(icon(FluentIcon::Question), this);
     AppUi::setFluentToolTip(protocolHelpButton, AppI18n::text("绘图协议示例"));
     protocolHelpButton->setFixedSize(32, 32);
     protocolHelpButton->setIconSize(QSize(16, 16));
-    auto *parserSettingsButton = new PushButton(icon(FluentIcon::Setting), AppI18n::text("解析设置"), this);
+    auto *parserSettingsButton = new PushButton(icon(FluentIcon::Setting), AppI18n::text("协议"), this);
+    parserSettingsButton->setObjectName(QStringLiteral("quickPlotProtocolButton"));
     parserSettingsButton->setFixedHeight(32);
 
     m_pauseButton = new PushButton(icon(FluentIcon::Pause), AppI18n::text("暂停"), this);
@@ -120,7 +115,7 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_statusLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     toolbar->addWidget(protocolLabel, 0, Qt::AlignVCenter);
-    toolbar->addWidget(m_protocolCombo, 0, Qt::AlignVCenter);
+    toolbar->addWidget(m_protocolNameLabel, 0, Qt::AlignVCenter);
     toolbar->addWidget(protocolHelpButton, 0, Qt::AlignVCenter);
     toolbar->addWidget(parserSettingsButton, 0, Qt::AlignVCenter);
     toolbar->addSpacing(4);
@@ -133,6 +128,7 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     root->addLayout(toolbar);
 
     m_plot = new RealtimePlotWidget(this);
+    m_plot->setObjectName(QStringLiteral("quickPlotChart"));
     m_plot->setMinimumHeight(360);
     m_plot->setCapacity(120000);
     m_plot->setVisibleSpan(600);
@@ -149,12 +145,6 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_plot->setRefreshRate(0);
     root->addWidget(m_plot, 1);
 
-    connect(m_protocolCombo, &ComboBox::currentIndexChanged, this, [this](int) {
-        AppPlot::ParserConfig config = m_parserConfig;
-        AppPlot::protocolFromKey(m_protocolCombo->currentData().toString(), &config.protocol);
-        config.fields.clear();
-        configureParser(config);
-    });
     connect(protocolHelpButton, &TransparentToolButton::clicked, this,
             [this, protocolHelpButton]() { showProtocolHelp(protocolHelpButton); });
     connect(parserSettingsButton, &PushButton::clicked, this, &QuickPlotWindow::showParserSettings);
@@ -169,11 +159,23 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
 void QuickPlotWindow::appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
                                    const QByteArray &payload)
 {
+    Q_UNUSED(payload);
     if (!isPlottingActive() || m_paused) {
         return;
     }
 
-    const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(m_parserConfig, text, frame, payload);
+    QByteArray localPayload;
+    if (requiresProtocolPayload()) {
+        if (!m_hasProtocolTemplate) {
+            return;
+        }
+        const AppProtocol::ParseResult parsed = AppProtocol::parseFrame(frame, m_protocolTemplate);
+        if (!parsed.ok || (parsed.checksumChecked && !parsed.checksumValid)) {
+            return;
+        }
+        localPayload = parsed.payload;
+    }
+    const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(m_parserConfig, text, frame, localPayload);
     for (const AppPlot::PlotSample &values : samples) {
         appendValues(timestamp, values);
     }
@@ -261,8 +263,7 @@ void QuickPlotWindow::clearData()
 bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)
 {
     const QString key = AppPlot::protocolKey(config.protocol);
-    const int index = m_protocolCombo ? m_protocolCombo->findData(key) : -1;
-    if (index < 0) {
+    if (!AppPlot::supportedProtocolKeys().contains(key)) {
         return false;
     }
     AppPlot::ParserConfig normalized = config;
@@ -273,11 +274,8 @@ bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)
     if (sameParserConfig(m_parserConfig, normalized)) {
         return true;
     }
-    {
-        const QSignalBlocker blocker(m_protocolCombo);
-        m_protocolCombo->setCurrentIndex(index);
-    }
     m_parserConfig = normalized;
+    updateProtocolName();
     AppSettings settings;
     settings.setValue(QStringLiteral("plot/protocol"), key);
     settings.setValue(
@@ -285,6 +283,42 @@ bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)
         QString::fromUtf8(QJsonDocument(AppPlot::parserConfigToJson(m_parserConfig)).toJson(QJsonDocument::Compact)));
     clearData();
     return true;
+}
+
+void QuickPlotWindow::setProtocolTemplates(const QList<AppProtocol::ProtocolTemplate> &protocolTemplates)
+{
+    m_protocolTemplates = protocolTemplates;
+}
+
+void QuickPlotWindow::setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate)
+{
+    if (m_hasProtocolTemplate && AppProtocol::toJson(m_protocolTemplate) == AppProtocol::toJson(protocolTemplate)) {
+        return;
+    }
+    m_protocolTemplate = protocolTemplate;
+    m_hasProtocolTemplate = true;
+    updateProtocolName();
+    if (requiresProtocolPayload()) {
+        clearData();
+    }
+}
+
+void QuickPlotWindow::updateProtocolName()
+{
+    QString name;
+    switch (m_parserConfig.protocol) {
+    case AppPlot::Protocol::Delimited: name = AppI18n::text("分隔值"); break;
+    case AppPlot::Protocol::KeyValue: name = AppI18n::text("键值对"); break;
+    case AppPlot::Protocol::Json: name = AppI18n::text("JSON 对象"); break;
+    case AppPlot::Protocol::Binary: name = AppI18n::text("二进制字段"); break;
+    default: name = AppI18n::text("全部数字"); break;
+    }
+    if (requiresProtocolPayload() && m_hasProtocolTemplate) {
+        name += QStringLiteral(" · ") + m_protocolTemplate.name;
+    }
+    if (m_protocolNameLabel) {
+        m_protocolNameLabel->setText(name);
+    }
 }
 
 bool QuickPlotWindow::requiresProtocolPayload() const
@@ -354,8 +388,15 @@ void QuickPlotWindow::setPaused(bool paused)
 void QuickPlotWindow::showParserSettings()
 {
     PlotParserDialog dialog(m_parserConfig, this);
+    dialog.setProtocolTemplates(m_protocolTemplates);
+    if (m_hasProtocolTemplate) {
+        dialog.setProtocolTemplate(m_protocolTemplate);
+    }
     if (dialog.exec() == QDialog::Accepted) {
         configureParser(dialog.parserConfig());
+        if (dialog.usesProtocolTemplate()) {
+            setProtocolTemplate(dialog.protocolTemplate());
+        }
     }
 }
 

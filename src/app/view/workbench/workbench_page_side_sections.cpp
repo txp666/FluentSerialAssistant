@@ -1,4 +1,5 @@
 #include "app/core/app_i18n.h"
+#include "app/view/protocol_template_window.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
@@ -277,82 +278,206 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     auto *root = cardBody(section);
 
     m_protocolTemplateCombo = new ComboBox(section);
+    m_protocolTemplateCombo->setObjectName(QStringLiteral("protocolTemplateCombo"));
     makeCompactControl(m_protocolTemplateCombo);
     m_protocolEnabledCheck = new CheckBox(AppI18n::text("启用"), section);
+    m_protocolEnabledCheck->setObjectName(QStringLiteral("protocolTemplateEnabledCheck"));
     m_protocolEnabledCheck->setMinimumWidth(0);
     m_protocolEnabledCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     addFormRow(root, AppI18n::text("模板"), m_protocolTemplateCombo, m_protocolEnabledCheck);
 
-    m_protocolNameEdit = new LineEdit(section);
-    m_protocolNameEdit->setPlaceholderText(AppI18n::text("模板名称"));
-    makeCompactControl(m_protocolNameEdit);
-    addFormRow(root, AppI18n::text("名称"), m_protocolNameEdit);
-
-    m_protocolHeaderEdit = new LineEdit(section);
-    m_protocolHeaderEdit->setPlaceholderText(AppI18n::text("帧头 HEX，如 AA 55"));
-    makeCompactControl(m_protocolHeaderEdit);
-    addFormRow(root, AppI18n::text("帧头"), m_protocolHeaderEdit);
-
-    m_protocolLengthOffsetEdit = createNumberEdit(section, 2, 0, 65535);
-    m_protocolLengthSizeCombo = new ComboBox(section);
-    for (int size : {0, 1, 2, 4}) {
-        m_protocolLengthSizeCombo->addItem(QStringLiteral("%1 B").arg(size), QIcon(), size);
-    }
-    m_protocolLengthSizeCombo->setFixedSize(76, CompactControlHeight);
-    addFormRow(root, AppI18n::text("长度"), m_protocolLengthOffsetEdit, m_protocolLengthSizeCombo);
-
-    m_protocolLengthModeCombo = new ComboBox(section);
-    m_protocolLengthModeCombo->addItem(AppProtocol::lengthModeLabel(AppProtocol::LengthMode::PayloadLength), QIcon(),
-                                       AppProtocol::lengthModeKey(AppProtocol::LengthMode::PayloadLength));
-    m_protocolLengthModeCombo->addItem(AppProtocol::lengthModeLabel(AppProtocol::LengthMode::FrameLength), QIcon(),
-                                       AppProtocol::lengthModeKey(AppProtocol::LengthMode::FrameLength));
-    makeCompactControl(m_protocolLengthModeCombo);
-    addFormRow(root, AppI18n::text("含义"), m_protocolLengthModeCombo);
-
-    m_protocolLengthByteOrderCombo = new ComboBox(section);
-    addChecksumByteOrderOptions(m_protocolLengthByteOrderCombo);
-    makeCompactControl(m_protocolLengthByteOrderCombo);
-    addFormRow(root, AppI18n::text("长度序"), m_protocolLengthByteOrderCombo);
-
-    m_protocolCommandOffsetEdit = createNumberEdit(section, 3, 0, 65535);
-    m_protocolCommandSizeEdit = createNumberEdit(section, 1, 0, 256);
-    addFormRow(root, AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit);
-    addFormRow(root, AppI18n::text("命令长度"), m_protocolCommandSizeEdit);
-
-    m_protocolPayloadOffsetEdit = createNumberEdit(section, 4, 0, 65535);
-    m_protocolPayloadLengthEdit = createNumberEdit(section, 0, 0, 65535);
-    m_protocolPayloadLengthEdit->setAccessibleDescription(AppI18n::text("0 表示按长度字段自动计算"));
-    addFormRow(root, AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit);
-    addFormRow(root, AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit);
-
-    m_protocolChecksumAlgorithmCombo = new ComboBox(section);
-    m_protocolChecksumAlgorithmCombo->addItem(AppI18n::text("无校验"), QIcon(), AppProtocol::checksumNoneKey());
-    addChecksumAlgorithmOptions(m_protocolChecksumAlgorithmCombo);
-    makeCompactControl(m_protocolChecksumAlgorithmCombo);
-    addFormRow(root, AppI18n::text("校验"), m_protocolChecksumAlgorithmCombo);
-
-    m_protocolChecksumByteOrderCombo = new ComboBox(section);
-    addChecksumByteOrderOptions(m_protocolChecksumByteOrderCombo);
-    makeCompactControl(m_protocolChecksumByteOrderCombo);
-    addFormRow(root, AppI18n::text("校验序"), m_protocolChecksumByteOrderCombo);
-
-    auto *buttonRow = new QHBoxLayout;
-    buttonRow->setSpacing(8);
-    m_protocolSaveButton = new PushButton(icon(FluentIcon::Save), AppI18n::text("保存"), section);
-    m_protocolDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), section);
-    m_protocolExampleButton = new PushButton(icon(FluentIcon::Info), AppI18n::text("示例"), section);
-    setButtonRowControlPolicy(m_protocolSaveButton);
-    setButtonRowControlPolicy(m_protocolDeleteButton);
-    setButtonRowControlPolicy(m_protocolExampleButton);
-    buttonRow->addWidget(m_protocolSaveButton);
-    buttonRow->addWidget(m_protocolDeleteButton);
-    buttonRow->addWidget(m_protocolExampleButton);
-    root->addLayout(buttonRow);
+    auto *editProtocolButton = new PushButton(icon(FluentIcon::Edit), AppI18n::text("编辑协议"), section);
+    editProtocolButton->setObjectName(QStringLiteral("editProtocolButton"));
+    root->addWidget(editProtocolButton);
+    connect(editProtocolButton, &PushButton::clicked, this, &WorkbenchPage::showProtocolTemplateWindow);
 
     m_protocolStatusLabel = new CaptionLabel(AppI18n::text("协议模板未启用"), section);
     m_protocolStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_protocolStatusLabel->setWordWrap(true);
     root->addWidget(m_protocolStatusLabel);
+
+    auto *editor = new QWidget;
+    editor->setObjectName(QStringLiteral("protocolTemplateEditor"));
+    auto *editorRoot = new QVBoxLayout(editor);
+    editorRoot->setContentsMargins(0, 0, 12, 0);
+    editorRoot->setSpacing(10);
+    const auto group = [editor, editorRoot](const QString &title) {
+        auto *box = new SimpleCardWidget(editor);
+        box->setBorderRadius(8);
+        box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        auto *layout = qobject_cast<QVBoxLayout *>(box->layout());
+        layout->setContentsMargins(12, 12, 12, 12);
+        layout->setSpacing(8);
+        auto *heading = new BodyLabel(title, box);
+        QFont font = heading->font();
+        font.setBold(true);
+        heading->setFont(font);
+        layout->addWidget(heading);
+        editorRoot->addWidget(box);
+        return layout;
+    };
+    const auto pairedFields = [](QVBoxLayout *layout, const QString &firstLabel, QWidget *first,
+                                 const QString &secondLabel, QWidget *second) {
+        auto *fields = new QGridLayout;
+        fields->setHorizontalSpacing(12);
+        fields->setVerticalSpacing(4);
+        fields->setColumnStretch(0, 1);
+        fields->setColumnStretch(1, 1);
+        fields->addWidget(new CaptionLabel(firstLabel, layout->parentWidget()), 0, 0);
+        fields->addWidget(new CaptionLabel(secondLabel, layout->parentWidget()), 0, 1);
+        fields->addWidget(first, 1, 0);
+        fields->addWidget(second, 1, 1);
+        layout->addLayout(fields);
+    };
+
+    auto *basicGroup = group(AppI18n::text("名称与帧头"));
+    auto *editorTemplateCombo = new ComboBox(editor);
+    editorTemplateCombo->setObjectName(QStringLiteral("protocolEditorTemplateCombo"));
+    editorTemplateCombo->setPlaceholderText(AppI18n::text("未保存的协议"));
+    makeCompactControl(editorTemplateCombo);
+    connect(editorTemplateCombo, &ComboBox::currentIndexChanged, this, [this](int index) {
+        if (index < 0) {
+            return;
+        }
+        const int previousIndex = m_protocolTemplateCombo->currentIndex();
+        m_protocolTemplateCombo->setCurrentIndex(index);
+        if (previousIndex == index) {
+            applyProtocolTemplate(index);
+        }
+    });
+    auto *newTemplateButton = new PushButton(AppI18n::text("新建"), editor);
+    newTemplateButton->setObjectName(QStringLiteral("protocolTemplateNewButton"));
+    newTemplateButton->setFixedSize(64, CompactControlHeight);
+    addFormRow(basicGroup, AppI18n::text("模板"), editorTemplateCombo, newTemplateButton);
+    m_protocolNameEdit = new LineEdit(editor);
+    m_protocolNameEdit->setObjectName(QStringLiteral("protocolTemplateNameEdit"));
+    m_protocolNameEdit->setPlaceholderText(AppI18n::text("模板名称"));
+    makeCompactControl(m_protocolNameEdit);
+    addFormRow(basicGroup, AppI18n::text("名称"), m_protocolNameEdit);
+
+    m_protocolHeaderEdit = new LineEdit(editor);
+    m_protocolHeaderEdit->setObjectName(QStringLiteral("protocolTemplateHeaderEdit"));
+    m_protocolHeaderEdit->setPlaceholderText(AppI18n::text("帧头 HEX，如 AA 55"));
+    makeCompactControl(m_protocolHeaderEdit);
+    addFormRow(basicGroup, AppI18n::text("帧头"), m_protocolHeaderEdit);
+
+    auto *lengthGroup = group(AppI18n::text("长度字段"));
+    m_protocolLengthOffsetEdit = createNumberEdit(editor, 2, 0, 65535);
+    m_protocolLengthOffsetEdit->setObjectName(QStringLiteral("protocolTemplateLengthOffsetEdit"));
+    m_protocolLengthSizeCombo = new ComboBox(editor);
+    m_protocolLengthSizeCombo->setObjectName(QStringLiteral("protocolTemplateLengthSizeCombo"));
+    for (int size : {0, 1, 2, 4}) {
+        m_protocolLengthSizeCombo->addItem(QStringLiteral("%1 B").arg(size), QIcon(), size);
+    }
+    m_protocolLengthSizeCombo->setFixedSize(76, CompactControlHeight);
+    addFormRow(lengthGroup, AppI18n::text("字节偏移"), m_protocolLengthOffsetEdit, m_protocolLengthSizeCombo);
+
+    m_protocolLengthModeCombo = new ComboBox(editor);
+    m_protocolLengthModeCombo->setObjectName(QStringLiteral("protocolTemplateLengthModeCombo"));
+    m_protocolLengthModeCombo->addItem(AppProtocol::lengthModeLabel(AppProtocol::LengthMode::PayloadLength), QIcon(),
+                                       AppProtocol::lengthModeKey(AppProtocol::LengthMode::PayloadLength));
+    m_protocolLengthModeCombo->addItem(AppProtocol::lengthModeLabel(AppProtocol::LengthMode::FrameLength), QIcon(),
+                                       AppProtocol::lengthModeKey(AppProtocol::LengthMode::FrameLength));
+    makeCompactControl(m_protocolLengthModeCombo);
+    addFormRow(lengthGroup, AppI18n::text("含义"), m_protocolLengthModeCombo);
+
+    m_protocolLengthByteOrderCombo = new ComboBox(editor);
+    m_protocolLengthByteOrderCombo->setObjectName(QStringLiteral("protocolTemplateLengthByteOrderCombo"));
+    addChecksumByteOrderOptions(m_protocolLengthByteOrderCombo);
+    makeCompactControl(m_protocolLengthByteOrderCombo);
+    addFormRow(lengthGroup, AppI18n::text("字节序"), m_protocolLengthByteOrderCombo);
+    auto *lengthHint = new CaptionLabel(AppI18n::text("没有长度字段时选择 0 B。"), editor);
+    lengthHint->setWordWrap(true);
+    lengthGroup->addWidget(lengthHint);
+
+    auto *commandGroup = group(AppI18n::text("命令字段"));
+    m_protocolCommandOffsetEdit = createNumberEdit(editor, 3, 0, 65535);
+    m_protocolCommandOffsetEdit->setObjectName(QStringLiteral("protocolTemplateCommandOffsetEdit"));
+    m_protocolCommandSizeEdit = createNumberEdit(editor, 1, 0, 256);
+    m_protocolCommandSizeEdit->setObjectName(QStringLiteral("protocolTemplateCommandSizeEdit"));
+    pairedFields(commandGroup, AppI18n::text("字节偏移"), m_protocolCommandOffsetEdit,
+                 AppI18n::text("字节数"), m_protocolCommandSizeEdit);
+
+    auto *payloadGroup = group(AppI18n::text("载荷字段"));
+    m_protocolPayloadOffsetEdit = createNumberEdit(editor, 4, 0, 65535);
+    m_protocolPayloadOffsetEdit->setObjectName(QStringLiteral("protocolTemplatePayloadOffsetEdit"));
+    m_protocolPayloadLengthEdit = createNumberEdit(editor, 0, 0, 65535);
+    m_protocolPayloadLengthEdit->setObjectName(QStringLiteral("protocolTemplatePayloadLengthEdit"));
+    m_protocolPayloadLengthEdit->setAccessibleDescription(AppI18n::text("0 表示按长度字段自动计算"));
+    pairedFields(payloadGroup, AppI18n::text("字节偏移"), m_protocolPayloadOffsetEdit,
+                 AppI18n::text("固定长度"), m_protocolPayloadLengthEdit);
+    auto *payloadHint = new CaptionLabel(AppI18n::text("固定长度填 0，按长度字段或剩余字节自动计算。"), editor);
+    payloadHint->setWordWrap(true);
+    payloadGroup->addWidget(payloadHint);
+
+    auto *checksumGroup = group(AppI18n::text("校验字段"));
+    m_protocolChecksumAlgorithmCombo = new ComboBox(editor);
+    m_protocolChecksumAlgorithmCombo->setObjectName(QStringLiteral("protocolTemplateChecksumAlgorithmCombo"));
+    m_protocolChecksumAlgorithmCombo->addItem(AppI18n::text("无校验"), QIcon(), AppProtocol::checksumNoneKey());
+    addChecksumAlgorithmOptions(m_protocolChecksumAlgorithmCombo);
+    makeCompactControl(m_protocolChecksumAlgorithmCombo);
+    addFormRow(checksumGroup, AppI18n::text("算法"), m_protocolChecksumAlgorithmCombo);
+
+    m_protocolChecksumByteOrderCombo = new ComboBox(editor);
+    m_protocolChecksumByteOrderCombo->setObjectName(QStringLiteral("protocolTemplateChecksumByteOrderCombo"));
+    addChecksumByteOrderOptions(m_protocolChecksumByteOrderCombo);
+    makeCompactControl(m_protocolChecksumByteOrderCombo);
+    addFormRow(checksumGroup, AppI18n::text("字节序"), m_protocolChecksumByteOrderCombo);
+    auto *checksumHint = new CaptionLabel(AppI18n::text("校验位于帧末尾，计算范围为校验前的全部字节。"), editor);
+    checksumHint->setWordWrap(true);
+    checksumGroup->addWidget(checksumHint);
+
+    auto *actionBar = new QWidget(editor);
+    actionBar->setObjectName(QStringLiteral("protocolTemplateActionBar"));
+    auto *buttonRow = new QHBoxLayout(actionBar);
+    buttonRow->setContentsMargins(0, 0, 0, 0);
+    buttonRow->setSpacing(8);
+    m_protocolSaveButton = new PrimaryPushButton(icon(FluentIcon::Save), AppI18n::text("保存"), actionBar);
+    m_protocolSaveButton->setObjectName(QStringLiteral("protocolTemplateSaveButton"));
+    m_protocolDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), actionBar);
+    m_protocolDeleteButton->setObjectName(QStringLiteral("protocolTemplateDeleteButton"));
+    m_protocolExampleButton = new PushButton(icon(FluentIcon::Info), AppI18n::text("添加示例"), actionBar);
+    m_protocolExampleButton->setObjectName(QStringLiteral("protocolTemplateExampleButton"));
+    m_protocolSaveButton->setFixedHeight(CompactControlHeight);
+    m_protocolDeleteButton->setFixedHeight(CompactControlHeight);
+    m_protocolExampleButton->setFixedHeight(CompactControlHeight);
+    buttonRow->addWidget(m_protocolDeleteButton);
+    buttonRow->addWidget(m_protocolExampleButton);
+    buttonRow->addStretch();
+    buttonRow->addWidget(m_protocolSaveButton);
+    editorRoot->addWidget(actionBar);
+    editorRoot->addStretch();
+    m_protocolTemplateWindow = new ProtocolTemplateWindow(editor, this);
+
+    connect(newTemplateButton, &PushButton::clicked, this, [this]() {
+        QString name = AppI18n::text("新协议");
+        for (int suffix = 1; suffix <= m_protocolTemplates.size() + 1; ++suffix) {
+            name = AppI18n::text("新协议 %1").arg(suffix);
+            bool exists = false;
+            for (const AppProtocol::ProtocolTemplate &item : m_protocolTemplates) {
+                exists = exists || item.name == name;
+            }
+            if (!exists) {
+                break;
+            }
+        }
+        m_updatingProtocolTemplateUi = true;
+        m_protocolNameEdit->setText(name);
+        m_protocolHeaderEdit->clear();
+        m_protocolLengthOffsetEdit->setText(QStringLiteral("0"));
+        m_protocolLengthSizeCombo->setCurrentIndex(m_protocolLengthSizeCombo->findData(0));
+        m_protocolCommandOffsetEdit->setText(QStringLiteral("0"));
+        m_protocolCommandSizeEdit->setText(QStringLiteral("0"));
+        m_protocolPayloadOffsetEdit->setText(QStringLiteral("0"));
+        m_protocolPayloadLengthEdit->setText(QStringLiteral("0"));
+        m_protocolChecksumAlgorithmCombo->setCurrentIndex(
+            m_protocolChecksumAlgorithmCombo->findData(AppProtocol::checksumNoneKey()));
+        m_protocolTemplateWindow->setSampleHex(QString());
+        m_updatingProtocolTemplateUi = false;
+        updateProtocolTemplateActionState();
+        m_protocolNameEdit->setFocus();
+        m_protocolNameEdit->selectAll();
+    });
 
     const auto markDirty = [this]() { updateProtocolTemplateActionState(); };
     connect(m_protocolTemplateCombo, &ComboBox::currentIndexChanged, this, &WorkbenchPage::applyProtocolTemplate);

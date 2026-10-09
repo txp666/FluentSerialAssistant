@@ -18,7 +18,7 @@
 
 Fluent Serial Assistant is a cross-platform serial terminal and protocol debugging application. It provides a modern Fluent-style workspace for serial connections, traffic inspection, packet construction, data visualization, automation, exporting, and appearance configuration.
 
-The current release focuses on a multi-tab terminal workspace, automatic logging, quick plotting, a frame table, JavaScript automation, protocol templates, and application settings.
+The current version is **v0.1.17**, using **FluentQtWidgets v0.1.9**. Features include a multi-tab terminal workspace, automatic logging, independent plot windows, a frame table, JavaScript automation, a visual protocol-template editor, and application settings.
 
 ## Screenshot
 
@@ -33,15 +33,16 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - Text, hexadecimal, and mixed terminal display modes.
 - Independent UTF-8, GBK, ASCII, and Latin-1 encoding options for receiving and sending text.
 - Frame splitting by receive interval, header, trailer, or fixed length.
-- Protocol templates for headers, length fields, commands, payloads, and checksums.
+- A separate visual frame-protocol editor for headers, length fields, commands, payloads, and checksums. Enter a HEX sample or use the latest received frame to inspect colored byte regions, field positions, parsed values, and checksum results. Templates and sample frames can be saved and selected later.
 - Unified RX/TX records with pause, automatic scrolling, clearing, and counter reset.
 - Keyword, regular-expression, case-sensitive, direction-filtered terminal search.
 - Terminal colors in Settings: toggle ESP-IDF, common log levels, success/failure, or AT response presets, or define keyword/regex colors with case sensitivity, matched-text or whole-line scope, and rule priority. Settings persist and apply to all terminal sessions.
-- Multi-channel real-time plotting from line-aware numbers, delimited values, multi-word/Unicode key-value pairs, nested JSON, and typed binary frame or payload fields. The UI, CLI, and MCP share a persistent parser configuration with field selection and CSV export.
+- Independent plot windows: every click on the plot icon asks you to select a protocol before creating another window. Supported parsers include line-aware numbers, delimited values, multi-word/Unicode key-value pairs, nested JSON, and binary fields. Preview text/HEX samples, select fields, and configure integer/float types, byte offsets, byte order, scaling, and value offsets for complete frames or the payload of a selected frame template. Pause, clear, and CSV export are available. Windows collect only new RX records while open; hiding, minimizing, or closing stops parsing and rendering, with no historical backfill.
 - A sortable and filterable frame table with HEX/text copying and terminal navigation.
 - Multiple independent serial sessions in tabs.
 - A built-in virtual serial pair: enable it in Settings, then connect two sessions to `VIRTUAL-A` and `VIRTUAL-B` for two-way data transfer inside the app without installing drivers.
 - RX/TX totals, live transfer rates, and connection duration.
+- A broom button at the far left of the terminal toolbar clears the terminal display and resets RX/TX traffic counters together.
 - Text and HEX sending with None, CR, LF, and CRLF line endings.
 - CRC16-Modbus, CRC16-CCITT, CRC32, LRC, XOR, and SUM8 calculation and automatic appending.
 - Modbus RTU request generation, CRC appending, direct transmission, and response summaries.
@@ -65,7 +66,7 @@ The current release focuses on a multi-tab terminal workspace, automatic logging
 - C++17
 - Qt 6.5+
 - Qt Widgets, SerialPort, SVG, QML, and Core5Compat
-- FluentQtWidgets
+- FluentQtWidgets v0.1.9
 - CMake and Ninja
 
 ## Repository layout
@@ -173,9 +174,10 @@ The lower-level packaging scripts are `scripts/package_windows.ps1`, `scripts/pa
 2. Configure baud rate, data bits, parity, stop bits, and flow control.
 3. Connect and inspect RX/TX traffic in the terminal.
 4. Send text or HEX data with the required encoding, line ending, and checksum.
-5. Save reusable packets, macros, protocol templates, scripts, and auto-reply rules.
-6. Use quick plotting or the frame table to inspect structured incoming data.
-7. Export records as TXT, CSV, or BIN.
+5. Save reusable packets, macros, scripts, and auto-reply rules. In the sidebar's **Protocol templates** section, select **Edit protocol** to open the frame editor. Configure the header, length, command, payload, and checksum fields; enter a HEX sample or use the latest received frame to inspect its byte structure and parsed values, then save and enable the template.
+6. Click the plot icon, select numbers, delimited values, key-value pairs, JSON, or binary fields, preview a sample, and confirm to create a new independent plot window. Binary payload parsing requires a frame template. Each window starts empty and collects new incoming data only while open; records received while hidden, minimized, or closed are not backfilled. Pause, clear, and CSV export are available.
+7. Open the frame table to sort, filter, copy, or locate records in the terminal. Export session records as TXT, CSV, or BIN.
+8. Use the broom button at the far left of the terminal toolbar to clear the display and reset RX/TX traffic counters together.
 
 ### Built-in virtual serial pair
 

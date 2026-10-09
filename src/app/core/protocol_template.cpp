@@ -185,19 +185,20 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
                                           protocolTemplate.lengthByteOrder);
     }
 
-    int frameLength = frame.size();
+    qint64 expectedFrameLength = frame.size();
     if (protocolTemplate.lengthSize > 0 && protocolTemplate.lengthMode == LengthMode::FrameLength) {
-        frameLength = static_cast<int>(result.lengthValue);
+        expectedFrameLength = result.lengthValue;
     } else if (protocolTemplate.lengthSize > 0 && protocolTemplate.payloadLength <= 0) {
-        frameLength = protocolTemplate.payloadOffset + static_cast<int>(result.lengthValue) + checksumBytes;
+        expectedFrameLength = qint64(protocolTemplate.payloadOffset) + result.lengthValue + checksumBytes;
     } else if (protocolTemplate.payloadLength > 0) {
-        frameLength = protocolTemplate.payloadOffset + protocolTemplate.payloadLength + checksumBytes;
+        expectedFrameLength = qint64(protocolTemplate.payloadOffset) + protocolTemplate.payloadLength + checksumBytes;
     }
 
-    if (frameLength <= 0 || frameLength > MaxProtocolFrameBytes) {
+    if (expectedFrameLength <= 0 || expectedFrameLength > MaxProtocolFrameBytes) {
         result.errorMessage = AppI18n::text("解析出的帧长度无效");
         return result;
     }
+    const int frameLength = int(expectedFrameLength);
     if (frame.size() < frameLength) {
         result.errorMessage = AppI18n::text("帧长度不足：需要 %1 B，当前 %2 B").arg(frameLength).arg(frame.size());
         return result;

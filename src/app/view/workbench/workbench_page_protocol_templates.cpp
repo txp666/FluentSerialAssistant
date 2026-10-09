@@ -1,4 +1,6 @@
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/view/protocol_template_window.h"
+#include "app/view/quick_plot_window.h"
 
 #include <QtCore/QStringList>
 
@@ -8,6 +10,31 @@ using namespace WorkbenchPagePrivate;
 namespace {
 
 constexpr const char *ProtocolTemplateSettingsKey = "protocolTemplate/templates";
+constexpr const char *ProtocolTemplateExamplesSettingsKey = "protocolTemplate/exampleFrames";
+
+QString protocolInputError(const LineEdit *nameEdit, const LineEdit *headerEdit,
+                           const QList<QPair<QString, const LineEdit *>> &numberEdits)
+{
+    if (!nameEdit || nameEdit->text().trimmed().isEmpty()) {
+        return AppI18n::text("模板名称为空");
+    }
+    if (headerEdit) {
+        const HexParseResult header = parseHexPayload(headerEdit->text());
+        if (!header.ok) {
+            return AppI18n::text("帧头无效：%1，位置 %2").arg(header.errorMessage).arg(header.errorOffset + 1);
+        }
+    }
+    for (const auto &number : numberEdits) {
+        bool ok = false;
+        if (number.second) {
+            number.second->text().trimmed().toInt(&ok);
+        }
+        if (!ok || !number.second->hasAcceptableInput()) {
+            return AppI18n::text("%1需要输入有效的非负整数").arg(number.first);
+        }
+    }
+    return {};
+}
 
 bool setComboCurrentData(ComboBox *combo, const QVariant &data)
 {
@@ -70,33 +97,6 @@ void setEditValue(LineEdit *edit, int value)
     }
 }
 
-QString protocolTemplateExampleDetails()
-{
-    const QStringList lines = {
-        AppI18n::text("示例帧："),
-        QStringLiteral("AA 55 03 10 01 02 03 4D 6E"),
-        QString(),
-        AppI18n::text("字节位置从 0 开始："),
-        AppI18n::text("0-1：帧头 AA 55"),
-        AppI18n::text("2：长度字段 03，表示载荷长度 3 B"),
-        AppI18n::text("3：命令字 10"),
-        AppI18n::text("4-6：载荷 01 02 03"),
-        AppI18n::text("7-8：CRC16-Modbus，低字节在前 4D 6E"),
-        QString(),
-        AppI18n::text("对应配置："),
-        AppI18n::text("帧头 = AA 55"),
-        AppI18n::text("长度偏移 = 2，长度 = 1 B，含义 = 载荷长度"),
-        AppI18n::text("命令偏移 = 3，命令长度 = 1"),
-        AppI18n::text("载荷偏移 = 4，载荷长度 = 0"),
-        AppI18n::text("校验 = CRC16-Modbus，校验序 = 低字节在前"),
-        QString(),
-        AppI18n::text("载荷长度填 0 表示按长度字段自动计算。"),
-        AppI18n::text("没有长度字段时，长度选择 0 B，并填写固定载荷长度。"),
-        AppI18n::text("长度字段表示整帧总长时，含义选择整帧长度。"),
-    };
-    return lines.join(QLatin1Char('\n'));
-}
-
 } // namespace
 
 void WorkbenchPage::loadProtocolTemplates()
@@ -139,6 +139,11 @@ void WorkbenchPage::saveProtocolTemplates() const
     if (m_protocolEnabledCheck) {
         settings.setValue(QStringLiteral("protocolTemplate/enabled"), m_protocolEnabledCheck->isChecked());
     }
+    for (QuickPlotWindow *plotWindow : m_quickPlotWindows) {
+        if (plotWindow) {
+            plotWindow->setProtocolTemplates(m_protocolTemplates);
+        }
+    }
 }
 
 void WorkbenchPage::updateProtocolTemplateCombo(int selectedIndex)
@@ -179,10 +184,19 @@ void WorkbenchPage::updateProtocolTemplateActionState()
         m_protocolChecksumAlgorithmCombo->currentData().toString() != AppProtocol::checksumNoneKey();
 
     if (m_protocolSaveButton) {
-        m_protocolSaveButton->setEnabled(hasName);
+        const QString error = protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
+            {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
+             {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
+             {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
+             {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
+             {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
+        m_protocolSaveButton->setEnabled(hasName && error.isEmpty());
     }
     if (m_protocolDeleteButton) {
-        m_protocolDeleteButton->setEnabled(m_protocolTemplates.size() > 1);
+        const int selectedIndex = m_protocolTemplateCombo ? m_protocolTemplateCombo->currentIndex() : -1;
+        const bool selectedTemplate = selectedIndex >= 0 && selectedIndex < m_protocolTemplates.size() && hasName &&
+            m_protocolTemplates.at(selectedIndex).name == m_protocolNameEdit->text().trimmed();
+        m_protocolDeleteButton->setEnabled(m_protocolTemplates.size() > 1 && selectedTemplate);
     }
     if (m_protocolLengthModeCombo) {
         m_protocolLengthModeCombo->setEnabled(lengthSize > 0);
@@ -193,9 +207,62 @@ void WorkbenchPage::updateProtocolTemplateActionState()
     if (m_protocolChecksumByteOrderCombo) {
         m_protocolChecksumByteOrderCombo->setEnabled(checksumEnabled);
     }
-    if (m_protocolStatusLabel && !enabled) {
-        m_protocolStatusLabel->setText(AppI18n::text("协议模板未启用"));
+    if (m_protocolStatusLabel && !m_updatingProtocolTemplateUi) {
+        const AppProtocol::ProtocolTemplate item = currentProtocolTemplateFromUi();
+        if (!enabled) {
+            m_protocolStatusLabel->setText(AppI18n::text("协议模板未启用") + QStringLiteral(" · ") + item.name);
+        } else {
+            m_protocolStatusLabel->setText(AppI18n::text("%1 · 帧头 %2 B · 命令 %3 B · %4")
+                .arg(item.name).arg(item.header.size()).arg(item.commandSize)
+                .arg(checksumEnabled ? AppChecksum::labelForAlgorithm(item.checksumAlgorithm) : AppI18n::text("无校验")));
+        }
     }
+    if (!m_updatingProtocolTemplateUi) {
+        updateProtocolTemplatePreview();
+    }
+}
+
+void WorkbenchPage::showProtocolTemplateWindow()
+{
+    if (!m_protocolTemplateWindow) {
+        return;
+    }
+    updateProtocolTemplatePreview();
+    m_protocolTemplateWindow->showNormal();
+    m_protocolTemplateWindow->raise();
+    m_protocolTemplateWindow->activateWindow();
+}
+
+void WorkbenchPage::updateProtocolTemplatePreview()
+{
+    if (!m_protocolTemplateWindow || m_updatingProtocolTemplateUi) {
+        return;
+    }
+    if (auto *selector =
+            m_protocolTemplateWindow->findChild<ComboBox *>(QStringLiteral("protocolEditorTemplateCombo"))) {
+        const QSignalBlocker blocker(selector);
+        QStringList names;
+        for (const AppProtocol::ProtocolTemplate &item : m_protocolTemplates) {
+            names.append(item.name);
+        }
+        bool changed = selector->count() != names.size();
+        for (int i = 0; !changed && i < names.size(); ++i) {
+            changed = selector->itemText(i) != names.at(i);
+        }
+        if (changed) {
+            selector->clear();
+            selector->addItems(names);
+        }
+        selector->setCurrentIndex(names.indexOf(m_protocolNameEdit->text().trimmed()));
+    }
+    const QString error = protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
+        {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
+         {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
+         {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
+         {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
+         {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
+    m_protocolTemplateWindow->setConfigurationError(error);
+    m_protocolTemplateWindow->setProtocolTemplate(currentProtocolTemplateFromUi());
 }
 
 AppProtocol::ProtocolTemplate WorkbenchPage::currentProtocolTemplateFromUi() const
@@ -258,6 +325,15 @@ void WorkbenchPage::applyProtocolTemplate(int index)
         m_protocolStatusLabel->setText(AppI18n::text("协议模板未启用"));
     }
     m_updatingProtocolTemplateUi = false;
+    if (m_protocolTemplateWindow) {
+        AppSettings settings;
+        const QJsonDocument examples = QJsonDocument::fromJson(
+            settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8());
+        const QJsonValue example = examples.object().value(item.name);
+        if (example.isString()) {
+            m_protocolTemplateWindow->setSampleHex(example.toString());
+        }
+    }
     updateProtocolTemplateActionState();
 }
 
@@ -266,8 +342,14 @@ void WorkbenchPage::saveCurrentProtocolTemplate()
     if (!m_protocolNameEdit || !m_protocolHeaderEdit) {
         return;
     }
-    if (m_protocolNameEdit->text().trimmed().isEmpty()) {
-        showWarning(AppI18n::text("无法保存协议模板"), AppI18n::text("模板名称为空"));
+    const QString inputError = protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
+        {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
+         {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
+         {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
+         {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
+         {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
+    if (!inputError.isEmpty()) {
+        showWarning(AppI18n::text("无法保存协议模板"), inputError);
         return;
     }
 
@@ -297,6 +379,17 @@ void WorkbenchPage::saveCurrentProtocolTemplate()
         index = m_protocolTemplates.size() - 1;
     }
 
+    if (m_protocolTemplateWindow) {
+        const HexParseResult example = parseHexPayload(m_protocolTemplateWindow->sampleHex());
+        if (example.ok) {
+            AppSettings settings;
+            QJsonObject examples = QJsonDocument::fromJson(
+                settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8()).object();
+            examples.insert(item.name, bytesToHex(example.bytes));
+            settings.setValue(QLatin1String(ProtocolTemplateExamplesSettingsKey),
+                              QString::fromUtf8(QJsonDocument(examples).toJson(QJsonDocument::Compact)));
+        }
+    }
     updateProtocolTemplateCombo(index);
     saveProtocolTemplates();
     showSuccess(AppI18n::text("已保存协议模板"), item.name);
@@ -308,12 +401,21 @@ void WorkbenchPage::deleteCurrentProtocolTemplate()
     if (index < 0 || index >= m_protocolTemplates.size()) {
         return;
     }
+    if (!m_protocolNameEdit || m_protocolNameEdit->text().trimmed() != m_protocolTemplates.at(index).name) {
+        return;
+    }
     if (m_protocolTemplates.size() <= 1) {
         showWarning(AppI18n::text("无法删除协议模板"), AppI18n::text("至少保留一个协议模板"));
         return;
     }
 
     const QString name = m_protocolTemplates.at(index).name;
+    AppSettings settings;
+    QJsonObject examples = QJsonDocument::fromJson(
+        settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8()).object();
+    examples.remove(name);
+    settings.setValue(QLatin1String(ProtocolTemplateExamplesSettingsKey),
+                      QString::fromUtf8(QJsonDocument(examples).toJson(QJsonDocument::Compact)));
     m_protocolTemplates.removeAt(index);
     updateProtocolTemplateCombo(qMin(index, m_protocolTemplates.size() - 1));
     saveProtocolTemplates();
@@ -326,20 +428,19 @@ void WorkbenchPage::insertProtocolTemplateExample()
     item.name = uniqueProtocolTemplateName(m_protocolTemplates, item.name);
     m_protocolTemplates.append(item);
     updateProtocolTemplateCombo(m_protocolTemplates.size() - 1);
+    if (m_protocolTemplateWindow) {
+        m_protocolTemplateWindow->setSampleHex(QStringLiteral("AA 55 03 10 01 02 03 4D 6E"));
+    }
     saveProtocolTemplates();
-
-    const QString detail =
-        AppI18n::text("已添加示例模板：%1").arg(item.name) + QStringLiteral("\n\n") + protocolTemplateExampleDetails();
-    MessageBox dialog(AppI18n::text("协议模板示例说明"), detail, window());
-    dialog.hideCancelButton();
-    dialog.setClosableOnMaskClicked(true);
-    dialog.setDraggable(true);
-    dialog.setContentCopyable(true);
-    dialog.exec();
+    showProtocolTemplateWindow();
+    showInfo(AppI18n::text("已添加示例模板"), item.name);
 }
 
 QString WorkbenchPage::protocolParseSourceLabel(const QByteArray &data)
 {
+    if (m_protocolTemplateWindow && m_protocolTemplateWindow->isVisible() && !m_protocolTemplateWindow->isMinimized()) {
+        m_protocolTemplateWindow->setLastFrame(data);
+    }
     if (!m_protocolEnabledCheck || !m_protocolEnabledCheck->isChecked() || m_protocolTemplates.isEmpty()) {
         return {};
     }

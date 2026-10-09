@@ -2609,6 +2609,298 @@ JSON 对象：递归读取对象和数组中的数值
         <source>查看更新</source>
         <translation>查看更新</translation>
     </message>
+    <message>
+        <source>逗号、分号或空格分隔的数字，每行对应一个采样点。</source>
+        <translation>逗号、分号或空格分隔的数字，每行对应一个采样点。</translation>
+    </message>
+    <message>
+        <source>读取 name=value 或 name: value，支持中文和含空格的字段名。</source>
+        <translation>读取 name=value 或 name: value，支持中文和含空格的字段名。</translation>
+    </message>
+    <message>
+        <source>递归读取 JSON 对象和数组中的数字，字段使用路径名称。</source>
+        <translation>递归读取 JSON 对象和数组中的数字，字段使用路径名称。</translation>
+    </message>
+    <message>
+        <source>按字节偏移读取数值，换算结果 = 原始值 × 比例 + 加值。</source>
+        <translation>按字节偏移读取数值，换算结果 = 原始值 × 比例 + 加值。</translation>
+    </message>
+    <message>
+        <source>提取文本每行中的全部数字，按顺序生成 CH1、CH2 等通道。</source>
+        <translation>提取文本每行中的全部数字，按顺序生成 CH1、CH2 等通道。</translation>
+    </message>
+    <message>
+        <source>绘图协议</source>
+        <translation>绘图协议</translation>
+    </message>
+    <message>
+        <source>选择本窗口的数据协议，用样例确认解析结果后创建曲线。</source>
+        <translation>选择本窗口的数据协议，用样例确认解析结果后创建曲线。</translation>
+    </message>
+    <message>
+        <source>本窗口独立使用以下协议；修改协议会清空已有曲线。</source>
+        <translation>本窗口独立使用以下协议；修改协议会清空已有曲线。</translation>
+    </message>
+    <message>
+        <source>请选择协议</source>
+        <translation>请选择协议</translation>
+    </message>
+    <message>
+        <source>协议类型</source>
+        <translation>协议类型</translation>
+    </message>
+    <message>
+        <source>留空显示全部；多个字段用逗号分隔</source>
+        <translation>留空显示全部；多个字段用逗号分隔</translation>
+    </message>
+    <message>
+        <source>帧模板</source>
+        <translation>帧模板</translation>
+    </message>
+    <message>
+        <source>请选择帧模板</source>
+        <translation>请选择帧模板</translation>
+    </message>
+    <message>
+        <source>字段留空时按字节生成通道。协议载荷使用本窗口选择的帧模板，并验证帧校验。</source>
+        <translation>字段留空时按字节生成通道。协议载荷使用本窗口选择的帧模板，并验证帧校验。</translation>
+    </message>
+    <message>
+        <source>样例输入</source>
+        <translation>样例输入</translation>
+    </message>
+    <message>
+        <source>填入示例</source>
+        <translation>填入示例</translation>
+    </message>
+    <message>
+        <source>粘贴设备数据，实时查看字段和值</source>
+        <translation>粘贴设备数据，实时查看字段和值</translation>
+    </message>
+    <message>
+        <source>解析预览</source>
+        <translation>解析预览</translation>
+    </message>
+    <message>
+        <source>使用选中字段</source>
+        <translation>使用选中字段</translation>
+    </message>
+    <message>
+        <source>采样</source>
+        <translation>采样</translation>
+    </message>
+    <message>
+        <source>字段</source>
+        <translation>字段</translation>
+    </message>
+    <message>
+        <source>值</source>
+        <translation>值</translation>
+    </message>
+    <message>
+        <source>创建曲线</source>
+        <translation>创建曲线</translation>
+    </message>
+    <message>
+        <source>（当前窗口）</source>
+        <translation>（当前窗口）</translation>
+    </message>
+    <message>
+        <source>请先选择协议类型。</source>
+        <translation>请先选择协议类型。</translation>
+    </message>
+    <message>
+        <source>请选择用于提取载荷的帧模板。</source>
+        <translation>请选择用于提取载荷的帧模板。</translation>
+    </message>
+    <message>
+        <source>每个曲线窗口都需要单独选择协议。</source>
+        <translation>每个曲线窗口都需要单独选择协议。</translation>
+    </message>
+    <message>
+        <source>可粘贴样例或填入示例，确认字段与数值。</source>
+        <translation>可粘贴样例或填入示例，确认字段与数值。</translation>
+    </message>
+    <message>
+        <source>HEX 输入无效：%1</source>
+        <translation>HEX 输入无效：%1</translation>
+    </message>
+    <message>
+        <source>帧校验错误，请检查样例或模板。</source>
+        <translation>帧校验错误，请检查样例或模板。</translation>
+    </message>
+    <message>
+        <source>未找到匹配的数字字段，请检查样例、字段筛选或字节偏移。</source>
+        <translation>未找到匹配的数字字段，请检查样例、字段筛选或字节偏移。</translation>
+    </message>
+    <message>
+        <source>%1 个采样 · %2 个字段值</source>
+        <translation>%1 个采样 · %2 个字段值</translation>
+    </message>
+    <message>
+        <source> · 预览前 %1 项</source>
+        <translation> · 预览前 %1 项</translation>
+    </message>
+    <message>
+        <source>第 %1 行的字段名称重复</source>
+        <translation>第 %1 行的字段名称重复</translation>
+    </message>
+    <message>
+        <source>曲线 %1</source>
+        <translation>曲线 %1</translation>
+    </message>
+    <message>
+        <source>帧头无效：%1，位置 %2</source>
+        <translation>帧头无效：%1，位置 %2</translation>
+    </message>
+    <message>
+        <source>%1需要输入有效的非负整数</source>
+        <translation>%1需要输入有效的非负整数</translation>
+    </message>
+    <message>
+        <source>长度偏移</source>
+        <translation>长度偏移</translation>
+    </message>
+    <message>
+        <source>%1 · 帧头 %2 B · 命令 %3 B · %4</source>
+        <translation>%1 · 帧头 %2 B · 命令 %3 B · %4</translation>
+    </message>
+    <message>
+        <source>编辑协议</source>
+        <translation>编辑协议</translation>
+    </message>
+    <message>
+        <source>名称与帧头</source>
+        <translation>名称与帧头</translation>
+    </message>
+    <message>
+        <source>未保存的协议</source>
+        <translation>未保存的协议</translation>
+    </message>
+    <message>
+        <source>帧头 HEX，如 AA 55</source>
+        <translation>帧头 HEX，如 AA 55</translation>
+    </message>
+    <message>
+        <source>长度字段</source>
+        <translation>长度字段</translation>
+    </message>
+    <message>
+        <source>没有长度字段时选择 0 B。</source>
+        <translation>没有长度字段时选择 0 B。</translation>
+    </message>
+    <message>
+        <source>命令字段</source>
+        <translation>命令字段</translation>
+    </message>
+    <message>
+        <source>字节数</source>
+        <translation>字节数</translation>
+    </message>
+    <message>
+        <source>载荷字段</source>
+        <translation>载荷字段</translation>
+    </message>
+    <message>
+        <source>固定长度填 0，按长度字段或剩余字节自动计算。</source>
+        <translation>固定长度填 0，按长度字段或剩余字节自动计算。</translation>
+    </message>
+    <message>
+        <source>校验字段</source>
+        <translation>校验字段</translation>
+    </message>
+    <message>
+        <source>算法</source>
+        <translation>算法</translation>
+    </message>
+    <message>
+        <source>校验位于帧末尾，计算范围为校验前的全部字节。</source>
+        <translation>校验位于帧末尾，计算范围为校验前的全部字节。</translation>
+    </message>
+    <message>
+        <source>添加示例</source>
+        <translation>添加示例</translation>
+    </message>
+    <message>
+        <source>新协议</source>
+        <translation>新协议</translation>
+    </message>
+    <message>
+        <source>新协议 %1</source>
+        <translation>新协议 %1</translation>
+    </message>
+    <message>
+        <source>其他</source>
+        <translation>其他</translation>
+    </message>
+    <message>
+        <source>帧协议编辑器</source>
+        <translation>帧协议编辑器</translation>
+    </message>
+    <message>
+        <source>协议结构与样例解析</source>
+        <translation>协议结构与样例解析</translation>
+    </message>
+    <message>
+        <source>样例帧 HEX</source>
+        <translation>样例帧 HEX</translation>
+    </message>
+    <message>
+        <source>内置示例帧</source>
+        <translation>内置示例帧</translation>
+    </message>
+    <message>
+        <source>最新接收</source>
+        <translation>最新接收</translation>
+    </message>
+    <message>
+        <source>编辑字段或样例即可更新解析；字节位置从 0 开始。</source>
+        <translation>编辑字段或样例即可更新解析；字节位置从 0 开始。</translation>
+    </message>
+    <message>
+        <source>位置</source>
+        <translation>位置</translation>
+    </message>
+    <message>
+        <source>解析值</source>
+        <translation>解析值</translation>
+    </message>
+    <message>
+        <source>配置有效</source>
+        <translation>配置有效</translation>
+    </message>
+    <message>
+        <source>样例 HEX 无效：%1，位置 %2</source>
+        <translation>样例 HEX 无效：%1，位置 %2</translation>
+    </message>
+    <message>
+        <source>仅显示前 %1 B；解析使用完整样例。 </source>
+        <translation>仅显示前 %1 B；解析使用完整样例。 </translation>
+    </message>
+    <message>
+        <source>无长度字段</source>
+        <translation>无长度字段</translation>
+    </message>
+    <message>
+        <source>正确</source>
+        <translation>正确</translation>
+    </message>
+    <message>
+        <source>错误</source>
+        <translation>错误</translation>
+    </message>
+    <message>
+        <source>预期 %1</source>
+        <translation>预期 %1</translation>
+    </message>
+    <message>
+        <source>整帧</source>
+        <translation>整帧</translation>
+    </message>
+    <message>
+        <source>当前 %1 B / 需要 %2 B</source>
+        <translation>当前 %1 B / 需要 %2 B</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

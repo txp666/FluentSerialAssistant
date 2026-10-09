@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/core/plot_value_parser.h"
+#include "app/core/protocol_template.h"
 
 #include <QtCore/QByteArray>
 #include <QtCore/QDateTime>
@@ -9,7 +10,7 @@
 
 namespace FluentQt {
 class CaptionLabel;
-class ComboBox;
+class BodyLabel;
 class PushButton;
 class RealtimePlotWidget;
 } // namespace FluentQt
@@ -27,6 +28,8 @@ class QuickPlotWindow : public QWidget
                       const QByteArray &payload = {});
     void clearData();
     bool configureParser(const AppPlot::ParserConfig &config);
+    void setProtocolTemplates(const QList<AppProtocol::ProtocolTemplate> &protocolTemplates);
+    void setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate);
     bool requiresProtocolPayload() const;
     bool isPlottingActive() const;
 
@@ -47,6 +50,7 @@ class QuickPlotWindow : public QWidget
     int channelIndexFor(const QString &name, int position);
     void ensureSeriesCount(int count);
     void updateStatus();
+    void updateProtocolName();
     void setPlottingActive(bool active);
     void setPaused(bool paused);
     void showParserSettings();
@@ -54,15 +58,18 @@ class QuickPlotWindow : public QWidget
     void exportCsv();
 
     FluentQt::RealtimePlotWidget *m_plot = nullptr;
-    FluentQt::ComboBox *m_protocolCombo = nullptr;
+    FluentQt::BodyLabel *m_protocolNameLabel = nullptr;
     FluentQt::PushButton *m_pauseButton = nullptr;
     FluentQt::CaptionLabel *m_statusLabel = nullptr;
     QVector<QString> m_channelNames;
     QVector<PlotRow> m_rows;
     AppPlot::ParserConfig m_parserConfig;
+    QList<AppProtocol::ProtocolTemplate> m_protocolTemplates;
+    AppProtocol::ProtocolTemplate m_protocolTemplate;
     int m_channelCount = 0;
     int m_nextSample = 0;
     int m_plotRefreshRate = 0;
     bool m_paused = false;
     bool m_plottingActive = false;
+    bool m_hasProtocolTemplate = false;
 };

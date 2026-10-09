@@ -2609,6 +2609,298 @@ Installation log: %2</translation>
         <source>查看更新</source>
         <translation>View update</translation>
     </message>
+    <message>
+        <source>逗号、分号或空格分隔的数字，每行对应一个采样点。</source>
+        <translation>Numbers separated by commas, semicolons, or spaces. Each line is one sample.</translation>
+    </message>
+    <message>
+        <source>读取 name=value 或 name: value，支持中文和含空格的字段名。</source>
+        <translation>Read name=value or name: value, including Chinese field names and names with spaces.</translation>
+    </message>
+    <message>
+        <source>递归读取 JSON 对象和数组中的数字，字段使用路径名称。</source>
+        <translation>Read numbers recursively from JSON objects and arrays, using paths as field names.</translation>
+    </message>
+    <message>
+        <source>按字节偏移读取数值，换算结果 = 原始值 × 比例 + 加值。</source>
+        <translation>Read values at byte offsets. Converted value = raw value × scale + offset.</translation>
+    </message>
+    <message>
+        <source>提取文本每行中的全部数字，按顺序生成 CH1、CH2 等通道。</source>
+        <translation>Extract all numbers from each line of text and assign them to CH1, CH2, and so on.</translation>
+    </message>
+    <message>
+        <source>绘图协议</source>
+        <translation>Plot protocol</translation>
+    </message>
+    <message>
+        <source>选择本窗口的数据协议，用样例确认解析结果后创建曲线。</source>
+        <translation>Choose a data protocol for this window. Check the parsed sample before creating the plot.</translation>
+    </message>
+    <message>
+        <source>本窗口独立使用以下协议；修改协议会清空已有曲线。</source>
+        <translation>This window uses its own protocol. Changing the protocol clears the existing plot.</translation>
+    </message>
+    <message>
+        <source>请选择协议</source>
+        <translation>Select a protocol</translation>
+    </message>
+    <message>
+        <source>协议类型</source>
+        <translation>Protocol type</translation>
+    </message>
+    <message>
+        <source>留空显示全部；多个字段用逗号分隔</source>
+        <translation>Leave blank to show all fields; separate multiple fields with commas</translation>
+    </message>
+    <message>
+        <source>帧模板</source>
+        <translation>Frame template</translation>
+    </message>
+    <message>
+        <source>请选择帧模板</source>
+        <translation>Select a frame template</translation>
+    </message>
+    <message>
+        <source>字段留空时按字节生成通道。协议载荷使用本窗口选择的帧模板，并验证帧校验。</source>
+        <translation>Leave fields blank to create one channel per byte. Protocol payload uses this window's selected frame template and validates the frame checksum.</translation>
+    </message>
+    <message>
+        <source>样例输入</source>
+        <translation>Sample input</translation>
+    </message>
+    <message>
+        <source>填入示例</source>
+        <translation>Load example</translation>
+    </message>
+    <message>
+        <source>粘贴设备数据，实时查看字段和值</source>
+        <translation>Paste device data to preview fields and values</translation>
+    </message>
+    <message>
+        <source>解析预览</source>
+        <translation>Parse preview</translation>
+    </message>
+    <message>
+        <source>使用选中字段</source>
+        <translation>Use selected fields</translation>
+    </message>
+    <message>
+        <source>采样</source>
+        <translation>Sample</translation>
+    </message>
+    <message>
+        <source>字段</source>
+        <translation>Field</translation>
+    </message>
+    <message>
+        <source>值</source>
+        <translation>Value</translation>
+    </message>
+    <message>
+        <source>创建曲线</source>
+        <translation>Create plot</translation>
+    </message>
+    <message>
+        <source>（当前窗口）</source>
+        <translation> (current window)</translation>
+    </message>
+    <message>
+        <source>请先选择协议类型。</source>
+        <translation>Select a protocol type first.</translation>
+    </message>
+    <message>
+        <source>请选择用于提取载荷的帧模板。</source>
+        <translation>Select a frame template for extracting the payload.</translation>
+    </message>
+    <message>
+        <source>每个曲线窗口都需要单独选择协议。</source>
+        <translation>Choose a protocol separately for each plot window.</translation>
+    </message>
+    <message>
+        <source>可粘贴样例或填入示例，确认字段与数值。</source>
+        <translation>Paste a sample or load an example to check fields and values.</translation>
+    </message>
+    <message>
+        <source>HEX 输入无效：%1</source>
+        <translation>Invalid HEX input: %1</translation>
+    </message>
+    <message>
+        <source>帧校验错误，请检查样例或模板。</source>
+        <translation>Frame checksum mismatch. Check the sample or template.</translation>
+    </message>
+    <message>
+        <source>未找到匹配的数字字段，请检查样例、字段筛选或字节偏移。</source>
+        <translation>No matching numeric fields found. Check the sample, field filter, or byte offsets.</translation>
+    </message>
+    <message>
+        <source>%1 个采样 · %2 个字段值</source>
+        <translation>%1 samples · %2 field values</translation>
+    </message>
+    <message>
+        <source> · 预览前 %1 项</source>
+        <translation> · Previewing the first %1 entries</translation>
+    </message>
+    <message>
+        <source>第 %1 行的字段名称重复</source>
+        <translation>Duplicate field name in row %1</translation>
+    </message>
+    <message>
+        <source>曲线 %1</source>
+        <translation>Plot %1</translation>
+    </message>
+    <message>
+        <source>帧头无效：%1，位置 %2</source>
+        <translation>Invalid frame header: %1 at position %2</translation>
+    </message>
+    <message>
+        <source>%1需要输入有效的非负整数</source>
+        <translation>%1 requires a valid nonnegative integer</translation>
+    </message>
+    <message>
+        <source>长度偏移</source>
+        <translation>Length offset</translation>
+    </message>
+    <message>
+        <source>%1 · 帧头 %2 B · 命令 %3 B · %4</source>
+        <translation>%1 · Header %2 B · Command %3 B · %4</translation>
+    </message>
+    <message>
+        <source>编辑协议</source>
+        <translation>Edit protocol</translation>
+    </message>
+    <message>
+        <source>名称与帧头</source>
+        <translation>Name and frame header</translation>
+    </message>
+    <message>
+        <source>未保存的协议</source>
+        <translation>Unsaved protocol</translation>
+    </message>
+    <message>
+        <source>帧头 HEX，如 AA 55</source>
+        <translation>Frame header in HEX, e.g. AA 55</translation>
+    </message>
+    <message>
+        <source>长度字段</source>
+        <translation>Length field</translation>
+    </message>
+    <message>
+        <source>没有长度字段时选择 0 B。</source>
+        <translation>Select 0 B if there is no length field.</translation>
+    </message>
+    <message>
+        <source>命令字段</source>
+        <translation>Command field</translation>
+    </message>
+    <message>
+        <source>字节数</source>
+        <translation>Byte count</translation>
+    </message>
+    <message>
+        <source>载荷字段</source>
+        <translation>Payload field</translation>
+    </message>
+    <message>
+        <source>固定长度填 0，按长度字段或剩余字节自动计算。</source>
+        <translation>Set the fixed length to 0 to use the length field or the remaining bytes.</translation>
+    </message>
+    <message>
+        <source>校验字段</source>
+        <translation>Checksum field</translation>
+    </message>
+    <message>
+        <source>算法</source>
+        <translation>Algorithm</translation>
+    </message>
+    <message>
+        <source>校验位于帧末尾，计算范围为校验前的全部字节。</source>
+        <translation>The checksum is at the end of the frame and covers all preceding bytes.</translation>
+    </message>
+    <message>
+        <source>添加示例</source>
+        <translation>Add example</translation>
+    </message>
+    <message>
+        <source>新协议</source>
+        <translation>New protocol</translation>
+    </message>
+    <message>
+        <source>新协议 %1</source>
+        <translation>New protocol %1</translation>
+    </message>
+    <message>
+        <source>其他</source>
+        <translation>Other</translation>
+    </message>
+    <message>
+        <source>帧协议编辑器</source>
+        <translation>Frame protocol editor</translation>
+    </message>
+    <message>
+        <source>协议结构与样例解析</source>
+        <translation>Protocol structure and sample parsing</translation>
+    </message>
+    <message>
+        <source>样例帧 HEX</source>
+        <translation>Sample frame HEX</translation>
+    </message>
+    <message>
+        <source>内置示例帧</source>
+        <translation>Built-in example frame</translation>
+    </message>
+    <message>
+        <source>最新接收</source>
+        <translation>Latest received frame</translation>
+    </message>
+    <message>
+        <source>编辑字段或样例即可更新解析；字节位置从 0 开始。</source>
+        <translation>Edit fields or the sample to update the parsing. Byte positions start at 0.</translation>
+    </message>
+    <message>
+        <source>位置</source>
+        <translation>Position</translation>
+    </message>
+    <message>
+        <source>解析值</source>
+        <translation>Parsed value</translation>
+    </message>
+    <message>
+        <source>配置有效</source>
+        <translation>Valid configuration</translation>
+    </message>
+    <message>
+        <source>样例 HEX 无效：%1，位置 %2</source>
+        <translation>Invalid sample HEX: %1 at position %2</translation>
+    </message>
+    <message>
+        <source>仅显示前 %1 B；解析使用完整样例。 </source>
+        <translation>Only the first %1 B are shown; parsing uses the full sample. </translation>
+    </message>
+    <message>
+        <source>无长度字段</source>
+        <translation>No length field</translation>
+    </message>
+    <message>
+        <source>正确</source>
+        <translation>Valid</translation>
+    </message>
+    <message>
+        <source>错误</source>
+        <translation>Invalid</translation>
+    </message>
+    <message>
+        <source>预期 %1</source>
+        <translation>Expected %1</translation>
+    </message>
+    <message>
+        <source>整帧</source>
+        <translation>Full frame</translation>
+    </message>
+    <message>
+        <source>当前 %1 B / 需要 %2 B</source>
+        <translation>Current %1 B / Required %2 B</translation>
+    </message>
 </context>
 <context>
     <name>FluentQt::RealtimePlotWidget</name>

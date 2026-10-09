@@ -28,6 +28,7 @@ class DataTableWindow;
 class ScriptRunner;
 struct DataTableRecord;
 class QuickPlotWindow;
+class ProtocolTemplateWindow;
 
 class WorkbenchPage : public AppPage, public AppControl::SessionControl
 {
@@ -35,6 +36,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
 
     friend class WorkbenchDataTableTest;
     friend class WorkbenchQuickPlotTest;
+    friend class ProtocolWindowsTest;
     friend class TerminalSearchTest;
     friend class TerminalColorsTest;
 
@@ -277,6 +279,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void updateProtocolTemplateCombo(int selectedIndex = -1);
     void updateProtocolTemplateUi();
     void updateProtocolTemplateActionState();
+    void showProtocolTemplateWindow();
+    void updateProtocolTemplatePreview();
     AppProtocol::ProtocolTemplate currentProtocolTemplateFromUi() const;
     void applyProtocolTemplate(int index);
     void saveCurrentProtocolTemplate();
@@ -365,6 +369,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QByteArray serializeLogRecord(const SessionRecord &record, ExportFormat format) const;
     void updateAutoLogStatus();
     void showQuickPlotWindow();
+    QuickPlotWindow *createQuickPlotWindow(const AppPlot::ParserConfig &config,
+                                          const AppProtocol::ProtocolTemplate *protocolTemplate = nullptr);
     void appendQuickPlotRecord(const SessionRecord &record);
     void showDataTableWindow();
     void refreshDataTableWindow();
@@ -510,6 +516,9 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::TextBrowser *m_terminalView = nullptr;
     DataTableWindow *m_dataTableWindow = nullptr;
     QuickPlotWindow *m_quickPlotWindow = nullptr;
+    QList<QuickPlotWindow *> m_quickPlotWindows;
+    int m_nextPlotWindowNumber = 1;
+    ProtocolTemplateWindow *m_protocolTemplateWindow = nullptr;
     FluentQt::PrimaryPushButton *m_connectButton = nullptr;
     FluentQt::PrimaryPushButton *m_sendButton = nullptr;
     FluentQt::TransparentToolButton *m_receiveModeButton = nullptr;

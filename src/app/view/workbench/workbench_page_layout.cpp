@@ -21,6 +21,8 @@ QWidget *WorkbenchPage::createWorkbench()
     auto *sideLayout = new QVBoxLayout(m_sidePanel);
     sideLayout->setContentsMargins(0, 0, 0, 0);
     sideLayout->setSpacing(10);
+    // Keep the scroll content size in step with animated card heights.
+    sideLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
     sideLayout->addWidget(createConnectionSection());
     sideLayout->addWidget(createReceiveSettingsSection());
     sideLayout->addWidget(createProtocolTemplateSection());
