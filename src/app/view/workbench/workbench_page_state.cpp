@@ -1,5 +1,6 @@
 #include "app/core/app_i18n.h"
 #include "app/serial/virtual_serial_pair.h"
+#include "app/view/quick_plot_window.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
@@ -517,6 +518,9 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
 
     m_records.clear();
     m_firstRecordIndex = 0;
+    if (m_quickPlotWindow) {
+        m_quickPlotWindow->clearData();
+    }
     m_pendingRecordIndexes.clear();
     m_terminalSearchMatches.clear();
     m_terminalCurrentSearchMatch = -1;
@@ -584,6 +588,16 @@ void WorkbenchPage::updateCounters()
             m_terminalSummaryLabel->setText(QStringLiteral("%1/%2").arg(current).arg(m_terminalSearchMatches.size()));
         }
     }
+}
+
+void WorkbenchPage::resetCounters()
+{
+    m_rxCount = 0;
+    m_txCount = 0;
+    m_lastStatsRxCount = 0;
+    m_lastStatsTxCount = 0;
+    updateCounters();
+    updateRateStats();
 }
 
 void WorkbenchPage::updateRateStats()

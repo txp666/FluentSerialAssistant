@@ -156,8 +156,12 @@ class TerminalSearchTest : public QObject
                  locale == QStringLiteral("en_US") ? QStringLiteral("Total") : QStringLiteral("累计"));
         const auto buttons = actions->findChildren<FluentQt::ToolButton *>(QString(), Qt::FindDirectChildrenOnly);
         QCOMPARE(buttons.size(), 7);
+        auto *clearButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalClearButton"));
+        QVERIFY(clearButton);
         QWidget *header = actions->parentWidget();
         QCOMPARE(statistics->parentWidget(), header);
+        QCOMPARE(clearButton->parentWidget(), header);
+        QCOMPARE(header->layout()->itemAt(0)->widget(), clearButton);
         const QString connectedText = AppI18n::text("已连接");
         QCOMPARE(connectedText,
                  locale == QStringLiteral("en_US") ? QStringLiteral("Connected") : QStringLiteral("已连接"));
@@ -166,10 +170,15 @@ class TerminalSearchTest : public QObject
         const QString regularConnectionText = QStringLiteral("03:41");
 
         const auto verifyVisibleHeader = [&]() {
+            const QRect clearBounds(clearButton->mapTo(page.viewport(), QPoint()), clearButton->size());
             const QRect statisticsBounds(statistics->mapTo(page.viewport(), QPoint()), statistics->size());
             const QRect actionBounds(actions->mapTo(page.viewport(), QPoint()), actions->size());
+            QVERIFY(clearButton->isVisible());
+            QCOMPARE(clearButton->size(), QSize(32, 32));
+            QVERIFY(page.viewport()->rect().contains(clearBounds));
             QVERIFY(page.viewport()->rect().contains(statisticsBounds));
             QVERIFY(page.viewport()->rect().contains(actionBounds));
+            QVERIFY(clearBounds.right() < statisticsBounds.left());
             QVERIFY(statisticsBounds.right() < actionBounds.left());
             QList<QRect> buttonBounds;
             for (auto *button : buttons) {
@@ -345,10 +354,9 @@ class TerminalSearchTest : public QObject
             verifyChangingStatistics();
             verifyStatisticsBounds();
             QCOMPARE(page.m_connectionTimeLabel->text(), connectionText);
-            if (width <= 260) {
-                QVERIFY(statistics->toolTip().contains(page.m_rxCounterLabel->text()));
-                QVERIFY(statistics->toolTip().contains(page.m_txCounterLabel->text()));
-                QVERIFY(statistics->toolTip().contains(connectionText));
+            QVERIFY(statistics->toolTip().isEmpty());
+            for (auto *group : page.m_terminalStatsGroups) {
+                QVERIFY(group->toolTip().isEmpty());
             }
         }
         restoreUsualStatistics();
@@ -528,6 +536,60 @@ class TerminalSearchTest : public QObject
             const QRect bounds(button->mapTo(page.m_terminalSearchEdit, QPoint()), button->size());
             QVERIFY(page.m_terminalSearchEdit->rect().contains(bounds));
         }
+    }
+
+    void headerClearResetsTerminalAndTrafficBeforeReceivingAgain()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        preparePage(page, false);
+        auto *clearButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalClearButton"));
+        QVERIFY(clearButton);
+        page.handleReceivedData(QByteArrayLiteral("needle 12"));
+        page.appendRecord(WorkbenchPage::RecordDirection::Tx, QByteArrayLiteral("sent"));
+        page.flushPendingLines();
+        page.updateRateStats();
+        page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
+        QVERIFY(!page.m_terminalView->toPlainText().isEmpty());
+        QVERIFY(!page.m_terminalSearchMatches.isEmpty());
+        QVERIFY(page.m_lastStatsRxCount > 0);
+        QVERIFY(page.m_lastStatsTxCount > 0);
+        const int retainedRecords = page.m_records.size();
+
+        // Pending terminal output and a partial frame must not reappear after clearing.
+        page.handleReceivedData(QByteArrayLiteral("pending"));
+        page.m_rxFrameBuffer = QByteArrayLiteral("partial frame");
+        clearButton->click();
+        QVERIFY(page.m_terminalView->toPlainText().isEmpty());
+        QCOMPARE(page.m_records.size(), retainedRecords + 1);
+        QCOMPARE(page.m_terminalStartRecord, page.m_records.size());
+        QVERIFY(page.m_pendingRecordIndexes.isEmpty());
+        QVERIFY(page.m_rxFrameBuffer.isEmpty());
+        QVERIFY(page.m_terminalSearchMatches.isEmpty());
+        QCOMPARE(page.m_terminalCurrentSearchMatch, -1);
+        QCOMPARE(page.m_rxCount, 0);
+        QCOMPARE(page.m_txCount, 0);
+        QCOMPARE(page.m_lastStatsRxCount, 0);
+        QCOMPARE(page.m_lastStatsTxCount, 0);
+        QCOMPARE(page.m_rxCounterLabel->text(), QStringLiteral("0 B"));
+        QCOMPARE(page.m_txCounterLabel->text(), QStringLiteral("0 B"));
+        QCOMPARE(page.m_rxRateLabel->text(), QStringLiteral("0 B/s"));
+        QCOMPARE(page.m_txRateLabel->text(), QStringLiteral("0 B/s"));
+        page.flushPendingLines();
+        page.renderTerminal();
+        QVERIFY(page.m_terminalView->toPlainText().isEmpty());
+
+        page.handleReceivedData(QByteArrayLiteral("new"));
+        page.appendRecord(WorkbenchPage::RecordDirection::Tx, QByteArrayLiteral("tx"));
+        page.flushPendingLines();
+        page.updateCounters();
+        page.updateRateStats();
+        QVERIFY(page.m_terminalView->toPlainText().contains(QStringLiteral("new")));
+        QVERIFY(!page.m_terminalView->toPlainText().contains(QStringLiteral("needle")));
+        QVERIFY(!page.m_terminalView->toPlainText().contains(QStringLiteral("pending")));
+        QCOMPARE(page.m_rxCounterLabel->text(), QStringLiteral("3 B"));
+        QCOMPARE(page.m_txCounterLabel->text(), QStringLiteral("2 B"));
+        QCOMPARE(page.m_rxRateLabel->text(), QStringLiteral("3 B/s"));
+        QCOMPARE(page.m_txRateLabel->text(), QStringLiteral("2 B/s"));
     }
 
     void searchBarDoesNotShowOrLeaveBehindHoverTooltips()

@@ -267,7 +267,6 @@ inline void addFormRow(QVBoxLayout *root, const QString &labelText, QWidget *con
 
     auto *label = new BodyLabel(labelText, parent);
     setFixedControlWidth(label, FormLabelWidth);
-    AppUi::setFluentToolTip(label, labelText);
     row->addWidget(label, 0, Qt::AlignVCenter);
 
     control->setMinimumWidth(0);

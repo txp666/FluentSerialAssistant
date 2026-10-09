@@ -11,7 +11,7 @@ using namespace WorkbenchPagePrivate;
 
 namespace {
 
-// Keep the full value for accessibility and tooltips when the header has to elide it.
+// Keep the full value for accessibility when the header has to elide it.
 template <typename Label> class TerminalStatLabel : public Label
 {
   public:
@@ -55,7 +55,6 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_terminalStatsWidget->setMinimumWidth(0);
     m_terminalStatsWidget->setFixedHeight(38);
     m_terminalStatsWidget->installEventFilter(this);
-    AppUi::installFluentToolTip(m_terminalStatsWidget);
     const auto createGroup = [this](const QString &name, const QString &description, const QString &lightBackground,
                                     const QString &darkBackground) {
         auto *group = new QWidget(m_terminalStatsWidget);
@@ -64,7 +63,6 @@ QWidget *WorkbenchPage::createTerminalSection()
         group->setAttribute(Qt::WA_StyledBackground);
         const QString style = QStringLiteral("QWidget#%1 { background-color: %2; border-radius: 5px; }");
         FluentStyleSheet::setCustomStyleSheet(group, style.arg(name, lightBackground), style.arg(name, darkBackground));
-        AppUi::installFluentToolTip(group);
         m_terminalStatsGroups.append(group);
         return group;
     };
@@ -119,6 +117,11 @@ QWidget *WorkbenchPage::createTerminalSection()
     actionLayout->setSizeConstraint(QLayout::SetFixedSize);
     section->headerLayout()->addWidget(actions, 0, Qt::AlignVCenter);
 
+    auto *clearButton = new TransparentToolButton(icon(FluentIcon::Broom), section);
+    clearButton->setObjectName(QStringLiteral("terminalClearButton"));
+    clearButton->setAccessibleName(AppI18n::text("清空终端和计数"));
+    AppUi::setFluentToolTip(clearButton, AppI18n::text("清空终端和计数"));
+    section->headerLayout()->insertWidget(0, clearButton, 0, Qt::AlignVCenter);
     auto *searchButton = new TransparentToolButton(icon(FluentIcon::Search), section);
     searchButton->setObjectName(QStringLiteral("terminalSearchButton"));
     AppUi::setFluentToolTip(searchButton, AppI18n::text("搜索"));
@@ -134,7 +137,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     AppUi::installFluentToolTip(m_receiveModeButton);
     auto *settingsButton = new TransparentToolButton(icon(FluentIcon::Setting), section);
     AppUi::setFluentToolTip(settingsButton, AppI18n::text("设置"));
-    for (ToolButton *button : {searchButton, plotButton, dataTableButton, themeButton, languageButton,
+    for (ToolButton *button : {clearButton, searchButton, plotButton, dataTableButton, themeButton, languageButton,
                                m_receiveModeButton, settingsButton}) {
         button->setProperty("terminalHeaderAction", true);
         button->setFixedSize(CompactControlHeight, CompactControlHeight);
@@ -270,6 +273,10 @@ QWidget *WorkbenchPage::createTerminalSection()
     searchPanel->hide();
     m_terminalView->viewport()->installEventFilter(this);
 
+    connect(clearButton, &ToolButton::clicked, this, [this]() {
+        clearTerminal();
+        resetCounters();
+    });
     connect(searchButton, &ToolButton::clicked, this, &WorkbenchPage::showTerminalSearchBar);
     connect(closeButton, &ToolButton::clicked, this, &WorkbenchPage::hideTerminalSearchBar);
     auto *findShortcut = new QShortcut(QKeySequence::Find, this);
@@ -370,14 +377,12 @@ void WorkbenchPage::updateTerminalHeaderLayout()
         groupX += groupWidths[index] + groupGap;
     }
 
-    bool elided = false;
-    const auto place = [&elided](FluentLabelBase *label, const QRect &bounds, int pixels) {
+    const auto place = [](FluentLabelBase *label, const QRect &bounds, int pixels) {
         if (label->pixelFontSize() != pixels) {
             label->setPixelFontSize(pixels);
         }
         label->setGeometry(bounds);
         label->setVisible(bounds.width() > 0);
-        elided |= label->fontMetrics().horizontalAdvance(label->text()) > bounds.width();
     };
     for (int offset : {0, 4}) {
         const int innerWidth = qMax(0, trafficWidth - 2 * padding);
@@ -395,18 +400,6 @@ void WorkbenchPage::updateTerminalHeaderLayout()
     const int connectionInnerWidth = qMax(0, connectionWidth - 2 * padding);
     place(m_connectionStatusLabel, QRect(padding, 2, connectionInnerWidth, 18), 12);
     place(m_connectionTimeLabel, QRect(padding, 21, connectionInnerWidth, 14), 11);
-
-    const QString receiveDetails =
-        AppI18n::text("接收速率：%1\n累计接收：%2").arg(m_rxRateLabel->text(), m_rxCounterLabel->text());
-    const QString sendDetails =
-        AppI18n::text("发送速率：%1\n累计发送：%2").arg(m_txRateLabel->text(), m_txCounterLabel->text());
-    const QString connectionDetails =
-        m_connectionStatusLabel->text() + QLatin1Char(' ') + m_connectionTimeLabel->text();
-    m_terminalStatsGroups.at(0)->setToolTip(receiveDetails);
-    m_terminalStatsGroups.at(1)->setToolTip(sendDetails);
-    m_terminalStatsGroups.at(2)->setToolTip(connectionDetails);
-    m_terminalStatsWidget->setToolTip(
-        elided ? receiveDetails + QLatin1Char('\n') + sendDetails + QLatin1Char('\n') + connectionDetails : QString());
 }
 
 void WorkbenchPage::positionTerminalSearchBar()
@@ -471,7 +464,6 @@ QWidget *WorkbenchPage::createSendSection()
     setFixedControlWidth(m_sendModeButton, 72);
     m_sendModeButton->setMinimumHeight(112);
     m_sendModeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    AppUi::installFluentToolTip(m_sendModeButton, ToolTipPosition::Left);
     sendRow->addWidget(m_sendModeButton);
 
     m_sendButton = new PrimaryPushButton(icon(FluentIcon::Send), QString(), section);
@@ -502,6 +494,6 @@ void WorkbenchPage::updateSendModeButton()
 
     const bool hexMode = m_hexSendCheck && m_hexSendCheck->isChecked();
     m_sendModeButton->setText(hexMode ? QStringLiteral("HEX") : AppI18n::text("文本"));
-    m_sendModeButton->setToolTip(hexMode ? AppI18n::text("当前为 HEX 发送，点击切换为文本")
-                                         : AppI18n::text("当前为文本发送，点击切换为 HEX"));
+    m_sendModeButton->setAccessibleDescription(hexMode ? AppI18n::text("当前为 HEX 发送，点击切换为文本")
+                                                       : AppI18n::text("当前为文本发送，点击切换为 HEX"));
 }

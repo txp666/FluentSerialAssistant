@@ -18,17 +18,22 @@ class QuickPlotWindow : public QWidget
 {
     Q_OBJECT
 
+    friend class WorkbenchQuickPlotTest;
+
   public:
     explicit QuickPlotWindow(QWidget *parent = nullptr);
 
     void appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
-                      const QByteArray &payload = {}, bool ignorePause = false);
+                      const QByteArray &payload = {});
     void clearData();
     bool configureParser(const AppPlot::ParserConfig &config);
     bool requiresProtocolPayload() const;
+    bool isPlottingActive() const;
 
-  signals:
-    void protocolChanged();
+  protected:
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
   private:
     struct PlotRow
@@ -42,6 +47,7 @@ class QuickPlotWindow : public QWidget
     int channelIndexFor(const QString &name, int position);
     void ensureSeriesCount(int count);
     void updateStatus();
+    void setPlottingActive(bool active);
     void setPaused(bool paused);
     void showParserSettings();
     void showProtocolHelp(QWidget *target);
@@ -56,5 +62,7 @@ class QuickPlotWindow : public QWidget
     AppPlot::ParserConfig m_parserConfig;
     int m_channelCount = 0;
     int m_nextSample = 0;
+    int m_plotRefreshRate = 0;
     bool m_paused = false;
+    bool m_plottingActive = false;
 };

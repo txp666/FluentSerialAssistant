@@ -348,6 +348,10 @@ void retranslateListWidget(QListWidget *list, const QString &localeName)
         item->setToolTip(translateValue(item->toolTip(), localeName));
         item->setStatusTip(translateValue(item->statusTip(), localeName));
         item->setWhatsThis(translateValue(item->whatsThis(), localeName));
+        const QVariant description = item->data(Qt::AccessibleDescriptionRole);
+        if (description.isValid()) {
+            item->setData(Qt::AccessibleDescriptionRole, translateValue(description.toString(), localeName));
+        }
     }
 }
 

@@ -6,24 +6,20 @@ void WorkbenchPage::showQuickPlotWindow()
 {
     if (!m_quickPlotWindow) {
         m_quickPlotWindow = new QuickPlotWindow(this);
-        connect(m_quickPlotWindow, &QuickPlotWindow::protocolChanged, this, [this]() {
-            for (const SessionRecord &record : m_records) {
-                appendQuickPlotRecord(record, true);
-            }
-        });
-        for (const SessionRecord &record : m_records) {
-            appendQuickPlotRecord(record, true);
-        }
     }
 
-    m_quickPlotWindow->show();
+    if (m_quickPlotWindow->isMinimized()) {
+        m_quickPlotWindow->showNormal();
+    } else {
+        m_quickPlotWindow->show();
+    }
     m_quickPlotWindow->raise();
     m_quickPlotWindow->activateWindow();
 }
 
-void WorkbenchPage::appendQuickPlotRecord(const SessionRecord &record, bool ignorePause)
+void WorkbenchPage::appendQuickPlotRecord(const SessionRecord &record)
 {
-    if (!m_quickPlotWindow || record.direction != RecordDirection::Rx) {
+    if (!m_quickPlotWindow || !m_quickPlotWindow->isPlottingActive() || record.direction != RecordDirection::Rx) {
         return;
     }
 
@@ -35,5 +31,5 @@ void WorkbenchPage::appendQuickPlotRecord(const SessionRecord &record, bool igno
             payload = result.payload;
         }
     }
-    m_quickPlotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes, payload, ignorePause);
+    m_quickPlotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes, payload);
 }

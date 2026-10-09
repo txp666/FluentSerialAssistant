@@ -1864,6 +1864,10 @@ Content: %4</translation>
         <translation>Search</translation>
     </message>
     <message>
+        <source>清空终端和计数</source>
+        <translation>Clear terminal and counters</translation>
+    </message>
+    <message>
         <source>切换语言</source>
         <translation>Toggle language</translation>
     </message>

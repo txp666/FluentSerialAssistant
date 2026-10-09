@@ -76,7 +76,8 @@ void WorkbenchPage::updateAutoReplyTable(int selectedRow)
                 .arg(autoReplyRuleName(rule.name, row), status, matchModeLabel(rule.matchMode), pattern, payload)
                 .arg(qBound(0, rule.delayMs, 600000)));
         item->setData(Qt::UserRole, row);
-        item->setToolTip(AppI18n::text("匹配：%1\n应答：%2").arg(rule.pattern, rule.responsePayload));
+        item->setData(Qt::AccessibleDescriptionRole,
+                      AppI18n::text("匹配：%1\n应答：%2").arg(rule.pattern, rule.responsePayload));
         item->setSizeHint(QSize(0, 58));
         m_autoReplyList->addItem(item);
     }

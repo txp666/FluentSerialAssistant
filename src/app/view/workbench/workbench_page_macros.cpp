@@ -65,7 +65,8 @@ void WorkbenchPage::updateMacroTable(int selectedRow)
                                                                  lineEndingLabel(step.lineEnding), waitText)
                                                             .arg(qBound(0, step.delayMs, 600000)));
         item->setData(Qt::UserRole, row);
-        item->setToolTip(AppI18n::text("发送：%1\n期望响应：%2").arg(step.payload, step.expectedResponse));
+        item->setData(Qt::AccessibleDescriptionRole,
+                      AppI18n::text("发送：%1\n期望响应：%2").arg(step.payload, step.expectedResponse));
         item->setSizeHint(QSize(0, 58));
         m_macroList->addItem(item);
     }

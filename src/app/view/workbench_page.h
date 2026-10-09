@@ -33,6 +33,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     Q_OBJECT
 
     friend class WorkbenchDataTableTest;
+    friend class WorkbenchQuickPlotTest;
     friend class TerminalSearchTest;
     friend class TerminalColorsTest;
 
@@ -190,6 +191,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void applyTerminalFont(const QString &family = QString());
     void updateConnectionUi(bool connected);
     void updateCounters();
+    void resetCounters();
     void updateRateStats();
     void updateReceiveModeButton();
     void updateSendModeButton();
@@ -276,6 +278,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void appendRecord(RecordDirection direction, const QByteArray &data, bool updateStats = true,
                       const QString &sourceLabel = QString());
     void trimRecords();
+    void clearTerminal();
     void renderTerminal(bool navigateToMatch = false);
     void trimTerminalDocument();
     void insertTextWithSearchHighlights(QTextCursor &cursor, const QString &line, int start, int length,
@@ -349,7 +352,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QByteArray serializeLogRecord(const SessionRecord &record, ExportFormat format) const;
     void updateAutoLogStatus();
     void showQuickPlotWindow();
-    void appendQuickPlotRecord(const SessionRecord &record, bool ignorePause = false);
+    void appendQuickPlotRecord(const SessionRecord &record);
     void showDataTableWindow();
     void refreshDataTableWindow();
     void flushDataTableWindow();

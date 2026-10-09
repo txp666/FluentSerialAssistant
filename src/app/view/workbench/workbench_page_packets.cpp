@@ -36,8 +36,8 @@ void WorkbenchPage::updatePacketTable(int selectedRow)
                                              .arg(group, packet.name, status, modeLabel(packet.mode),
                                                   lineEndingLabel(packet.lineEnding), payload, suffix));
         item->setData(Qt::UserRole, row);
-        item->setToolTip(AppI18n::text("分组：%1\n名称：%2\n备注：%3\n内容：%4")
-                             .arg(group, packet.name, packet.note, packet.payload));
+        item->setData(Qt::AccessibleDescriptionRole, AppI18n::text("分组：%1\n名称：%2\n备注：%3\n内容：%4")
+                                                         .arg(group, packet.name, packet.note, packet.payload));
         item->setSizeHint(QSize(0, 58));
         m_packetList->addItem(item);
     }

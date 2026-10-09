@@ -165,6 +165,6 @@ void UpdateDialog::refreshProgress(qint64 received, qint64 total)
                                  .arg(percentage)
                                  .arg(locale.formattedDataSize(boundedReceived),
                                       total > 0 ? locale.formattedDataSize(total) : AppI18n::text("未知")));
-    m_progressLabel->setToolTip(
+    m_progressLabel->setAccessibleDescription(
         AppI18n::text("%1 / %2 字节").arg(locale.toString(boundedReceived), locale.toString(qMax<qint64>(0, total))));
 }

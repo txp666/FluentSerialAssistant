@@ -53,6 +53,7 @@ void WorkbenchSessionsPage::installTitleBarTabs(FluentTitleBar *titleBar)
 
     m_titleBar = titleBar;
     auto *tabBar = m_tabs->tabBar();
+    AppUi::suppressFluentToolTip(tabBar->addButton());
     if (tabBar->parentWidget() != titleBar) {
         if (QLayout *sourceLayout = m_tabs->layout()) {
             sourceLayout->removeWidget(tabBar);

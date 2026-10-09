@@ -184,7 +184,6 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     m_autoLogStatusLabel = new CaptionLabel(AppI18n::text("自动日志未启用"), section);
     m_autoLogStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
     m_autoLogStatusLabel->setWordWrap(true);
-    AppUi::installFluentToolTip(m_autoLogStatusLabel);
     root->addWidget(m_autoLogStatusLabel);
 
     connect(m_displayModeSegment, &SegmentedWidget::currentItemChanged, this, [this](const QString &routeKey) {
@@ -262,20 +261,8 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
         settings.setValue(QStringLiteral("receive/frameBreakMs"),
                           numberEditValue(m_frameBreakIntervalEdit, 20, 1, 60000));
     });
-    connect(m_clearButton, &PushButton::clicked, this, [this]() {
-        m_rxFrameBuffer.clear();
-        m_terminalStartRecord = m_records.size();
-        m_pendingRecordIndexes.clear();
-        m_terminalSearchMatches.clear();
-        resetTerminalSearchNavigation();
-        m_terminalView->clear();
-        updateCounters();
-    });
-    connect(m_resetCountersButton, &PushButton::clicked, this, [this]() {
-        m_rxCount = 0;
-        m_txCount = 0;
-        updateCounters();
-    });
+    connect(m_clearButton, &PushButton::clicked, this, &WorkbenchPage::clearTerminal);
+    connect(m_resetCountersButton, &PushButton::clicked, this, &WorkbenchPage::resetCounters);
     connect(m_exportTxtButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Txt); });
     connect(m_exportCsvButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Csv); });
     connect(m_exportBinButton, &PushButton::clicked, this, [this]() { exportRecords(ExportFormat::Bin); });
@@ -334,7 +321,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
 
     m_protocolPayloadOffsetEdit = createNumberEdit(section, 4, 0, 65535);
     m_protocolPayloadLengthEdit = createNumberEdit(section, 0, 0, 65535);
-    AppUi::setFluentToolTip(m_protocolPayloadLengthEdit, AppI18n::text("0 表示按长度字段自动计算"));
+    m_protocolPayloadLengthEdit->setAccessibleDescription(AppI18n::text("0 表示按长度字段自动计算"));
     addFormRow(root, AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit);
     addFormRow(root, AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit);
 

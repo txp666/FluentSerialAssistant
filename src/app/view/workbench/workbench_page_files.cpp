@@ -253,7 +253,7 @@ void WorkbenchPage::updateAutoLogStatus()
         return;
     }
 
-    m_autoLogStatusLabel->setToolTip(QString());
+    m_autoLogStatusLabel->setAccessibleDescription(QString());
     if (!m_autoLogCheck || !m_autoLogCheck->isChecked()) {
         m_autoLogStatusLabel->setText(AppI18n::text("自动日志未启用"));
         return;
@@ -264,7 +264,7 @@ void WorkbenchPage::updateAutoLogStatus()
         m_autoLogStatusLabel->setText(AppI18n::text("自动日志：%1 · %2 / %3")
                                           .arg(QFileInfo(path).fileName(), formatBytes(m_autoLogCurrentSize),
                                                formatBytes(autoLogMaxFileBytes())));
-        m_autoLogStatusLabel->setToolTip(path);
+        m_autoLogStatusLabel->setAccessibleDescription(path);
         return;
     }
 

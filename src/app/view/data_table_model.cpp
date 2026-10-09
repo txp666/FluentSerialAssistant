@@ -82,7 +82,7 @@ QVariant DataTableModel::data(const QModelIndex &index, int role) const
     const Row &row = m_rows.at(static_cast<size_t>(index.row()));
     switch (role) {
     case Qt::DisplayRole:
-    case Qt::ToolTipRole:
+    case Qt::AccessibleTextRole:
         return row.displayText(index.column());
     case Qt::TextAlignmentRole:
         if (index.column() == LengthColumn) {

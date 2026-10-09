@@ -71,7 +71,8 @@ void DataTableModelTest::displayAndReset()
     QCOMPARE(model.index(0, 0).data(DataTableModel::RecordIndexRole).toLongLong(), row.recordIndex);
     QCOMPARE(model.index(0, 0).data(DataTableModel::DirectionKeyRole).toString(), QStringLiteral("tx"));
     for (int column = 0; column < model.columnCount(); ++column) {
-        QCOMPARE(model.index(0, column).data(Qt::ToolTipRole), model.index(0, column).data());
+        QVERIFY(!model.index(0, column).data(Qt::ToolTipRole).isValid());
+        QCOMPARE(model.index(0, column).data(Qt::AccessibleTextRole), model.index(0, column).data());
         QVERIFY(!model.headerData(column, Qt::Horizontal).toString().isEmpty());
     }
     QVERIFY(model.index(0, 0).data(DataTableModel::SearchRole).toString().contains(QStringLiteral("serial source")));

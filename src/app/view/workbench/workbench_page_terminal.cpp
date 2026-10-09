@@ -504,6 +504,17 @@ void WorkbenchPage::trimRecords()
     }
 }
 
+void WorkbenchPage::clearTerminal()
+{
+    m_rxFrameBuffer.clear();
+    m_terminalStartRecord = m_records.size();
+    m_pendingRecordIndexes.clear();
+    m_terminalSearchMatches.clear();
+    resetTerminalSearchNavigation();
+    m_terminalView->clear();
+    updateCounters();
+}
+
 void WorkbenchPage::renderTerminal(bool navigateToMatch)
 {
     if (!m_terminalView) {

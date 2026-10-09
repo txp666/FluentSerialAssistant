@@ -13,6 +13,8 @@
 #include <QtCore/QJsonParseError>
 #include <QtCore/QSignalBlocker>
 #include <QtCore/QTextStream>
+#include <QtGui/QHideEvent>
+#include <QtGui/QShowEvent>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QSizePolicy>
@@ -83,7 +85,7 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_protocolCombo->addItem(AppI18n::text("JSON 对象"), QIcon(), QStringLiteral("json"));
     m_protocolCombo->addItem(AppI18n::text("二进制字段"), QIcon(), QStringLiteral("binary"));
     m_protocolCombo->setFixedSize(132, 32);
-    AppUi::setFluentToolTip(m_protocolCombo, AppI18n::text("选择接收数据如何转换为曲线数据"));
+    m_protocolCombo->setAccessibleDescription(AppI18n::text("选择接收数据如何转换为曲线数据"));
     AppSettings settings;
     const QString savedConfig = settings.value(QStringLiteral("plot/parserConfig")).toString();
     QJsonParseError savedConfigError;
@@ -142,6 +144,9 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_plot->setCrosshairVisible(true);
     m_plot->setPointsVisible(false);
     m_plot->setSeriesName(0, QStringLiteral("CH1"));
+    m_plotRefreshRate = m_plot->refreshRate();
+    m_plot->setUpdatesEnabled(false);
+    m_plot->setRefreshRate(0);
     root->addWidget(m_plot, 1);
 
     connect(m_protocolCombo, &ComboBox::currentIndexChanged, this, [this](int) {
@@ -162,9 +167,9 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
 }
 
 void QuickPlotWindow::appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
-                                   const QByteArray &payload, bool ignorePause)
+                                   const QByteArray &payload)
 {
-    if (m_paused && !ignorePause) {
+    if (!isPlottingActive() || m_paused) {
         return;
     }
 
@@ -172,6 +177,46 @@ void QuickPlotWindow::appendRecord(const QDateTime &timestamp, const QString &te
     for (const AppPlot::PlotSample &values : samples) {
         appendValues(timestamp, values);
     }
+}
+
+bool QuickPlotWindow::isPlottingActive() const { return m_plottingActive; }
+
+void QuickPlotWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    setPlottingActive(isVisible() && !isMinimized());
+}
+
+void QuickPlotWindow::hideEvent(QHideEvent *event)
+{
+    setPlottingActive(false);
+    QWidget::hideEvent(event);
+}
+
+void QuickPlotWindow::changeEvent(QEvent *event)
+{
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange) {
+        setPlottingActive(isVisible() && !isMinimized());
+    }
+}
+
+void QuickPlotWindow::setPlottingActive(bool active)
+{
+    if (m_plottingActive == active) {
+        return;
+    }
+    m_plottingActive = active;
+    if (!active) {
+        m_plot->setUpdatesEnabled(false);
+        m_plotRefreshRate = m_plot->refreshRate();
+        // Setting a zero refresh rate cancels the widget's pending single-shot refresh.
+        m_plot->setRefreshRate(0);
+        return;
+    }
+
+    m_plot->setRefreshRate(m_plotRefreshRate);
+    m_plot->setUpdatesEnabled(true);
 }
 
 void QuickPlotWindow::appendValues(const QDateTime &timestamp, const AppPlot::PlotSample &values)
@@ -239,7 +284,6 @@ bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)
         QStringLiteral("plot/parserConfig"),
         QString::fromUtf8(QJsonDocument(AppPlot::parserConfigToJson(m_parserConfig)).toJson(QJsonDocument::Compact)));
     clearData();
-    emit protocolChanged();
     return true;
 }
 

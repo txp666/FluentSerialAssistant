@@ -4,6 +4,7 @@
 #include "app/core/app_i18n.h"
 #include "app/core/update_manager.h"
 
+#include "app/view/fluent_tooltip_helper.h"
 #include "app/view/settings_page.h"
 #include "app/view/update_dialog.h"
 #include "app/view/workbench_sessions_page.h"
@@ -18,6 +19,9 @@ using namespace FluentQt;
 
 MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
 {
+    for (auto *button : {titleBar()->minimizeButton(), titleBar()->maximizeButton(), titleBar()->closeButton()}) {
+        AppUi::suppressFluentToolTip(button);
+    }
     setWindowTitle(AppI18n::text("Fluent 串口助手"));
     setWindowIcon(QIcon(QStringLiteral(":/app/logo.png")));
     setMinimumSize(1040, 700);
