@@ -243,6 +243,11 @@ void QuickPlotWindow::appendValues(const QDateTime &timestamp, const AppPlot::Pl
     }
 
     m_rows.append(row);
+    // Keep the export in step with the samples the plot retains (0 keeps all).
+    const int capacity = m_plot->capacity();
+    while (capacity > 0 && m_rows.size() > capacity) {
+        m_rows.removeFirst();
+    }
     updateStatus();
 }
 

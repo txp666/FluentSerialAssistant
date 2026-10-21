@@ -1,10 +1,19 @@
 #include "app/serial/virtual_serial_pair.h"
+#include "app/view/settings_page.h"
 #include "app/view/workbench/workbench_page_internal.h"
+#include "app/view/workbench_sessions_page.h"
 
 #include <QtCore/QElapsedTimer>
+#include <QtCore/QScopeGuard>
 #include <QtCore/QTemporaryDir>
 #include <QtCore/QThread>
 #include <QtTest/QTest>
+
+#ifdef Q_OS_UNIX
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#endif
 
 using namespace WorkbenchPagePrivate;
 
@@ -355,6 +364,105 @@ class WorkbenchReliabilityTest : public QObject
         QFile capture(QDir(folder.path()).filePath(files().first()));
         QVERIFY(capture.open(QIODevice::ReadOnly));
         QCOMPARE(capture.readAll(), QByteArrayLiteral("captured"));
+    }
+
+    void fileSendWaitsForThePortToTakeEachChunk()
+    {
+#ifdef Q_OS_UNIX
+        const int terminal = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK);
+        QVERIFY(terminal >= 0);
+        const auto closeTerminal = qScopeGuard([terminal]() { ::close(terminal); });
+        QCOMPARE(grantpt(terminal), 0);
+        QCOMPARE(unlockpt(terminal), 0);
+        const char *portName = ptsname(terminal);
+        QVERIFY(portName);
+
+        QTemporaryDir folder;
+        QVERIFY(folder.isValid());
+        QByteArray contents(256 * 1024, Qt::Uninitialized);
+        for (int index = 0; index < contents.size(); ++index) {
+            contents[index] = static_cast<char>(index % 251);
+        }
+        QFile file(folder.filePath(QStringLiteral("payload.bin")));
+        QVERIFY(file.open(QIODevice::WriteOnly) && file.write(contents) == contents.size());
+        file.close();
+
+        WorkbenchPage page(nullptr, false, false);
+        SerialPortConfig config;
+        config.portName = QString::fromLocal8Bit(portName);
+        QVERIFY2(page.m_serial.openPort(config), qPrintable(page.m_serial.errorString()));
+        page.m_filePathEdit->setText(file.fileName());
+        constexpr int ChunkSize = 4096;
+        setNumberEditValue(page.m_fileChunkSizeEdit, ChunkSize, 1, 65536);
+        setNumberEditValue(page.m_fileIntervalEdit, 0, 0, 60000);
+        page.startFileSend();
+
+        // Nobody reads the other end yet, so the pseudo-terminal fills up. Sending
+        // must pause with at most one chunk waiting instead of queueing the file.
+        QTest::qWait(300);
+        QVERIFY(page.m_fileSendFile.isOpen());
+        QVERIFY(page.m_fileSendSent < page.m_fileSendTotal);
+        QVERIFY(page.m_serial.bytesToWrite() <= ChunkSize);
+
+        // Drain the other end promptly; a macOS pseudo-terminal buffers only 1 KiB.
+        QByteArray received;
+        QElapsedTimer timer;
+        timer.start();
+        while ((received.size() < contents.size() || page.m_fileSendFile.isOpen()) && timer.elapsed() < 20000) {
+            char buffer[16384];
+            qint64 count = 0;
+            while ((count = ::read(terminal, buffer, sizeof(buffer))) > 0) {
+                received.append(buffer, int(count));
+            }
+            QTest::qWait(1);
+        }
+        QVERIFY(!page.m_fileSendFile.isOpen());
+        QCOMPARE(received, contents);
+        QCOMPARE(page.m_fileSendSent, page.m_fileSendTotal);
+        page.m_serial.closePort();
+#else
+        QSKIP("Pseudo-terminal serial integration is available on Unix platforms");
+#endif
+    }
+
+    void recordLimitChangesReachOpenSessions()
+    {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("terminal/maxRecords"), 1000);
+        settings.sync();
+        WorkbenchSessionsPage sessions;
+        auto *tabs = sessions.findChild<FluentQt::TabWidget *>();
+        QVERIFY(tabs);
+        tabs->tabAddRequested();
+        const auto pages = sessions.findChildren<WorkbenchPage *>();
+        QCOMPARE(pages.size(), 2);
+        for (auto *page : pages) {
+            page->m_pauseCheck->setChecked(true);
+            for (int index = 0; index < 1500; ++index) {
+                page->appendRecord(WorkbenchPage::RecordDirection::Rx, QByteArray::number(index));
+            }
+            QCOMPARE(page->m_records.size(), 1000);
+        }
+
+        // Sessions read the limit once; the settings page pushes later changes.
+        SettingsPage settingsPage;
+        connect(&settingsPage, &SettingsPage::terminalRecordLimitChanged, &sessions,
+                &WorkbenchSessionsPage::setTerminalRecordLimit);
+        auto *card = settingsPage.findChild<FluentQt::RangeSettingCard *>(QStringLiteral("terminalMaxRecordsCard"));
+        QVERIFY(card);
+        card->setValue(1200);
+        QCOMPARE(settings.value(QStringLiteral("terminal/maxRecords")).toInt(), 1200);
+        for (auto *page : pages) {
+            QCOMPARE(page->maxRecordCount(), 1200);
+            for (int index = 0; index < 500; ++index) {
+                page->appendRecord(WorkbenchPage::RecordDirection::Rx, QByteArray::number(index));
+            }
+            QCOMPARE(page->m_records.size(), 1200);
+        }
+        card->setValue(1000);
+        for (auto *page : pages) {
+            QCOMPARE(page->m_records.size(), 1000);
+        }
     }
 };
 

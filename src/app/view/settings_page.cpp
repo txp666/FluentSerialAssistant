@@ -267,6 +267,7 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
         1000, 50000, qBound(1000, settings.value(QStringLiteral("terminal/maxRecords"), 20000).toInt(), 50000),
         FluentIcon::Document, AppI18n::text("最大显示记录"), AppI18n::text("限制终端视图保留的记录数量"),
         terminalGroup);
+    maxRecordsCard->setObjectName(QStringLiteral("terminalMaxRecordsCard"));
     const QStringList terminalFonts = AppFontPreferences::terminalFontFamilies();
     auto *terminalFontCard =
         new ComboBoxSettingCard(terminalFonts, FluentIcon::CommandPrompt, AppI18n::text("终端字体"),
@@ -292,9 +293,10 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
         AppSettings settings;
         settings.setValue(QStringLiteral("send/lineEnding"), indexToLineEnding(index));
     });
-    connect(maxRecordsCard, &RangeSettingCard::valueChanged, this, [](int value) {
+    connect(maxRecordsCard, &RangeSettingCard::valueChanged, this, [this](int value) {
         AppSettings settings;
         settings.setValue(QStringLiteral("terminal/maxRecords"), value);
+        emit terminalRecordLimitChanged(value);
     });
     connect(terminalFontCard, &ComboBoxSettingCard::currentTextChanged, this, [this](const QString &family) {
         AppFontPreferences::setTerminalFontFamily(family);

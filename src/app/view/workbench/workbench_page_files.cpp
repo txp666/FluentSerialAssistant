@@ -409,6 +409,12 @@ void WorkbenchPage::sendNextFileChunk()
         showWarning(AppI18n::text("文件发送中止"), AppI18n::text("串口已断开"));
         return;
     }
+    // Queue the next chunk only after the port has taken the previous one, so
+    // progress, cancellation and completion follow what was actually sent.
+    if (m_serial.bytesToWrite() > 0) {
+        m_fileSendTimer.start(FileSendDrainPollMs);
+        return;
+    }
 
     if (m_fileSendFile.atEnd()) {
         const QString name = QFileInfo(m_fileSendFile.fileName()).fileName();
@@ -443,11 +449,9 @@ void WorkbenchPage::sendNextFileChunk()
     appendRecord(RecordDirection::Tx, data);
     updateFileProgress();
 
-    if (m_fileSendFile.atEnd()) {
-        sendNextFileChunk();
-        return;
-    }
-    m_fileSendTimer.start(numberEditValue(m_fileIntervalEdit, DefaultFileChunkIntervalMs, 0, 60000));
+    m_fileSendTimer.start(m_fileSendFile.atEnd()
+                              ? 0
+                              : numberEditValue(m_fileIntervalEdit, DefaultFileChunkIntervalMs, 0, 60000));
 }
 
 void WorkbenchPage::updateFileSendUi(bool sending)

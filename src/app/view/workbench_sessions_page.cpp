@@ -111,6 +111,15 @@ void WorkbenchSessionsPage::setTerminalFontFamily(const QString &family)
     }
 }
 
+void WorkbenchSessionsPage::setTerminalRecordLimit(int count)
+{
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (auto *session = qobject_cast<WorkbenchPage *>(m_tabs->widget(i))) {
+            session->setTerminalRecordLimit(count);
+        }
+    }
+}
+
 void WorkbenchSessionsPage::reloadTerminalColors()
 {
     for (int i = 0; i < m_tabs->count(); ++i) {

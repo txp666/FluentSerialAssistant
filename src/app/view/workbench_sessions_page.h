@@ -30,6 +30,7 @@ class WorkbenchSessionsPage : public QWidget
 
   public slots:
     void setTerminalFontFamily(const QString &family);
+    void setTerminalRecordLimit(int count);
     void reloadTerminalColors();
 
   signals:

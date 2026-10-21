@@ -120,6 +120,8 @@ void MainWindow::populateInterfaces()
     });
     connect(settingsPage, &SettingsPage::terminalFontChanged, m_workbenchPage,
             &WorkbenchSessionsPage::setTerminalFontFamily);
+    connect(settingsPage, &SettingsPage::terminalRecordLimitChanged, m_workbenchPage,
+            &WorkbenchSessionsPage::setTerminalRecordLimit);
     connect(settingsPage, &SettingsPage::terminalColorsChanged, m_workbenchPage,
             &WorkbenchSessionsPage::reloadTerminalColors);
     connect(settingsPage, &SettingsPage::updateDialogRequested, this, &MainWindow::showUpdateDialog);

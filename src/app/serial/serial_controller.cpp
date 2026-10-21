@@ -194,6 +194,8 @@ bool SerialController::writeData(const QByteArray &data, QString *error)
     return true;
 }
 
+qint64 SerialController::bytesToWrite() const { return m_virtualOpen ? 0 : m_port.bytesToWrite(); }
+
 bool SerialController::setRequestToSend(bool enabled)
 {
     if (m_virtualOpen) {

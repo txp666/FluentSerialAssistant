@@ -48,6 +48,8 @@ class SerialController : public QObject
     bool openPort(const SerialPortConfig &config);
     void closePort();
     bool writeData(const QByteArray &data, QString *error = nullptr);
+    // Bytes accepted by writeData() that the port has not yet handed to the device.
+    qint64 bytesToWrite() const;
     bool setRequestToSend(bool enabled);
     bool setDataTerminalReady(bool enabled);
 

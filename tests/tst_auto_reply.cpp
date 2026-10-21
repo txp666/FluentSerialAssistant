@@ -220,6 +220,35 @@ class AutoReplyTest : public QObject
         page.m_serial.closePort();
     }
 
+    void unmatchedDataKeepsOnlyRecentBytes()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.m_autoReplyNewButton->click();
+        fillRule(page, QStringLiteral("ping"), QStringLiteral("PING"), QStringLiteral("PONG"));
+        page.m_autoReplySaveButton->click();
+        VirtualSerialPair::instance()->setEnabled(true);
+        SerialController device;
+        SerialPortConfig config;
+        config.portName = VirtualSerialPair::portAName();
+        QVERIFY(device.openPort(config));
+        config.portName = VirtualSerialPair::portBName();
+        QVERIFY(page.m_serial.openPort(config));
+        QSignalSpy replies(&device, &SerialController::dataReceived);
+
+        // Every read rescans the buffer, so unmatched traffic must not pile up.
+        const QByteArray noise(1024, 'x');
+        for (int read = 0; read < 64; ++read) {
+            page.handleReceivedData(noise);
+            QVERIFY(page.m_autoReplyBuffer.size() <= MaxAutoReplyBufferBytes);
+        }
+        page.handleReceivedData(QByteArrayLiteral("PI"));
+        page.handleReceivedData(QByteArrayLiteral("NG"));
+        QTRY_COMPARE(replies.size(), 1);
+        QCOMPARE(replies.first().first().toByteArray(), QByteArrayLiteral("PONG"));
+        QVERIFY(page.m_autoReplyBuffer.isEmpty());
+        page.m_serial.closePort();
+    }
+
     void englishButtonLabels()
     {
         QTranslator translator;

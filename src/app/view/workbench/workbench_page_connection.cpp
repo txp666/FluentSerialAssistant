@@ -117,9 +117,20 @@ void WorkbenchPage::setControlsEnabledForConnection(bool connected)
     }
 }
 
-int WorkbenchPage::maxRecordCount() const
+int WorkbenchPage::maxRecordCount() const { return m_maxRecordCount; }
+
+int WorkbenchPage::savedMaxRecordCount()
 {
     AppSettings settings;
     return qBound(1000, settings.value(QStringLiteral("terminal/maxRecords"), DefaultMaxTerminalRecords).toInt(),
                   50000);
+}
+
+void WorkbenchPage::setTerminalRecordLimit(int count)
+{
+    m_maxRecordCount = qBound(1000, count, 50000);
+    trimRecords();
+    if (m_terminalView) {
+        trimTerminalDocument();
+    }
 }

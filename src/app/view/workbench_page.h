@@ -60,6 +60,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
 
   public slots:
     void setTerminalFontFamily(const QString &family);
+    void setTerminalRecordLimit(int count);
     void reloadTerminalColors();
 
   signals:
@@ -405,12 +406,15 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void onLoopChanged(bool checked);
     void setControlsEnabledForConnection(bool connected);
     int maxRecordCount() const;
+    static int savedMaxRecordCount();
 
     SerialController m_serial;
     QList<SerialPortDescriptor> m_ports;
     QList<SessionRecord> m_records;
     // Stable table IDs survive removal of old session records.
     qint64 m_firstRecordIndex = 0;
+    // Read once: every received record checks it.
+    int m_maxRecordCount = savedMaxRecordCount();
     qint64 m_dataTableNextRecordIndex = 0;
     QList<qint64> m_pendingRecordIndexes;
     QList<SendHistoryItem> m_sendHistory;

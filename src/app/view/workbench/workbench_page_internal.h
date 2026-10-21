@@ -67,7 +67,11 @@ constexpr int CompactControlHeight = 32;
 constexpr int FormLabelWidth = 84;
 constexpr int DefaultFileChunkSize = 256;
 constexpr int DefaultFileChunkIntervalMs = 10;
+constexpr int FileSendDrainPollMs = 5;
 constexpr int MaxFrameBufferBytes = 1024 * 1024;
+// The longest request an auto-reply rule can match. Every read rescans the
+// buffer, so it holds only the latest bytes while no rule matches.
+constexpr int MaxAutoReplyBufferBytes = 4096;
 
 inline QColor terminalTimestampColor()
 {

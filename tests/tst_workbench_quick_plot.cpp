@@ -321,6 +321,27 @@ class WorkbenchQuickPlotTest : public QObject
         QCOMPARE(second->m_rows.size(), 3);
     }
 
+    void exportRowsFollowThePlotCapacity()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        auto *window = page.createQuickPlotWindow({});
+        QVERIFY(window);
+        window->m_plot->setCapacity(50);
+        for (int value = 0; value < 80; ++value) {
+            page.handleReceivedData(QByteArray::number(value));
+        }
+        QCOMPARE(window->m_rows.size(), 50);
+        QCOMPARE(window->m_rows.first().sample, 30);
+        QCOMPARE(window->m_rows.last().values.first(), 79.0);
+
+        // A capacity of 0 keeps every sample in the plot, so the export keeps them too.
+        window->m_plot->setCapacity(0);
+        for (int value = 80; value < 100; ++value) {
+            page.handleReceivedData(QByteArray::number(value));
+        }
+        QCOMPARE(window->m_rows.size(), 70);
+    }
+
     void copiedSessionClearsAllPlotsAndSkipsHiddenRecords()
     {
         WorkbenchPage page(nullptr, false, false);

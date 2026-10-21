@@ -249,8 +249,8 @@ void WorkbenchPage::handleAutoReplyReceivedData(const QByteArray &data)
     }
 
     m_autoReplyBuffer.append(data);
-    if (m_autoReplyBuffer.size() > MaxFrameBufferBytes) {
-        m_autoReplyBuffer.remove(0, m_autoReplyBuffer.size() - MaxFrameBufferBytes);
+    if (m_autoReplyBuffer.size() > MaxAutoReplyBufferBytes) {
+        m_autoReplyBuffer.remove(0, m_autoReplyBuffer.size() - MaxAutoReplyBufferBytes);
     }
 
     QList<AutoReplyRule> matchedRules;
