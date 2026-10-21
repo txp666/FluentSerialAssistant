@@ -105,8 +105,7 @@ void WorkbenchPage::loadProtocolTemplates(bool restoreSavedSelection)
     const bool hadSelection = previousIndex >= 0 && previousIndex < m_protocolTemplates.size();
     const AppProtocol::ProtocolTemplate previous =
         hadSelection ? m_protocolTemplates.at(previousIndex) : AppProtocol::ProtocolTemplate();
-    const bool editorUnchanged = !restoreSavedSelection && hadSelection &&
-                                 AppProtocol::toJson(currentProtocolTemplateFromUi()) == AppProtocol::toJson(previous);
+    const bool editorUnchanged = !restoreSavedSelection && hadSelection && currentProtocolTemplateFromUi() == previous;
     AppSettings settings;
     const QByteArray json = settings.value(QLatin1String(ProtocolTemplateSettingsKey)).toString().toUtf8();
     QJsonParseError parseError;
@@ -216,13 +215,7 @@ void WorkbenchPage::updateProtocolTemplateActionState()
         m_protocolChecksumAlgorithmCombo->currentData().toString() != AppProtocol::checksumNoneKey();
 
     if (m_protocolSaveButton) {
-        const QString error = protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
-            {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
-             {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
-             {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
-             {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
-             {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
-        m_protocolSaveButton->setEnabled(hasName && error.isEmpty());
+        m_protocolSaveButton->setEnabled(protocolTemplateInputError().isEmpty());
     }
     if (m_protocolDeleteButton) {
         const int selectedIndex = m_protocolTemplateCombo ? m_protocolTemplateCombo->currentIndex() : -1;
@@ -291,14 +284,18 @@ void WorkbenchPage::updateProtocolTemplatePreview()
         }
         selector->setCurrentIndex(names.indexOf(m_protocolNameEdit->text().trimmed()));
     }
-    const QString error = protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
-        {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
-         {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
-         {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
-         {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
-         {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
-    m_protocolTemplateWindow->setConfigurationError(error);
+    m_protocolTemplateWindow->setConfigurationError(protocolTemplateInputError());
     m_protocolTemplateWindow->setProtocolTemplate(currentProtocolTemplateFromUi());
+}
+
+QString WorkbenchPage::protocolTemplateInputError() const
+{
+    return protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
+                              {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
+                               {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
+                               {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
+                               {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
+                               {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
 }
 
 AppProtocol::ProtocolTemplate WorkbenchPage::selectedProtocolTemplate() const
@@ -397,26 +394,10 @@ void WorkbenchPage::saveCurrentProtocolTemplate()
     if (!m_protocolNameEdit || !m_protocolHeaderEdit) {
         return;
     }
-    const QString inputError = protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
-        {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
-         {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
-         {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
-         {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
-         {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
+    const QString inputError = protocolTemplateInputError();
     if (!inputError.isEmpty()) {
         showWarning(AppI18n::text("无法保存协议模板"), inputError);
         return;
-    }
-
-    if (!m_protocolHeaderEdit->text().trimmed().isEmpty()) {
-        const HexParseResult header = parseHexPayload(m_protocolHeaderEdit->text());
-        if (!header.ok) {
-            showWarning(AppI18n::text("帧头无效"),
-                        header.errorOffset >= 0
-                            ? AppI18n::text("%1，位置 %2").arg(header.errorMessage).arg(header.errorOffset + 1)
-                            : header.errorMessage);
-            return;
-        }
     }
 
     AppProtocol::ProtocolTemplate item = currentProtocolTemplateFromUi();

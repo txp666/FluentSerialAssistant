@@ -147,31 +147,37 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
 }
 
 void QuickPlotWindow::appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
-                                   const QByteArray &payload)
+                                   const AppProtocol::ParseResult *parsed)
 {
-    Q_UNUSED(payload);
     if (!isPlottingActive() || m_paused) {
         return;
     }
 
-    QByteArray localPayload;
+    QByteArray payload;
     if (requiresProtocolPayload()) {
         if (!m_hasProtocolTemplate) {
             return;
         }
-        const AppProtocol::ParseResult parsed = AppProtocol::parseFrame(frame, m_protocolTemplate);
-        if (!parsed.ok || (parsed.checksumChecked && !parsed.checksumValid)) {
+        const AppProtocol::ParseResult result = parsed ? *parsed : AppProtocol::parseFrame(frame, m_protocolTemplate);
+        if (!result.ok || (result.checksumChecked && !result.checksumValid)) {
             return;
         }
-        localPayload = parsed.payload;
+        payload = result.payload;
     }
-    const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(m_parserConfig, text, frame, localPayload);
+    const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(m_parserConfig, text, frame, payload);
     for (const AppPlot::PlotSample &values : samples) {
         appendValues(timestamp, values);
     }
 }
 
+const AppProtocol::ProtocolTemplate *QuickPlotWindow::payloadTemplate() const
+{
+    return requiresProtocolPayload() && m_hasProtocolTemplate ? &m_protocolTemplate : nullptr;
+}
+
 bool QuickPlotWindow::isPlottingActive() const { return m_plottingActive; }
+
+bool QuickPlotWindow::isPaused() const { return m_paused; }
 
 void QuickPlotWindow::showEvent(QShowEvent *event)
 {
@@ -304,7 +310,7 @@ void QuickPlotWindow::setProtocolTemplates(const QList<AppProtocol::ProtocolTemp
 
 void QuickPlotWindow::setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate)
 {
-    if (m_hasProtocolTemplate && AppProtocol::toJson(m_protocolTemplate) == AppProtocol::toJson(protocolTemplate)) {
+    if (m_hasProtocolTemplate && m_protocolTemplate == protocolTemplate) {
         return;
     }
     m_protocolTemplate = protocolTemplate;
@@ -317,14 +323,7 @@ void QuickPlotWindow::setProtocolTemplate(const AppProtocol::ProtocolTemplate &p
 
 void QuickPlotWindow::updateProtocolName()
 {
-    QString name;
-    switch (m_parserConfig.protocol) {
-    case AppPlot::Protocol::Delimited: name = AppI18n::text("分隔值"); break;
-    case AppPlot::Protocol::KeyValue: name = AppI18n::text("键值对"); break;
-    case AppPlot::Protocol::Json: name = AppI18n::text("JSON 对象"); break;
-    case AppPlot::Protocol::Binary: name = AppI18n::text("二进制字段"); break;
-    default: name = AppI18n::text("全部数字"); break;
-    }
+    QString name = PlotParserDialog::protocolName(m_parserConfig.protocol);
     if (requiresProtocolPayload() && m_hasProtocolTemplate) {
         name += QStringLiteral(" · ") + m_protocolTemplate.name;
     }

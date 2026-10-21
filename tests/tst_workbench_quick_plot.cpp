@@ -288,13 +288,16 @@ class WorkbenchQuickPlotTest : public QObject
         secondTemplate.payloadLength = 2;
         auto *first = page.createQuickPlotWindow(parser, &firstTemplate);
         auto *second = page.createQuickPlotWindow(parser, &secondTemplate);
-        QVERIFY(first && second);
+        // Windows with equal templates share one parse of each frame.
+        auto *sameAsFirst = page.createQuickPlotWindow(parser, &firstTemplate);
+        QVERIFY(first && second && sameAsFirst);
         const QByteArray frame = checkedFrame();
         QVERIFY(AppProtocol::parseFrame(frame, firstTemplate).checksumValid);
         QVERIFY(AppProtocol::parseFrame(frame, secondTemplate).checksumValid);
         page.handleReceivedData(frame);
         QCOMPARE(first->m_plot->points(), QVector<QPointF>({QPointF(0, 1)}));
         QCOMPARE(second->m_plot->points(), QVector<QPointF>({QPointF(0, 2)}));
+        QCOMPARE(sameAsFirst->m_plot->points(), QVector<QPointF>({QPointF(0, 1)}));
 
         // Editing or disabling the workbench template must not alter existing windows.
         auto editedTemplate = firstTemplate;

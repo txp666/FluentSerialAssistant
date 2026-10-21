@@ -24,6 +24,9 @@ class PlotParserDialog : public QDialog
     explicit PlotParserDialog(const AppPlot::ParserConfig &config, QWidget *parent = nullptr,
                               bool requireProtocolChoice = false);
 
+    // The name shown for a protocol, here and in plot windows.
+    static QString protocolName(AppPlot::Protocol protocol);
+
     AppPlot::ParserConfig parserConfig() const;
     void setProtocolTemplates(const QList<AppProtocol::ProtocolTemplate> &protocolTemplates);
     void setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate);

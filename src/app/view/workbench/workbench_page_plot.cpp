@@ -3,6 +3,9 @@
 #include "app/view/quick_plot_window.h"
 #include "app/view/plot_parser_dialog.h"
 
+#include <algorithm>
+#include <iterator>
+
 void WorkbenchPage::showQuickPlotWindow()
 {
     // Start from the last applied configuration so field filters and binary
@@ -59,9 +62,24 @@ void WorkbenchPage::appendQuickPlotRecord(const SessionRecord &record)
     if (record.direction != RecordDirection::Rx) {
         return;
     }
+    // Windows often share a template, so parse the frame once per template.
+    QList<QPair<const AppProtocol::ProtocolTemplate *, AppProtocol::ParseResult>> parsedFrames;
     for (QuickPlotWindow *plotWindow : m_quickPlotWindows) {
-        if (plotWindow->isPlottingActive()) {
-            plotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes);
+        if (!plotWindow->isPlottingActive() || plotWindow->isPaused()) {
+            continue;
         }
+        const AppProtocol::ProtocolTemplate *protocolTemplate = plotWindow->payloadTemplate();
+        if (!protocolTemplate) {
+            plotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes);
+            continue;
+        }
+        auto parsed = std::find_if(parsedFrames.cbegin(), parsedFrames.cend(), [protocolTemplate](const auto &entry) {
+            return *entry.first == *protocolTemplate;
+        });
+        if (parsed == parsedFrames.cend()) {
+            parsedFrames.append({protocolTemplate, AppProtocol::parseFrame(record.bytes, *protocolTemplate)});
+            parsed = std::prev(parsedFrames.cend());
+        }
+        plotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes, &parsed->second);
     }
 }

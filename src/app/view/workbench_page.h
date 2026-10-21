@@ -285,6 +285,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void updateProtocolTemplateActionState();
     void showProtocolTemplateWindow();
     void updateProtocolTemplatePreview();
+    // Why the template editor's fields cannot form a template, or empty.
+    QString protocolTemplateInputError() const;
     AppProtocol::ProtocolTemplate currentProtocolTemplateFromUi() const;
     // The saved template selected in the sidebar. Live parsing uses it, so
     // unsaved editor changes take effect only once saved.

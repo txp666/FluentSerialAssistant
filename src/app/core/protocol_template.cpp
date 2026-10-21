@@ -91,6 +91,16 @@ ProtocolTemplate defaultTemplate()
 
 QList<ProtocolTemplate> defaultTemplates() { return {defaultTemplate()}; }
 
+bool operator==(const ProtocolTemplate &left, const ProtocolTemplate &right)
+{
+    return left.name == right.name && left.header == right.header && left.lengthOffset == right.lengthOffset &&
+           left.lengthSize == right.lengthSize && left.lengthMode == right.lengthMode &&
+           left.lengthByteOrder == right.lengthByteOrder && left.commandOffset == right.commandOffset &&
+           left.commandSize == right.commandSize && left.payloadOffset == right.payloadOffset &&
+           left.payloadLength == right.payloadLength && left.checksumAlgorithm == right.checksumAlgorithm &&
+           left.checksumByteOrder == right.checksumByteOrder;
+}
+
 ProtocolTemplate fromJson(const QJsonObject &object)
 {
     ProtocolTemplate item = defaultTemplate();
@@ -158,6 +168,31 @@ QJsonArray listToJson(const QList<ProtocolTemplate> &protocolTemplates)
     return array;
 }
 
+FrameLayout frameLayout(const QByteArray &frame, const ProtocolTemplate &protocolTemplate)
+{
+    FrameLayout layout;
+    const int checksumBytes = checksumSize(protocolTemplate);
+    if (protocolTemplate.lengthSize > 0 && protocolTemplate.lengthOffset >= 0 &&
+        protocolTemplate.lengthOffset + protocolTemplate.lengthSize <= frame.size()) {
+        layout.lengthValue = readUnsigned(frame, protocolTemplate.lengthOffset, protocolTemplate.lengthSize,
+                                          protocolTemplate.lengthByteOrder);
+    }
+
+    layout.frameLength = frame.size();
+    if (protocolTemplate.lengthSize > 0 && protocolTemplate.lengthMode == LengthMode::FrameLength) {
+        layout.frameLength = layout.lengthValue;
+    } else if (protocolTemplate.payloadLength > 0) {
+        layout.frameLength = qint64(protocolTemplate.payloadOffset) + protocolTemplate.payloadLength + checksumBytes;
+    } else if (protocolTemplate.lengthSize > 0) {
+        layout.frameLength = qint64(protocolTemplate.payloadOffset) + layout.lengthValue + checksumBytes;
+    }
+    layout.checksumOffset = layout.frameLength - checksumBytes;
+    layout.payloadLength = protocolTemplate.payloadLength > 0
+                               ? protocolTemplate.payloadLength
+                               : layout.checksumOffset - protocolTemplate.payloadOffset;
+    return layout;
+}
+
 ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocolTemplate)
 {
     ParseResult result;
@@ -179,30 +214,19 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
     }
 
     const int checksumBytes = checksumSize(protocolTemplate);
-    if (protocolTemplate.lengthSize > 0) {
-        if (protocolTemplate.lengthOffset < 0 ||
-            protocolTemplate.lengthOffset + protocolTemplate.lengthSize > frame.size()) {
-            result.errorMessage = AppI18n::text("长度字段超出帧范围");
-            return result;
-        }
-        result.lengthValue = readUnsigned(frame, protocolTemplate.lengthOffset, protocolTemplate.lengthSize,
-                                          protocolTemplate.lengthByteOrder);
+    if (protocolTemplate.lengthSize > 0 && (protocolTemplate.lengthOffset < 0 ||
+                                            protocolTemplate.lengthOffset + protocolTemplate.lengthSize > frame.size())) {
+        result.errorMessage = AppI18n::text("长度字段超出帧范围");
+        return result;
     }
+    const FrameLayout layout = frameLayout(frame, protocolTemplate);
+    result.lengthValue = layout.lengthValue;
 
-    qint64 expectedFrameLength = frame.size();
-    if (protocolTemplate.lengthSize > 0 && protocolTemplate.lengthMode == LengthMode::FrameLength) {
-        expectedFrameLength = result.lengthValue;
-    } else if (protocolTemplate.lengthSize > 0 && protocolTemplate.payloadLength <= 0) {
-        expectedFrameLength = qint64(protocolTemplate.payloadOffset) + result.lengthValue + checksumBytes;
-    } else if (protocolTemplate.payloadLength > 0) {
-        expectedFrameLength = qint64(protocolTemplate.payloadOffset) + protocolTemplate.payloadLength + checksumBytes;
-    }
-
-    if (expectedFrameLength <= 0 || expectedFrameLength > MaxProtocolFrameBytes) {
+    if (layout.frameLength <= 0 || layout.frameLength > MaxProtocolFrameBytes) {
         result.errorMessage = AppI18n::text("解析出的帧长度无效");
         return result;
     }
-    const int frameLength = int(expectedFrameLength);
+    const int frameLength = int(layout.frameLength);
     if (frame.size() < frameLength) {
         result.errorMessage = AppI18n::text("帧长度不足：需要 %1 B，当前 %2 B").arg(frameLength).arg(frame.size());
         return result;
@@ -220,20 +244,12 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
         result.command = currentFrame.mid(protocolTemplate.commandOffset, protocolTemplate.commandSize);
     }
 
-    int payloadLength = protocolTemplate.payloadLength;
-    if (payloadLength <= 0) {
-        if (protocolTemplate.lengthSize > 0 && protocolTemplate.lengthMode == LengthMode::PayloadLength) {
-            payloadLength = static_cast<int>(result.lengthValue);
-        } else {
-            payloadLength = currentFrame.size() - checksumBytes - protocolTemplate.payloadOffset;
-        }
-    }
-    if (payloadLength < 0 || protocolTemplate.payloadOffset < 0 ||
-        protocolTemplate.payloadOffset + payloadLength > currentFrame.size() - checksumBytes) {
+    if (layout.payloadLength < 0 || protocolTemplate.payloadOffset < 0 ||
+        protocolTemplate.payloadOffset + layout.payloadLength > layout.checksumOffset) {
         result.errorMessage = AppI18n::text("载荷字段超出帧范围");
         return result;
     }
-    result.payload = currentFrame.mid(protocolTemplate.payloadOffset, payloadLength);
+    result.payload = currentFrame.mid(protocolTemplate.payloadOffset, int(layout.payloadLength));
 
     if (checksumBytes > 0) {
         if (checksumBytes >= currentFrame.size()) {

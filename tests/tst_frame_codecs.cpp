@@ -4,6 +4,8 @@
 
 #include <QtTest/QTest>
 
+#include <functional>
+
 class FrameCodecsTest : public QObject
 {
     Q_OBJECT
@@ -68,6 +70,57 @@ class FrameCodecsTest : public QObject
         AppProtocol::ProtocolTemplate impossible = AppProtocol::defaultTemplate();
         impossible.header = QByteArray(16, '\xAA');
         QVERIFY(AppProtocol::exampleFrame(impossible).isEmpty());
+    }
+
+    void frameLayoutMatchesTheParser()
+    {
+        AppProtocol::ProtocolTemplate frameLength = AppProtocol::defaultTemplate();
+        frameLength.lengthMode = AppProtocol::LengthMode::FrameLength;
+        AppProtocol::ProtocolTemplate fixedPayload = AppProtocol::defaultTemplate();
+        fixedPayload.lengthSize = 0;
+        fixedPayload.payloadLength = 2;
+        AppProtocol::ProtocolTemplate noLength = AppProtocol::defaultTemplate();
+        noLength.lengthSize = 0;
+        for (const AppProtocol::ProtocolTemplate &protocol :
+             {AppProtocol::defaultTemplate(), frameLength, fixedPayload, noLength}) {
+            const QByteArray frame = AppProtocol::exampleFrame(protocol);
+            const auto parsed = AppProtocol::parseFrame(frame, protocol);
+            QVERIFY2(parsed.ok && parsed.checksumValid, qPrintable(parsed.errorMessage));
+            const auto layout = AppProtocol::frameLayout(frame, protocol);
+            QCOMPARE(layout.lengthValue, parsed.lengthValue);
+            QCOMPARE(layout.frameLength, qint64(parsed.frameLength));
+            QCOMPARE(layout.payloadLength, qint64(parsed.payload.size()));
+            QCOMPARE(layout.checksumOffset, qint64(parsed.frameLength - parsed.checksum.size()));
+        }
+        // A length field past the end of the frame reads as 0.
+        const auto truncated = AppProtocol::frameLayout(QByteArray::fromHex("AA55"), AppProtocol::defaultTemplate());
+        QCOMPARE(truncated.lengthValue, 0u);
+        QCOMPARE(truncated.frameLength, qint64(6));
+    }
+
+    void templatesCompareEveryField()
+    {
+        const AppProtocol::ProtocolTemplate base = AppProtocol::defaultTemplate();
+        QVERIFY(base == AppProtocol::defaultTemplate());
+        const QList<std::function<void(AppProtocol::ProtocolTemplate &)>> changes = {
+            [](auto &item) { item.name = QStringLiteral("other"); },
+            [](auto &item) { item.header = QByteArray::fromHex("BB66"); },
+            [](auto &item) { item.lengthOffset = 1; },
+            [](auto &item) { item.lengthSize = 2; },
+            [](auto &item) { item.lengthMode = AppProtocol::LengthMode::FrameLength; },
+            [](auto &item) { item.lengthByteOrder = AppChecksum::ByteOrder::LittleEndian; },
+            [](auto &item) { item.commandOffset = 4; },
+            [](auto &item) { item.commandSize = 2; },
+            [](auto &item) { item.payloadOffset = 5; },
+            [](auto &item) { item.payloadLength = 3; },
+            [](auto &item) { item.checksumAlgorithm = QStringLiteral("crc32"); },
+            [](auto &item) { item.checksumByteOrder = AppChecksum::ByteOrder::BigEndian; },
+        };
+        for (const auto &change : changes) {
+            AppProtocol::ProtocolTemplate changed = base;
+            change(changed);
+            QVERIFY(!(changed == base));
+        }
     }
 
     void modbusQuantitiesFitOneFrame_data()

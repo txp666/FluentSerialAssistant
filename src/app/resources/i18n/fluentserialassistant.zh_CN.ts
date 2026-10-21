@@ -2192,10 +2192,6 @@ JSON 对象：递归读取对象和数组中的数值
         <translation>模板名称为空</translation>
     </message>
     <message>
-        <source>帧头无效</source>
-        <translation>帧头无效</translation>
-    </message>
-    <message>
         <source>已保存协议模板</source>
         <translation>已保存协议模板</translation>
     </message>
@@ -2740,6 +2736,10 @@ JSON 对象：递归读取对象和数组中的数值
     <message>
         <source> · 预览前 %1 项</source>
         <translation> · 预览前 %1 项</translation>
+    </message>
+    <message>
+        <source> · 样例较长，仅预览前 %1 行</source>
+        <translation> · 样例较长，仅预览前 %1 行</translation>
     </message>
     <message>
         <source>第 %1 行的字段名称重复</source>

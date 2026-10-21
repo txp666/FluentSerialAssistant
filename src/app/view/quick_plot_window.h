@@ -27,14 +27,20 @@ class QuickPlotWindow : public QWidget
     // The parser configuration a window last applied, used to prefill new windows.
     static AppPlot::ParserConfig savedParserConfig();
 
+    // parsed: the frame already parsed with payloadTemplate(), so windows that
+    // share a template parse each frame once. Without it the window parses.
     void appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
-                      const QByteArray &payload = {});
+                      const AppProtocol::ParseResult *parsed = nullptr);
+    // The template frames are parsed with before plotting, or nullptr when the
+    // window plots records as they are.
+    const AppProtocol::ProtocolTemplate *payloadTemplate() const;
     void clearData();
     bool configureParser(const AppPlot::ParserConfig &config);
     void setProtocolTemplates(const QList<AppProtocol::ProtocolTemplate> &protocolTemplates);
     void setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate);
     bool requiresProtocolPayload() const;
     bool isPlottingActive() const;
+    bool isPaused() const;
 
   protected:
     void showEvent(QShowEvent *event) override;

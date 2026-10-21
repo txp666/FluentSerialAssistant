@@ -2192,10 +2192,6 @@ Total sent: %2</translation>
         <translation>Template name is empty</translation>
     </message>
     <message>
-        <source>帧头无效</source>
-        <translation>Invalid frame header</translation>
-    </message>
-    <message>
         <source>已保存协议模板</source>
         <translation>Saved protocol template</translation>
     </message>
@@ -2740,6 +2736,10 @@ Installation log: %2</translation>
     <message>
         <source> · 预览前 %1 项</source>
         <translation> · Previewing the first %1 entries</translation>
+    </message>
+    <message>
+        <source> · 样例较长，仅预览前 %1 行</source>
+        <translation> · Long sample, previewing the first %1 lines</translation>
     </message>
     <message>
         <source>第 %1 行的字段名称重复</source>

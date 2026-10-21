@@ -77,17 +77,6 @@ FluentQt::ComboBox *comboFromCell(const QTableWidget *table, int row, int column
 
 QTableWidgetItem *editableItem(const QString &text) { return new QTableWidgetItem(text); }
 
-QString protocolName(AppPlot::Protocol protocol)
-{
-    switch (protocol) {
-    case AppPlot::Protocol::Delimited: return AppI18n::text("分隔值");
-    case AppPlot::Protocol::KeyValue: return AppI18n::text("键值对");
-    case AppPlot::Protocol::Json: return AppI18n::text("JSON 对象");
-    case AppPlot::Protocol::Binary: return AppI18n::text("二进制字段");
-    default: return AppI18n::text("全部数字");
-    }
-}
-
 QString protocolHint(AppPlot::Protocol protocol)
 {
     switch (protocol) {
@@ -105,6 +94,17 @@ QString protocolHint(AppPlot::Protocol protocol)
 }
 
 } // namespace
+
+QString PlotParserDialog::protocolName(AppPlot::Protocol protocol)
+{
+    switch (protocol) {
+    case AppPlot::Protocol::Delimited: return AppI18n::text("分隔值");
+    case AppPlot::Protocol::KeyValue: return AppI18n::text("键值对");
+    case AppPlot::Protocol::Json: return AppI18n::text("JSON 对象");
+    case AppPlot::Protocol::Binary: return AppI18n::text("二进制字段");
+    default: return AppI18n::text("全部数字");
+    }
+}
 
 PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget *parent, bool requireProtocolChoice)
     : QDialog(parent), m_config(config), m_fieldsProtocol(AppPlot::protocolKey(config.protocol))
@@ -500,6 +500,15 @@ void PlotParserDialog::updatePreview()
         payload = parsed.payload;
         frameStatus = parsed.summary + QStringLiteral("\n");
     }
+    // Every edit previews again, so a long pasted log is previewed only in
+    // part to keep typing responsive.
+    constexpr int MaximumPreviewCharacters = 64 * 1024;
+    int previewedLines = 0;
+    if (config.protocol != AppPlot::Protocol::Binary && text.size() > MaximumPreviewCharacters) {
+        const qsizetype lineEnd = text.lastIndexOf(QLatin1Char('\n'), MaximumPreviewCharacters);
+        text.truncate(lineEnd > 0 ? lineEnd : MaximumPreviewCharacters);
+        previewedLines = int(text.count(QLatin1Char('\n'))) + 1;
+    }
     const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(config, text, frame, payload);
     constexpr int MaximumPreviewRows = 256;
     int totalValues = 0;
@@ -521,6 +530,9 @@ void PlotParserDialog::updatePreview()
         : AppI18n::text("%1 个采样 · %2 个字段值").arg(samples.size()).arg(totalValues);
     if (totalValues > MaximumPreviewRows) {
         result += AppI18n::text(" · 预览前 %1 项").arg(MaximumPreviewRows);
+    }
+    if (previewedLines > 0) {
+        result += AppI18n::text(" · 样例较长，仅预览前 %1 行").arg(previewedLines);
     }
     m_previewStatus->setText(frameStatus + result);
     m_updatingPreview = false;

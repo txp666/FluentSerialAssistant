@@ -9,6 +9,7 @@
 
 #include <QtCore/QDir>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QVariantAnimation>
 #include <QtGui/QPixmap>
 #include <QtTest/QSignalSpy>
@@ -239,6 +240,32 @@ class ProtocolWindowsTest : public QObject
         sample->setPlainText(QStringLiteral("temperature=21 pressure=8"));
         QCOMPARE(preview->rowCount(), 1);
         QCOMPARE(preview->item(0, 2)->text(), QStringLiteral("8"));
+    }
+
+    void longSamplesArePreviewedInPart()
+    {
+        AppPlot::ParserConfig config;
+        config.protocol = AppPlot::Protocol::KeyValue;
+        PlotParserDialog dialog(config);
+        auto *sample = dialog.findChild<FluentQt::PlainTextEdit *>(QStringLiteral("plotSampleEdit"));
+        auto *preview = dialog.findChild<FluentQt::TableWidget *>(QStringLiteral("plotPreviewTable"));
+        auto *status = dialog.findChild<FluentQt::FluentLabelBase *>(QStringLiteral("plotPreviewStatus"));
+        auto *apply = dialog.findChild<FluentQt::PushButton *>(QStringLiteral("plotApplyButton"));
+        QVERIFY(sample && preview && status && apply);
+        QStringList lines;
+        for (int index = 0; index < 20000; ++index) {
+            lines.append(QStringLiteral("value=%1").arg(index));
+        }
+        sample->setPlainText(lines.join(QLatin1Char('\n')));
+        QVERIFY(apply->isEnabled());
+        QCOMPARE(preview->item(0, 2)->text(), QStringLiteral("0"));
+        // Only whole lines from the start are previewed, and the status says so.
+        const QRegularExpressionMatch match =
+            QRegularExpression(QStringLiteral("^(\\d+) ")).match(status->text());
+        QVERIFY(match.hasMatch());
+        const int previewed = match.captured(1).toInt();
+        QVERIFY(previewed > 0 && previewed < lines.size());
+        QVERIFY(status->text().contains(AppI18n::text(" · 样例较长，仅预览前 %1 行").arg(previewed)));
     }
 
     void binaryPayloadPreviewRequiresTemplateAndRejectsBadFrames()

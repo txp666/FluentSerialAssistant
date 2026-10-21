@@ -44,19 +44,6 @@ QString byteRange(int offset, int size)
     return size == 1 ? QString::number(offset) : QStringLiteral("%1–%2").arg(offset).arg(offset + size - 1);
 }
 
-quint32 unsignedField(const QByteArray &frame, const AppProtocol::ProtocolTemplate &item)
-{
-    quint32 value = 0;
-    if (item.lengthOffset < 0 || item.lengthSize <= 0 || item.lengthOffset + item.lengthSize > frame.size()) {
-        return 0;
-    }
-    for (int i = 0; i < item.lengthSize; ++i) {
-        const int index = item.lengthByteOrder == AppChecksum::ByteOrder::LittleEndian ? item.lengthSize - i - 1 : i;
-        value = (value << 8) | static_cast<unsigned char>(frame.at(item.lengthOffset + index));
-    }
-    return value;
-}
-
 } // namespace
 
 ProtocolTemplateWindow::ProtocolTemplateWindow(QWidget *editor, QWidget *parent) : QWidget(parent, Qt::Window)
@@ -268,20 +255,11 @@ void ProtocolTemplateWindow::updatePreview()
     const QByteArray frame = sample.bytes;
     const AppProtocol::ParseResult result = AppProtocol::parseFrame(frame, m_protocolTemplate);
     const int checksumSize = AppProtocol::checksumSize(m_protocolTemplate);
-    const quint32 lengthValue = unsignedField(frame, m_protocolTemplate);
-    qint64 expectedFrameLength = frame.size();
-    if (m_protocolTemplate.lengthSize > 0 && m_protocolTemplate.lengthMode == AppProtocol::LengthMode::FrameLength) {
-        expectedFrameLength = lengthValue;
-    } else if (m_protocolTemplate.payloadLength > 0) {
-        expectedFrameLength =
-            qint64(m_protocolTemplate.payloadOffset) + m_protocolTemplate.payloadLength + checksumSize;
-    } else if (m_protocolTemplate.lengthSize > 0) {
-        expectedFrameLength = qint64(m_protocolTemplate.payloadOffset) + lengthValue + checksumSize;
-    }
-    const qint64 checksumOffset = qMax<qint64>(0, expectedFrameLength - checksumSize);
-    const qint64 payloadLength = m_protocolTemplate.payloadLength > 0
-                                     ? m_protocolTemplate.payloadLength
-                                     : qMax<qint64>(0, checksumOffset - m_protocolTemplate.payloadOffset);
+    // Highlight the areas even when the frame does not parse.
+    const AppProtocol::FrameLayout layout = AppProtocol::frameLayout(frame, m_protocolTemplate);
+    const qint64 expectedFrameLength = layout.frameLength;
+    const qint64 checksumOffset = qMax<qint64>(0, layout.checksumOffset);
+    const qint64 payloadLength = qMax<qint64>(0, layout.payloadLength);
 
     QString html = QStringLiteral("<table cellspacing='4' cellpadding='5'>");
     const int visibleBytes = int(qMin<qsizetype>(frame.size(), 1024));
@@ -331,7 +309,7 @@ void ProtocolTemplateWindow::updatePreview()
            bytesToHex(frame.left(m_protocolTemplate.header.size())));
     addRow(AppI18n::text("长度"), byteRange(m_protocolTemplate.lengthOffset, m_protocolTemplate.lengthSize),
            m_protocolTemplate.lengthSize > 0
-               ? QString::number(lengthValue) + QStringLiteral(" · ") +
+               ? QString::number(layout.lengthValue) + QStringLiteral(" · ") +
                      AppProtocol::lengthModeLabel(m_protocolTemplate.lengthMode)
                : AppI18n::text("无长度字段"));
     addRow(AppI18n::text("命令"), byteRange(m_protocolTemplate.commandOffset, m_protocolTemplate.commandSize),
