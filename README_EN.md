@@ -18,7 +18,7 @@
 
 Fluent Serial Assistant is a cross-platform serial terminal and protocol debugging application. It provides a modern Fluent-style workspace for serial connections, traffic inspection, packet construction, data visualization, automation, exporting, and appearance configuration.
 
-The current version is **v0.1.17**, using **FluentQtWidgets v0.1.9**. Features include a multi-tab terminal workspace, automatic logging, independent plot windows, a frame table, JavaScript automation, a visual protocol-template editor, and application settings.
+The current version is **v0.1.18**, using **FluentQtWidgets v0.1.9**. Features include a multi-tab terminal workspace, automatic logging, independent plot windows, a frame table, JavaScript automation, a visual protocol-template editor, and application settings.
 
 ## Screenshot
 
