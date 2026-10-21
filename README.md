@@ -1,245 +1,132 @@
 <div align="center">
   <img src="logo.png" alt="Fluent 串口助手 Logo" width="96" height="96">
   <h1>Fluent 串口助手</h1>
-  <p>基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的现代串口调试工具。</p>
-  <p><a href="README_EN.md">English</a> · 简体中文</p>
+  <p>基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的跨平台串口调试工具。</p>
   <p>
-    <a href="LICENSE">GPL-3.0-or-later</a>
-    ·
-    <a href="https://github.com/txp666/FluentSerialAssistant/releases">下载</a>
-    ·
-    <a href=".github/workflows/release.yml">三平台发布构建</a>
-    ·
+    <a href="https://github.com/txp666/FluentSerialAssistant/releases/latest"><img src="https://img.shields.io/github/v/release/txp666/FluentSerialAssistant?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" alt="最新版本"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/txp666/FluentSerialAssistant?label=%E8%AE%B8%E5%8F%AF%E8%AF%81" alt="许可证"></a>
+    <img src="https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%20%7C%20macOS%20%7C%20Linux-0a7aca" alt="平台">
+  </p>
+  <p>
+    <a href="README_EN.md">English</a> · 简体中文 ·
+    <a href="https://github.com/txp666/FluentSerialAssistant/releases/latest">下载</a> ·
+    <a href="CHANGELOG.md">变更记录</a> ·
+    <a href="CONTRIBUTING.md">贡献指南</a> ·
     <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
-    ·
-    <a href="CONTRIBUTING.md">贡献指南</a>
   </p>
 </div>
 
-Fluent 串口助手是一个基于 C++17、Qt 6 Widgets 和 FluentQtWidgets 的跨平台串口调试工具。项目目标是提供一个现代 Fluent 风格的串口终端，覆盖常用串口连接、收发、显示、导出和主题配置工作流。
+Fluent 串口助手提供现代 Fluent 风格的串口终端，覆盖连接、收发、显示、协议解析、绘图、自动化和导出等常用调试流程，支持 Windows、macOS 和 Linux。
 
-当前版本为 **v0.1.18**，使用 **FluentQtWidgets v0.1.9**。主要功能包括多标签终端工作台、自动日志、独立曲线窗口、数据表格、脚本插件、可视化协议模板编辑器和设置。
-
-## 界面截图
+## 界面预览
 
 <p align="center">
-  <img src="docs/images/show.gif" alt="Fluent 串口助手终端工作台截图" width="860">
+  <img src="docs/images/show.gif" alt="Fluent 串口助手操作演示" width="860">
 </p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/main-window.png" alt="终端工作台"><p align="center">终端工作台：多标签会话、日志着色和流量统计</p></td>
+    <td width="50%"><img src="docs/images/plot-window.png" alt="曲线窗口"><p align="center">曲线窗口：按协议提取字段并实时绘图</p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/protocol-editor.png" alt="帧协议编辑器"><p align="center">帧协议编辑器：字节结构、字段和校验一目了然</p></td>
+    <td width="50%"><img src="docs/images/data-table.png" alt="数据表格"><p align="center">数据表格：按帧查看 HEX、文本和校验结果</p></td>
+  </tr>
+</table>
+
+## 下载安装
+
+在 [Releases](https://github.com/txp666/FluentSerialAssistant/releases/latest) 下载对应平台的安装包，每个安装包都附带 `.sha256` 校验文件。
+
+| 平台 | 安装包 | 说明 |
+| --- | --- | --- |
+| Windows x64 | `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe` | 安装程序，需要管理员权限，默认安装到 Program Files |
+| macOS（Apple 芯片） | `FluentSerialAssistant-X.Y.Z-macos-arm64.dmg` | 打开后把应用拖到“应用程序”文件夹 |
+| Linux x64 / arm64 | `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb` | `sudo apt install ./FluentSerialAssistant-X.Y.Z-linux-x64.deb` |
+
+macOS 版本未经 Apple 公证，首次打开被系统阻止时，请在“系统设置 → 隐私与安全性”中点击“仍要打开”。v0.1.14 及更新版本可在应用内检查更新，确认后自动下载、校验并安装。
 
 ## 功能特性
 
-- 串口扫描：显示端口名、描述、厂商、VID/PID 和序列号。
-- 连接参数：支持常用和扩展波特率、数据位、校验位、停止位、流控、RTS、DTR。
-- 终端显示：支持文本、HEX、混合显示模式。
-- 编码支持：接收和文本发送可分别选择 UTF-8、GBK、ASCII、Latin1。
-- 自动断帧：支持按接收间隔、帧头、帧尾和固定长度断帧。
-- 协议模板：在独立的可视化帧协议编辑器中定义帧头、长度字段、命令字、载荷和尾部校验字段；输入样例 HEX 或使用最新接收帧，查看彩色字节结构、字段位置、解析值和校验结果。模板和样例可保存并切换。
-- 记录显示：RX/TX 统一会话记录，支持暂停显示、自动滚动、清空和计数重置。
-- 终端检索：支持按关键字搜索、高亮匹配、上/下匹配跳转、大小写敏感、正则搜索，并按全部、接收、发送过滤当前显示。
-- 快速绘图：每次点击曲线图标先选择协议，确认后创建独立窗口，可同时打开多个窗口。支持按行提取数字、分隔值、多词/中文键值、嵌套 JSON 和二进制字段；可用文本/HEX 样例预览结果、筛选字段，并按整数/浮点、大小端、比例和偏移解码完整帧或指定协议模板的载荷。支持暂停、清空和 CSV 导出；只采集窗口打开期间的新接收记录，隐藏、最小化或关闭后停止取数和绘制，不补绘历史记录。
-- 数据表格：按帧查看时间、方向、来源、长度、HEX、文本和校验结果，支持排序、过滤、复制单帧/HEX，并可定位回终端记录。
-- 多标签会话：支持在标题栏创建多个独立会话，新标签会复制当前会话配置，关闭标签会释放对应串口和文件资源。
-- 内置虚拟串口对：在设置中开启后，两个会话可分别连接 `VIRTUAL-A` 和 `VIRTUAL-B`，无需驱动即可在应用内双向透传数据。
-- 状态统计：显示 RX/TX 总量、实时速率和连接时长。
-- 清空操作：终端工具栏最左侧的扫把按钮同时清空终端显示并重置 RX/TX 流量计数。
-- TX 着色：可选择发送记录显示颜色。
-- 数据发送：支持文本和 HEX 发送，支持 None、CR、LF、CRLF 行结束符。
-- 校验工具：支持 CRC16-Modbus、CRC16-CCITT、CRC32、LRC、XOR、SUM8 手动计算和发送时自动追加。
-- Modbus RTU：支持常用读写请求帧生成、CRC 自动追加、直接发送和响应摘要解析。
-- 左侧卡片：连接、接收、协议模板、发送、Modbus、常用包、宏命令、脚本插件、自动应答和文件发送卡片可折叠，并记住折叠状态。
-- 发送历史：保留最近 20 条唯一发送记录。
-- 常用包：支持分组、备注、启用/停用、保存、载入、发送、批量发送、删除、排序和 JSON 导入导出。
-- 宏命令：支持多步骤发送、步骤间延时、等待文本/HEX 响应、循环运行、失败中止和 CSV 结果导出。
-- 脚本插件：内置 JavaScript 脚本运行器，可通过受控 `serial` API 发送文本/HEX、读取收发记录快照、写脚本日志，并支持停止和异常提示。
-- AI 控制：提供用户级本地 IPC、机器可读 CLI 和 stdio MCP 服务；AI 可复用 GUI 当前会话完成端口扫描、连接、收发、记录读取、协议选择和曲线窗口控制，不会与 GUI 抢占串口。
-- 自动应答：支持文本、HEX 和正则匹配规则，命中后可立即或延时发送指定文本/HEX 应答，并在发送记录中标记来源。
-- 循环发送：支持毫秒级发送间隔。
-- 文件发送：支持选择文件后按块发送，可配置块大小和块间隔，并显示进度。
-- 自动日志：支持 TXT、CSV、BIN 自动记录收发数据，文件名包含时间、串口名和波特率，并可按单文件大小滚动。
-- 内容着色：在设置页面勾选 ESP-IDF、通用日志等级、成功与失败、AT 指令响应等示例，或按关键词、正则表达式自定义颜色；支持区分大小写、匹配内容或整行着色、规则优先级，配置会保存并应用于所有终端会话。
-- 应用更新：启动自动检查新版本，先展示更新说明，确认后下载、校验并安装；设置中可手动检查和重试。
-- 导出记录：支持 TXT、CSV、BIN。
-- 接收保存：可将接收原始数据保存到文件。
-- 会话恢复：恢复上次串口参数、发送输入、常用包、宏命令、自动应答规则和文件发送参数，可选启动后自动连接。
-- 外观设置：支持浅色、深色、跟随系统主题和主题色配置。
-- 字体设置：支持界面字体、终端等宽字体、终端字号和 TTF/OTF/TTC 自定义字体导入。
-- 界面语言：支持简体中文和 English，可在设置页或标题栏快捷按钮中无需重启切换。
-- Fluent 体验：快捷按钮提示、协议示例说明和错误提示统一使用 Fluent 组件库。
-- 配置存储：Windows、macOS 和 Linux 均使用系统标准的用户配置目录，不写 Windows 注册表；升级时会自动迁移旧版安装目录中的配置。
+### 连接与收发
 
+- 扫描串口并显示端口名、描述、厂商、VID/PID 和序列号；支持常用及扩展波特率、数据位、校验位、停止位、流控、RTS 和 DTR。
+- 文本或 HEX 发送，可选 None、CR、LF、CRLF 行结束符；接收和发送可分别选择 UTF-8、GBK、ASCII、Latin1 编码。
+- 毫秒级循环发送、最近 20 条发送历史，以及按块大小和间隔分块发送文件。
+- 多标签会话：每个标签独立连接一个串口，新标签复制当前配置。
+- 内置虚拟串口对：开启后两个会话可分别连接 `VIRTUAL-A` 和 `VIRTUAL-B` 互相收发，无需安装驱动。
 
-## 技术栈
+### 显示与分析
 
-- C++17
-- Qt 6.5+
-- Qt Widgets
-- Qt SerialPort
-- Qt Svg
-- Qt Qml
-- FluentQtWidgets v0.1.9
-- CMake
-- Ninja
+- 终端支持文本、HEX、混合显示，时间戳、自动滚动和暂停显示，发送记录可自定义颜色，并实时统计收发总量、速率和连接时长。
+- 自动断帧：按接收间隔、帧头、帧尾或固定长度分割记录。
+- 终端搜索：关键字或正则、区分大小写、高亮跳转，并可只看接收或发送记录。
+- 内容着色：内置 ESP-IDF、日志等级、成功与失败、AT 指令响应等预设，也可按关键词或正则自定义颜色。
+- 曲线窗口：同时打开多个独立窗口，支持全部数字、分隔值、键值对、JSON 和二进制字段，可预览样例、筛选字段，并暂停、清空或导出 CSV。
+- 数据表格：按帧查看时间、方向、来源、长度、HEX、文本和校验结果，支持排序、过滤、复制，并可定位回终端记录。
 
-## 目录结构
+### 协议与工具
 
-```text
-.
-├── .github/workflows/        # GitHub Release 测试与打包工作流
-├── docs/images/              # README 截图和文档图片
-├── scripts/                  # 发布和辅助脚本
-├── src/
-│   ├── app/core/             # 字体偏好、HEX 解析、更新检查等通用逻辑
-│   ├── app/control/          # 会话控制接口、本地 JSON IPC 和客户端传输
-│   ├── app/resources/        # Qt 资源、应用图标和平台资源
-│   ├── app/serial/           # QSerialPort 封装
-│   ├── app/view/             # 主窗口、设置页和终端工作台
-│   │   └── workbench/        # 终端工作台按职责拆分的实现文件
-│   │       ├── *_layout.cpp              # 页面整体布局
-│   │       ├── *_side_sections.cpp       # 左侧连接、收发、常用包、宏命令、自动应答、文件发送配置
-│   │       ├── *_terminal_sections.cpp   # 终端区和发送区 UI
-│   │       ├── *_terminal.cpp            # 终端记录、过滤、分色和渲染
-│   │       ├── *_packets.cpp             # 发送历史和常用包
-│   │       ├── *_macros.cpp              # 宏命令和测试序列
-│   │       ├── *_protocol_templates.cpp  # 协议模板保存、切换和解析
-│   │       ├── *_scripts.cpp             # JavaScript 脚本插件运行
-│   │       ├── *_auto_reply.cpp          # 自动应答规则匹配、发送和持久化
-│   │       ├── *_files.cpp               # 记录导出、接收保存和文件发送
-│   │       ├── *_connection.cpp          # 连接、重连和控件启停
-│   │       └── *_state.cpp               # 设置恢复、保存、计数和状态更新
-│   ├── cli/                  # 机器可读 CLI
-│   └── mcp/                  # MCP stdio 工具服务
-├── third_party/FluentQtWidgets/
-├── CMakeLists.txt
-├── CMakePresets.json
-└── README.md
-```
+- 帧协议模板：在可视化编辑器中定义帧头、长度、命令、载荷和校验，用样例或最新接收帧检查解析结果；启用后接收记录会标注命令和校验状态。
+- 校验工具：CRC16-Modbus、CRC16-CCITT、CRC32、LRC、XOR、SUM8，可手动计算或在发送时自动追加。
+- Modbus RTU：生成常用读写请求、自动追加 CRC，并解析响应摘要。
 
-## 获取源码
+### 自动化
 
-项目使用 `FluentQtWidgets` 作为 Git 子模块：
+- 常用包：分组、备注、启用/停用、批量发送、排序和 JSON 导入导出。
+- 宏命令：多步骤发送、步骤延时、等待文本或 HEX 响应、循环运行、失败中止，并导出 CSV 结果。
+- 自动应答：按文本、HEX 或正则匹配，立即或延时发送应答，并在记录中标记来源。
+- 脚本插件：内置 JavaScript 运行器，通过受控的 `serial` API 收发数据、读取记录和写日志。
+- AI 控制：通过本地 IPC、CLI 和 MCP 服务复用 GUI 当前会话，见 [AI、CLI 与 MCP 控制](#aicli-与-mcp-控制)。
 
-```powershell
-git clone --recursive <repo-url>
-cd FluentSerialAssistant
-```
+### 记录与导出
 
-如果已经克隆但没有拉取子模块：
+- 会话记录导出为 TXT、CSV 或 BIN。
+- 自动日志按 TXT、CSV、BIN 记录收发数据，文件名包含时间、串口名和波特率，可按单文件大小滚动。
+- 将接收的原始数据保存到文件。
 
-```powershell
-git submodule update --init --recursive
-```
+### 界面与设置
 
-## 本地构建
+- 浅色、深色、跟随系统主题和自定义主题色；界面字体、终端等宽字体、字号和自定义字体导入。
+- 简体中文和 English 无需重启即可切换。
+- 恢复上次的串口参数、发送内容、常用包、宏命令、自动应答规则和文件发送参数，可选启动后自动连接；侧栏卡片记住折叠状态。
+- 配置保存在系统标准的用户配置目录，不写入 Windows 注册表；升级时自动迁移旧版安装目录中的配置。
 
-### 环境要求
+## 快速上手
 
-- CMake 3.21+
-- Ninja
-- Qt 6.5+，需要包含 `SerialPort`、`Svg`、`Core5Compat` 和 `Qml` 模块
-- Windows 本地预设默认使用：
-  - Qt：`C:/Qt/6.11.1/mingw_64`
-  - MinGW：`C:/Qt/Tools/mingw1310_64`
+1. 选择串口并设置波特率、数据位、校验位、停止位和流控，点击“连接”。
+2. 在终端查看收发记录；需要时开启时间戳、自动断帧或切换 HEX 显示。
+3. 在发送区输入文本或 HEX，选择行结束符和编码后发送；可勾选校验自动追加或循环发送。
+4. 点击终端工具栏的曲线图标，选择解析协议并确认，即可新建一个曲线窗口。
+5. 在左侧“协议模板”中点击“编辑协议”定义帧格式，保存并启用后，接收记录会显示解析结果。
+6. 用常用包、宏命令、自动应答或脚本插件把重复操作自动化。
+7. 点击终端工具栏最左侧的扫把按钮，同时清空终端和收发计数；用 TXT、CSV、BIN 导出记录。
 
-### Debug
+### 曲线窗口
 
-```powershell
-cmake --preset mingw-debug
-cmake --build --preset mingw-debug --parallel
-```
-
-运行：
-
-```powershell
-.\build\mingw-debug\FluentSerialAssistant.exe
-```
-
-### Release
-
-```powershell
-cmake --preset mingw-release
-cmake --build --preset mingw-release --parallel
-```
-
-如果链接时报 `cannot open output file FluentSerialAssistant.exe: Permission denied`，通常是旧程序仍在运行，请关闭后重新构建。
-
-### VS Code 一键构建
-
-仓库内置 `.vscode/tasks.json`，在 VS Code 中打开项目后可直接使用：
-
-- `Ctrl+Shift+B` / `Cmd+Shift+B`：执行默认 Debug 构建任务。
-- `Terminal > Run Build Task...`：选择 Debug 或 Release 构建任务。
-- `Run and Debug > Debug FluentSerialAssistant` 或 `F5`：构建 Debug 版本并启动调试。
-
-Windows 下任务复用 `CMakePresets.json` 中的 MinGW 预设；macOS 和 Linux 下任务使用 `build/vscode-debug` 或 `build/vscode-release` 目录执行 Ninja 构建。
-
-## 打包发布
-
-GitHub Actions 仅在 GitHub Release 正式发布时触发；提交推送、Pull Request、标签推送和手动操作均不会单独触发构建。
-
-发布前同步 CMake 版本、变更记录和 `docs/release-notes/vX.Y.Z.md`，推送代码及对应的 `vX.Y.Z` 标签，再创建并发布该标签的 GitHub Release。创建时不要标记为最新版本；工作流会检出标签对应的代码，运行测试，并构建以下安装包：
-
-- Windows x64：请求管理员权限并默认安装到 Program Files 的 Inno Setup 安装程序
-  `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe`
-- macOS arm64：`FluentSerialAssistant-X.Y.Z-macos-arm64.dmg`
-- Linux x64 / arm64：Debian 安装包
-  `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb`
-- 每个安装包对应的 `.sha256` 校验文件
-
-所有平台完成构建并通过产物校验后，工作流会将安装包和更新说明上传到该 Release，再将其标记为最新版本。打包过程中请保留上一版本为最新版本，避免应用内更新检测到尚未齐全的安装包。
-
-Windows 发布支持 SignPath Foundation 的免费开源 Authenticode 签名。签名会先应用到
-`FluentSerialAssistant.exe`，再构建并签署 Inno Setup 安装程序。申请和仓库配置见
-[SignPath 设置说明](docs/signing/SIGNPATH_SETUP.md)。
-
-本地 Windows 紧凑便携包仍可使用：
-
-```powershell
-.\scripts\package_release.ps1
-```
-
-三平台安装包的底层脚本为 `scripts/package_windows.ps1`、
-`scripts/package_unix.sh` 和 `scripts/create_deb_package.sh`。
-
-## 使用说明
-
-1. 选择串口端口，必要时点击刷新。
-2. 配置波特率、数据位、校验位、停止位、流控。
-3. 点击连接。
-4. 在终端记录区查看 RX/TX。
-5. 在发送区输入文本或 HEX 数据，必要时选择收发编码、行结束符和校验自动追加后发送。
-6. 可在常用包中填写分组、名称、备注、内容、模式和换行后保存，之后选中条目即可填入发送区、直接发送、批量发送或 JSON 导入导出。
-7. 可在宏命令中保存多步骤测试序列，配置延时、期望响应、循环次数和失败中止后运行，并导出 CSV 结果。
-8. 在左侧“协议模板”中点击“编辑协议”，打开帧协议编辑器。按分组填写帧头、长度、命令、载荷和校验字段，输入样例 HEX 或点击“最新接收”，查看字节结构和解析结果；保存后可选择模板并启用接收解析。
-9. 可在脚本插件中载入或编写 JavaScript，通过 `serial.sendText()`、`serial.sendHex()`、`serial.records()` 和 `serial.log()` 自动化调试流程。
-10. 自动应答中点击“新建”，填写文本、HEX 或正则匹配规则后点击“添加”，可连续添加多条规则；选中已有规则后点击“保存”仅更新该条规则。命中后立即或延时发送指定应答。
-11. 可选择文件，配置块大小和间隔后分块发送。
-12. 点击曲线图标，选择全部数字、分隔值、键值对、JSON 对象或二进制字段协议，用样例预览并配置字段后确认。每次确认都会创建新的独立窗口；二进制载荷取数需选择帧协议模板。新窗口从空曲线开始，只显示打开后收到的数据；隐藏、最小化或关闭期间的数据不会补绘，可暂停、清空或导出 CSV。
-13. 可打开数据表格窗口，按帧排序、过滤、复制记录，并定位回终端对应记录。
-14. 可新增标签页同时调试多个串口，新会话会复制当前配置。
-15. 可点击左侧卡片标题折叠不常用配置，减少侧栏占用。
-16. 可开启自动断帧、时间戳、自动滚动、循环发送和自动日志等选项。
-17. 使用 TXT、CSV、BIN 导出会话记录。
-18. 点击终端工具栏最左侧的扫把按钮，同时清空终端显示和收发流量计数。
+- 每次确认都会新建一个独立窗口，可同时打开多个窗口分别绘制不同字段；窗口左上角的按钮显示当前协议，点击可修改解析设置。
+- 用文本或 HEX 样例预览解析结果；二进制字段可配置类型、字节偏移、大小端、比例和偏移，并从完整帧或协议模板载荷中取数。
+- 窗口只绘制打开期间收到的数据，隐藏、最小化或关闭期间的数据不会补绘；最多显示 32 个通道。
 
 ### 内置虚拟串口对
 
 1. 打开“设置”，开启“内置虚拟串口对”。
 2. 在两个会话中分别选择 `VIRTUAL-A` 和 `VIRTUAL-B` 并连接；端口列表未更新时点击刷新。
-3. 在任一端发送文本或 HEX 数据，另一端即可接收；也可配合自动应答规则测试请求与响应。
-4. 在设置中关闭虚拟串口对，会断开两端的虚拟连接。
+3. 在任一端发送数据，另一端即可收到；也可配合自动应答规则测试请求与响应。
 
-虚拟串口对仅在同一应用实例内可用，无需安装驱动，不影响物理串口。它双向透传发送的字节，不模拟波特率和流控；另一端尚未连接时，发送的数据会被丢弃，不会在连接后补发。
+虚拟串口对只在同一应用实例内可用，不影响物理串口。它原样转发字节，不模拟波特率和流控；另一端未连接时发送的数据会被丢弃。
 
 ### 应用内更新
 
-1. 启动后自动检查更新；没有新版本或暂时无法联网时不弹窗。也可在“设置 → 应用更新”手动检查。
-2. 发现新版本后，先查看版本号和更新说明，点击“下载并安装”才开始下载；点击“稍后”可暂不更新。
-3. 下载使用 4 路并行连接，显示进度、已下载大小和状态，随时可取消。服务器不支持分段下载时会自动改用单连接；失败后可重试。
-4. 安装包大小和 SHA-256 校验通过后准备安装，系统可能弹出权限授权提示。安装交接成功后，应用保存配置并退出，由安装程序完成更新，无需再次在应用内确认。
+1. 启动后自动检查更新；没有新版本或无法联网时不弹窗。也可在“设置 → 应用更新”手动检查。
+2. 发现新版本后先显示版本号和更新说明，点击“下载并安装”才开始下载。
+3. 下载使用 4 路并行连接，显示进度并可随时取消；服务器不支持分段下载时自动改用单连接。
+4. 文件大小和 SHA-256 校验通过后交给系统安装，必要时会请求权限，应用保存配置后退出。
 
 ## AI、CLI 与 MCP 控制
 
-应用启动后，可通过 `fluentserial-cli` 或 `fluentserial-mcp` 控制 GUI 当前串口会话。GUI 始终是串口唯一所有者，CLI/MCP 通过当前用户可访问的本地 IPC 复用现有协议解析、记录和实时曲线能力。
+应用运行时，可通过 `fluentserial-cli` 或 `fluentserial-mcp` 控制 GUI 当前会话。GUI 始终是串口唯一的使用者，CLI 和 MCP 通过当前用户私有的本地 IPC 复用它的连接、协议解析、记录和曲线窗口，不会与 GUI 抢占串口。
 
 ```bash
 fluentserial-cli ports
@@ -249,17 +136,105 @@ fluentserial-cli records --direction rx --limit 20
 fluentserial-cli plot --plot-protocol keyValue --plot-field "free sram" --clear
 ```
 
-架构、MCP 客户端配置、全部工具和 IPC 契约见 [AI 控制、CLI 与 MCP 文档](docs/ai-control.md)。
+CLI、MCP 需与应用使用同一版本。架构、MCP 客户端配置、全部工具和 IPC 约定见 [AI 控制、CLI 与 MCP 文档](docs/ai-control.md)。
 
-配置文件使用 Qt `QSettings::IniFormat`。Windows、macOS 和 Linux 的业务设置均保存到
-Qt 提供的系统标准用户配置目录，主题、语言等 Fluent 外观配置也保存在同一目录。
-首次运行新版时会自动迁移旧版安装目录中的配置文件。
+## 从源码构建
+
+### 获取源码
+
+项目以 Git 子模块引入 `FluentQtWidgets`：
+
+```bash
+git clone --recursive https://github.com/txp666/FluentSerialAssistant.git
+cd FluentSerialAssistant
+```
+
+已克隆但没有拉取子模块时：
+
+```bash
+git submodule update --init --recursive
+```
+
+### 环境要求
+
+- CMake 3.21+ 和 Ninja
+- Qt 6.5+，包含 Widgets、SerialPort、Svg、Network、Qml 和 Core5Compat 模块（Qt 安装器中勾选 Qt Serial Port 和 Qt 5 Compatibility Module）
+- Linux 另需 `libgl1-mesa-dev`、`libxcb-cursor0` 和 `libxkbcommon-x11-0`
+
+### Windows（MinGW）
+
+`CMakePresets.json` 默认使用 `C:/Qt/6.11.1/mingw_64` 和 `C:/Qt/Tools/mingw1310_64`，路径不同时请修改预设。
+
+```powershell
+cmake --preset mingw-release
+cmake --build --preset mingw-release --parallel
+.\build\mingw-release\FluentSerialAssistant.exe
+```
+
+Debug 构建使用 `mingw-debug` 预设。链接时提示 `cannot open output file FluentSerialAssistant.exe: Permission denied`，通常是旧程序仍在运行。
+
+### macOS 和 Linux
+
+```bash
+cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<平台目录>
+cmake --build build/release --parallel
+```
+
+Qt 已在默认搜索路径中时可省略 `CMAKE_PREFIX_PATH`。
+
+### 运行测试
+
+```bash
+ctest --test-dir build/release --output-on-failure
+```
+
+测试默认随项目构建，使用 Qt 的 offscreen 平台运行，不需要显示器或真实串口。
+
+### VS Code
+
+仓库内置 `.vscode/tasks.json`：`Ctrl+Shift+B` / `Cmd+Shift+B` 执行 Debug 构建，`F5` 构建并启动调试。Windows 下复用 MinGW 预设，macOS 和 Linux 下使用 `build/vscode-debug` 或 `build/vscode-release` 目录。
+
+## 发布
+
+GitHub Actions 只在 GitHub Release 发布时运行。
+
+1. 更新 `CMakeLists.txt` 中的版本号、`CHANGELOG.md` 和 `docs/release-notes/vX.Y.Z.md`，并推送到 main。
+2. 在 GitHub 上以 `vX.Y.Z` 为标签和标题发布 Release。
+3. 工作流先把该 Release 标为预发布，在三个平台上运行测试并构建安装包；全部校验通过并上传后，再转为正式版并标记为最新。构建失败时它保持预发布，应用内更新不会看到它。
+
+产物包括 Windows x64 安装程序、macOS arm64 DMG、Linux x64/arm64 DEB 及各自的 `.sha256` 文件。Windows 发布支持 SignPath Foundation 的免费开源 Authenticode 签名：配置后先签名 `FluentSerialAssistant.exe`，再构建并签名安装程序，见 [SignPath 设置说明](docs/signing/SIGNPATH_SETUP.md)。
+
+本地打包可使用 `scripts/package_release.ps1`（Windows 便携包），三平台安装包的底层脚本为 `scripts/package_windows.ps1`、`scripts/package_unix.sh` 和 `scripts/create_deb_package.sh`。
+
+## 目录结构
+
+```text
+.
+├── .github/workflows/   # Release 测试与打包工作流
+├── docs/
+│   ├── ai-control.md    # AI、CLI 与 MCP 控制说明
+│   ├── images/          # README 截图
+│   ├── release-notes/   # 各版本发布说明
+│   └── signing/         # 代码签名配置说明
+├── packaging/windows/   # Inno Setup 安装程序定义和翻译
+├── scripts/             # 打包脚本
+├── signing/signpath/    # SignPath 签名产物配置
+├── src/
+│   ├── app/control/     # 会话控制接口和本地 IPC
+│   ├── app/core/        # 协议、校验、绘图解析、编码、更新等通用逻辑
+│   ├── app/resources/   # Qt 资源、图标和翻译
+│   ├── app/serial/      # 串口封装和内置虚拟串口对
+│   ├── app/view/        # 主窗口、设置页、曲线、协议编辑器等界面
+│   │   └── workbench/   # 终端工作台，按功能拆分为连接、终端、发送、宏、脚本等文件
+│   ├── cli/             # 命令行工具
+│   └── mcp/             # MCP stdio 服务
+├── tests/               # Qt Test 自动化测试
+└── third_party/FluentQtWidgets/
+```
 
 ## 许可证
 
-本项目采用 GNU General Public License v3.0 or later，详见 [LICENSE](LICENSE)。
-
-由于本项目依赖的 `FluentQtWidgets` 也采用 GPL-3.0-or-later，分发本项目或其派生版本时需要遵守 GPL 的源代码开放和再分发要求。
+本项目采用 GNU General Public License v3.0 or later，详见 [LICENSE](LICENSE)。项目依赖的 `FluentQtWidgets` 同样采用 GPL-3.0-or-later，分发本项目或其派生版本时需遵守 GPL 的源代码开放和再分发要求。
 
 ## 相关项目
 

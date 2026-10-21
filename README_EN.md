@@ -1,203 +1,134 @@
 <div align="center">
   <img src="logo.png" alt="Fluent Serial Assistant logo" width="96" height="96">
   <h1>Fluent Serial Assistant</h1>
-  <p>A modern serial-port debugging tool built with C++17, Qt 6 Widgets, and FluentQtWidgets.</p>
-  <p>English · <a href="README.md">简体中文</a></p>
+  <p>A cross-platform serial debugging tool built with C++17, Qt 6 Widgets, and FluentQtWidgets.</p>
   <p>
-    <a href="LICENSE">GPL-3.0-or-later</a>
-    ·
-    <a href="https://github.com/txp666/FluentSerialAssistant/releases">Downloads</a>
-    ·
-    <a href=".github/workflows/release.yml">Cross-platform release builds</a>
-    ·
+    <a href="https://github.com/txp666/FluentSerialAssistant/releases/latest"><img src="https://img.shields.io/github/v/release/txp666/FluentSerialAssistant" alt="Latest release"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/txp666/FluentSerialAssistant" alt="License"></a>
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-0a7aca" alt="Platforms">
+  </p>
+  <p>
+    English · <a href="README.md">简体中文</a> ·
+    <a href="https://github.com/txp666/FluentSerialAssistant/releases/latest">Download</a> ·
+    <a href="CHANGELOG.md">Changelog</a> ·
+    <a href="CONTRIBUTING.md">Contributing</a> ·
     <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
-    ·
-    <a href="CONTRIBUTING.md">Contributing</a>
   </p>
 </div>
 
-Fluent Serial Assistant is a cross-platform serial terminal and protocol debugging application. It provides a modern Fluent-style workspace for serial connections, traffic inspection, packet construction, data visualization, automation, exporting, and appearance configuration.
+Fluent Serial Assistant is a modern Fluent-style serial terminal for Windows, macOS, and Linux. It covers the everyday debugging workflow: connecting, sending and receiving, viewing, protocol parsing, plotting, automation, and export.
 
-The current version is **v0.1.18**, using **FluentQtWidgets v0.1.9**. Features include a multi-tab terminal workspace, automatic logging, independent plot windows, a frame table, JavaScript automation, a visual protocol-template editor, and application settings.
-
-## Screenshot
+## Preview
 
 <p align="center">
-  <img src="docs/images/show.gif" alt="Fluent Serial Assistant terminal workspace" width="860">
+  <img src="docs/images/show.gif" alt="Fluent Serial Assistant in use" width="860">
 </p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/main-window.png" alt="Terminal workspace"><p align="center">Terminal workspace with tabbed sessions, log coloring, and traffic statistics</p></td>
+    <td width="50%"><img src="docs/images/plot-window.png" alt="Plot window"><p align="center">Plot window that extracts fields by protocol and plots them live</p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/protocol-editor.png" alt="Frame protocol editor"><p align="center">Frame protocol editor showing byte layout, fields, and checksum</p></td>
+    <td width="50%"><img src="docs/images/data-table.png" alt="Frame table"><p align="center">Frame table with HEX, text, and checksum results</p></td>
+  </tr>
+</table>
+
+The screenshots show the Simplified Chinese interface; English is available in Settings or from the title bar.
+
+## Download
+
+Download the package for your platform from [Releases](https://github.com/txp666/FluentSerialAssistant/releases/latest). Every package comes with a `.sha256` checksum file.
+
+| Platform | Package | Notes |
+| --- | --- | --- |
+| Windows x64 | `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe` | Installer; needs administrator rights and installs to Program Files by default |
+| macOS (Apple silicon) | `FluentSerialAssistant-X.Y.Z-macos-arm64.dmg` | Open it and drag the app to the Applications folder |
+| Linux x64 / arm64 | `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb` | `sudo apt install ./FluentSerialAssistant-X.Y.Z-linux-x64.deb` |
+
+The macOS build is not notarized by Apple. If macOS blocks it on first launch, click **Open Anyway** in **System Settings → Privacy & Security**. From v0.1.14 on, the app checks for updates itself and downloads, verifies, and installs them after you confirm.
 
 ## Features
 
-- Serial-port discovery with port name, description, vendor, VID/PID, and serial number.
-- Common and extended baud rates, data bits, parity, stop bits, flow control, RTS, and DTR.
-- Text, hexadecimal, and mixed terminal display modes.
-- Independent UTF-8, GBK, ASCII, and Latin-1 encoding options for receiving and sending text.
+### Connecting and sending
+
+- Serial-port discovery with port name, description, vendor, VID/PID, and serial number; common and extended baud rates, data bits, parity, stop bits, flow control, RTS, and DTR.
+- Text or HEX sending with None, CR, LF, or CRLF line endings; separate UTF-8, GBK, ASCII, and Latin-1 encodings for receiving and sending.
+- Loop sending at millisecond intervals, the last 20 unique sends in history, and chunked file sending with configurable chunk size and interval.
+- Tabbed sessions, each with its own serial port; a new tab copies the current configuration.
+- A built-in virtual serial pair: once enabled, two sessions can connect to `VIRTUAL-A` and `VIRTUAL-B` and exchange data without installing drivers.
+
+### Viewing and analysis
+
+- Text, HEX, and mixed terminal display with timestamps, automatic scrolling, pausing, a custom color for sent records, and live totals, rates, and connection time.
 - Frame splitting by receive interval, header, trailer, or fixed length.
-- A separate visual frame-protocol editor for headers, length fields, commands, payloads, and checksums. Enter a HEX sample or use the latest received frame to inspect colored byte regions, field positions, parsed values, and checksum results. Templates and sample frames can be saved and selected later.
-- Unified RX/TX records with pause, automatic scrolling, clearing, and counter reset.
-- Keyword, regular-expression, case-sensitive, direction-filtered terminal search.
-- Terminal colors in Settings: toggle ESP-IDF, common log levels, success/failure, or AT response presets, or define keyword/regex colors with case sensitivity, matched-text or whole-line scope, and rule priority. Settings persist and apply to all terminal sessions.
-- Independent plot windows: every click on the plot icon asks you to select a protocol before creating another window. Supported parsers include line-aware numbers, delimited values, multi-word/Unicode key-value pairs, nested JSON, and binary fields. Preview text/HEX samples, select fields, and configure integer/float types, byte offsets, byte order, scaling, and value offsets for complete frames or the payload of a selected frame template. Pause, clear, and CSV export are available. Windows collect only new RX records while open; hiding, minimizing, or closing stops parsing and rendering, with no historical backfill.
-- A sortable and filterable frame table with HEX/text copying and terminal navigation.
-- Multiple independent serial sessions in tabs.
-- A built-in virtual serial pair: enable it in Settings, then connect two sessions to `VIRTUAL-A` and `VIRTUAL-B` for two-way data transfer inside the app without installing drivers.
-- RX/TX totals, live transfer rates, and connection duration.
-- A broom button at the far left of the terminal toolbar clears the terminal display and resets RX/TX traffic counters together.
-- Text and HEX sending with None, CR, LF, and CRLF line endings.
-- CRC16-Modbus, CRC16-CCITT, CRC32, LRC, XOR, and SUM8 calculation and automatic appending.
-- Modbus RTU request generation, CRC appending, direct transmission, and response summaries.
-- Collapsible connection, receive, protocol, send, Modbus, packet, macro, script, auto-reply, and file sections.
-- Send history and reusable grouped packets with JSON import/export and batch sending.
-- Multi-step macros with delays, expected responses, loops, stop-on-failure behavior, and CSV result export.
-- A built-in JavaScript runner with controlled `serial.sendText()`, `serial.sendHex()`, `serial.records()`, and `serial.log()` APIs.
-- AI control through a user-scoped local IPC service, a machine-readable CLI, and a stdio MCP server. AI clients can reuse the active GUI session for discovery, connection, traffic, protocol selection, records, and live-plot control without competing for the serial port.
-- Multiple text, HEX, and regular-expression auto-reply rules with configurable delays. Click **New**, fill in the rule, then **Add**; select an existing rule and click **Save** to edit it.
-- Timed loop transmission and chunked file sending.
-- Rolling TXT, CSV, and BIN automatic logs.
-- Automatic update checks at startup, release notes before confirmation, and download, verification, and installation after approval. Manual checks and retries are available in Settings.
-- TXT, CSV, and BIN record export and raw receive-data saving.
-- Session restoration and optional automatic reconnection.
-- Light, dark, system theme, accent color, UI font, monospace font, and custom font configuration.
-- Simplified Chinese and English interfaces with runtime language switching.
-- User configuration stored in the standard per-user configuration directory on Windows, macOS, and Linux. Legacy configuration files from the application directory are migrated automatically.
+- Terminal search by keyword or regular expression, with case sensitivity, highlighted matches, and RX/TX filtering.
+- Content coloring with ESP-IDF, log level, success/failure, and AT response presets, plus your own keyword or regex rules.
+- Plot windows: open several independent windows for numbers, delimited values, key-value pairs, JSON, or binary fields; preview samples, filter fields, and pause, clear, or export CSV.
+- A frame table showing time, direction, source, length, HEX, text, and checksum, with sorting, filtering, copying, and navigation back to the terminal.
 
-## Technology
+### Protocols and tools
 
-- C++17
-- Qt 6.5+
-- Qt Widgets, SerialPort, SVG, QML, and Core5Compat
-- FluentQtWidgets v0.1.9
-- CMake and Ninja
+- Frame protocol templates: define header, length, command, payload, and checksum in a visual editor and check them against a sample or the latest received frame. Once enabled, received records show the command and checksum status.
+- Checksums: CRC16-Modbus, CRC16-CCITT, CRC32, LRC, XOR, and SUM8, calculated by hand or appended when sending.
+- Modbus RTU: build common read and write requests with CRC and summarize responses.
 
-## Repository layout
+### Automation
 
-```text
-.
-├── .github/workflows/        # Tests and packaging on GitHub Release publication
-├── docs/                     # Images, release notes, and signing documentation
-├── packaging/windows/        # Inno Setup definition and translations
-├── scripts/                  # Packaging and helper scripts
-├── signing/signpath/         # SignPath artifact configurations
-├── src/
-│   ├── app/core/             # Shared settings, fonts, parsing, and update logic
-│   ├── app/control/          # Session control boundary, local JSON IPC, and client transport
-│   ├── app/resources/        # Qt resources, icons, and platform metadata
-│   ├── app/serial/           # QSerialPort integration
-│   ├── app/view/             # Main window, settings, and terminal workspace
-│   ├── cli/                  # Machine-readable CLI
-│   └── mcp/                  # MCP stdio tool server
-├── third_party/FluentQtWidgets/
-├── CMakeLists.txt
-└── CMakePresets.json
-```
+- Packets with groups, notes, enable/disable, batch sending, ordering, and JSON import/export.
+- Macros with multiple steps, delays, expected text or HEX responses, loops, stop on failure, and CSV result export.
+- Auto-replies matched by text, HEX, or regular expression, sent immediately or after a delay and labeled in the records.
+- A JavaScript runner with a controlled `serial` API for sending, reading records, and logging.
+- AI control through local IPC, a CLI, and an MCP server that reuse the active GUI session; see [AI, CLI, and MCP control](#ai-cli-and-mcp-control).
 
-## Getting the source
+### Logging and export
 
-The project uses `FluentQtWidgets` as a Git submodule:
+- Export session records as TXT, CSV, or BIN.
+- Automatic TXT, CSV, or BIN logs named with the time, port, and baud rate, rolled over by file size.
+- Save raw received data to a file.
 
-```powershell
-git clone --recursive <repo-url>
-cd FluentSerialAssistant
-```
+### Appearance and settings
 
-For an existing clone without submodules:
+- Light, dark, or system theme with an accent color; UI font, monospace terminal font, font size, and custom font import.
+- Simplified Chinese and English, switchable without restarting.
+- Restores the last serial settings, send text, packets, macros, auto-reply rules, and file-send settings, with optional connection at startup; side cards remember whether they are collapsed.
+- Settings are stored in the standard per-user configuration directory and never in the Windows registry; settings from older installations are migrated automatically.
 
-```powershell
-git submodule update --init --recursive
-```
+## Getting started
 
-## Local build
+1. Choose a port, set the baud rate, data bits, parity, stop bits, and flow control, and click **Connect**.
+2. Watch traffic in the terminal; turn on timestamps, frame splitting, or HEX display as needed.
+3. Type text or HEX in the send area, pick a line ending and encoding, and send; checksums and loop sending are optional.
+4. Click the plot icon in the terminal toolbar, choose a protocol, and confirm to open a plot window.
+5. Under **Protocol Template** on the left, click **Edit protocol** to define the frame format; once saved and enabled, received records show the parsed result.
+6. Automate repeated steps with packets, macros, auto-replies, or scripts.
+7. The broom button at the left of the terminal toolbar clears the terminal and the traffic counters; export records as TXT, CSV, or BIN.
 
-### Requirements
+### Plot windows
 
-- CMake 3.21+
-- Ninja
-- Qt 6.5+ with `SerialPort`, `Svg`, `Core5Compat`, and `Qml`
-- The Windows presets expect:
-  - Qt: `C:/Qt/6.11.1/mingw_64`
-  - MinGW: `C:/Qt/Tools/mingw1310_64`
-
-### Debug
-
-```powershell
-cmake --preset mingw-debug
-cmake --build --preset mingw-debug --parallel
-```
-
-Run the application:
-
-```powershell
-.\build\mingw-debug\FluentSerialAssistant.exe
-```
-
-### Release
-
-```powershell
-cmake --preset mingw-release
-cmake --build --preset mingw-release --parallel
-```
-
-If the linker reports `cannot open output file FluentSerialAssistant.exe: Permission denied`, close any running copy of the application and build again.
-
-### VS Code
-
-The repository includes `.vscode/tasks.json`:
-
-- `Ctrl+Shift+B` / `Cmd+Shift+B` runs the default Debug build.
-- `Terminal > Run Build Task...` lets you choose Debug or Release.
-- `Run and Debug > Debug FluentSerialAssistant` or `F5` builds and starts a Debug session.
-
-Windows tasks reuse the MinGW presets in `CMakePresets.json`. macOS and Linux tasks use Ninja build directories under `build/vscode-debug` or `build/vscode-release`.
-
-## Packaging and releases
-
-GitHub Actions runs only when a GitHub Release is published. Commits, pull requests, tag pushes, and manual dispatch do not trigger builds on their own.
-
-Update the CMake version, changelog, and `docs/release-notes/vX.Y.Z.md`, then push the code and matching `vX.Y.Z` tag. Create and publish a GitHub Release for that tag without marking it as the latest release. The workflow checks out the tagged code, runs the tests, and builds:
-
-- Windows x64: an administrator-elevated Inno Setup installer that defaults to Program Files:
-  `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe`
-- macOS arm64: `FluentSerialAssistant-X.Y.Z-macos-arm64.dmg`
-- Linux x64 and arm64 Debian packages:
-  `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb`
-- A matching `.sha256` checksum for every package.
-
-After every platform has built successfully and the assets pass verification, the workflow uploads the packages and release notes to that Release and marks it as latest. Keep the previous release as latest while packages are building so the in-app updater does not discover an incomplete set of installers.
-
-Windows releases support free open-source Authenticode signing through SignPath Foundation. The workflow signs `FluentSerialAssistant.exe`, builds the Inno Setup installer, and then signs the installer. See the [SignPath setup guide](docs/signing/SIGNPATH_SETUP.md).
-
-The lower-level packaging scripts are `scripts/package_windows.ps1`, `scripts/package_unix.sh`, and `scripts/create_deb_package.sh`.
-
-## Basic usage
-
-1. Select a serial port and refresh the port list when necessary.
-2. Configure baud rate, data bits, parity, stop bits, and flow control.
-3. Connect and inspect RX/TX traffic in the terminal.
-4. Send text or HEX data with the required encoding, line ending, and checksum.
-5. Save reusable packets, macros, scripts, and auto-reply rules. In the sidebar's **Protocol templates** section, select **Edit protocol** to open the frame editor. Configure the header, length, command, payload, and checksum fields; enter a HEX sample or use the latest received frame to inspect its byte structure and parsed values, then save and enable the template.
-6. Click the plot icon, select numbers, delimited values, key-value pairs, JSON, or binary fields, preview a sample, and confirm to create a new independent plot window. Binary payload parsing requires a frame template. Each window starts empty and collects new incoming data only while open; records received while hidden, minimized, or closed are not backfilled. Pause, clear, and CSV export are available.
-7. Open the frame table to sort, filter, copy, or locate records in the terminal. Export session records as TXT, CSV, or BIN.
-8. Use the broom button at the far left of the terminal toolbar to clear the display and reset RX/TX traffic counters together.
+- Every confirmation opens a new window, so several fields can be plotted side by side. The button at the top left shows the current protocol and opens the parser settings.
+- Preview a text or HEX sample before plotting. Binary fields take a type, byte offset, byte order, scale, and offset, read from the whole frame or from the payload of a protocol template.
+- A window plots only data received while it is open; nothing is backfilled after it was hidden, minimized, or closed. A plot shows up to 32 channels.
 
 ### Built-in virtual serial pair
 
 1. Open **Settings** and enable **Built-in virtual serial pair**.
-2. Connect one session to `VIRTUAL-A` and another to `VIRTUAL-B`. Refresh the port list if necessary.
-3. Send text or HEX data from either end and receive it at the other. Auto-reply rules can also be used to test requests and responses.
-4. Turn the virtual serial pair off in Settings to disconnect both virtual endpoints.
+2. Connect one session to `VIRTUAL-A` and another to `VIRTUAL-B`; refresh the port list if needed.
+3. Data sent from either end arrives at the other, which also works with auto-reply rules for request and response tests.
 
-The pair works only within the same app instance, requires no drivers, and does not affect physical serial ports. It passes sent bytes in both directions without simulating baud rate or flow control. Data sent while the other end is disconnected is discarded and is not delivered after it connects.
+The pair exists only inside one running app and does not affect physical ports. It forwards bytes as they are, without simulating baud rate or flow control; data sent while the other end is disconnected is dropped.
 
 ### In-app updates
 
-1. The app checks for updates at startup. No popup appears when there is no update or the network is unavailable. You can also check manually under **Settings → App Updates**.
-2. Review the new version and release notes, then select **Download and install** to start downloading. Select **Later** to postpone the update.
-3. Downloads use four parallel connections and show progress, downloaded size, and status. You can cancel while downloading. Servers without partial-download support automatically use a single connection; failed downloads can be retried.
-4. After the installer passes file-size and SHA-256 verification, installation is prepared. The operating system may request permission. Once the installer is ready, the app saves its settings and exits so installation can proceed, without a second in-app confirmation.
+1. The app checks for updates at startup and stays quiet when there is nothing new or no network. **Settings → App Updates** checks on demand.
+2. A new version first shows its number and release notes; downloading starts only after **Download and install**.
+3. Downloads use four parallel connections, show progress, and can be cancelled; servers without range support fall back to one connection.
+4. After the size and SHA-256 check, the installer takes over, asking for permission if needed, and the app saves its settings and quits.
 
 ## AI, CLI, and MCP control
 
-Once the GUI is running, `fluentserial-cli` and `fluentserial-mcp` can control its current serial session. The GUI remains the sole owner of each serial port; both adapters reuse its protocol parsing, records, and live plotting over a user-scoped local IPC channel.
+While the app runs, `fluentserial-cli` and `fluentserial-mcp` control the active GUI session. The GUI stays the only user of the serial port; the CLI and MCP server reach it through user-private local IPC and reuse its connection, protocol parsing, records, and plot windows.
 
 ```bash
 fluentserial-cli ports
@@ -207,15 +138,105 @@ fluentserial-cli records --direction rx --limit 20
 fluentserial-cli plot --plot-protocol keyValue --plot-field "free sram" --clear
 ```
 
-See [AI control, CLI, MCP, and IPC documentation](docs/ai-control.md) for architecture, client configuration, all tools, and the versioned IPC contract.
+Use the CLI and MCP server from the same version as the app. See [AI control, CLI, and MCP](docs/ai-control.md) for the architecture, MCP client setup, all tools, and the IPC contract.
 
-Business settings use Qt `QSettings::IniFormat`. On every supported platform, business and Fluent appearance settings are stored together in Qt's standard per-user configuration directory. The first run migrates legacy settings found next to the executable.
+## Building from source
+
+### Getting the source
+
+The project includes `FluentQtWidgets` as a Git submodule:
+
+```bash
+git clone --recursive https://github.com/txp666/FluentSerialAssistant.git
+cd FluentSerialAssistant
+```
+
+For an existing clone without submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+### Requirements
+
+- CMake 3.21+ and Ninja
+- Qt 6.5+ with the Widgets, SerialPort, Svg, Network, Qml, and Core5Compat modules (select Qt Serial Port and Qt 5 Compatibility Module in the Qt installer)
+- On Linux, also `libgl1-mesa-dev`, `libxcb-cursor0`, and `libxkbcommon-x11-0`
+
+### Windows (MinGW)
+
+`CMakePresets.json` expects `C:/Qt/6.11.1/mingw_64` and `C:/Qt/Tools/mingw1310_64`; adjust the presets if yours differ.
+
+```powershell
+cmake --preset mingw-release
+cmake --build --preset mingw-release --parallel
+.\build\mingw-release\FluentSerialAssistant.exe
+```
+
+Use the `mingw-debug` preset for a debug build. If linking reports `cannot open output file FluentSerialAssistant.exe: Permission denied`, the previous build is usually still running.
+
+### macOS and Linux
+
+```bash
+cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<platform>
+cmake --build build/release --parallel
+```
+
+Leave out `CMAKE_PREFIX_PATH` when Qt is already on the default search path.
+
+### Running the tests
+
+```bash
+ctest --test-dir build/release --output-on-failure
+```
+
+Tests are built with the project by default and run on Qt's offscreen platform, so they need neither a display nor a real serial port.
+
+### VS Code
+
+The repository includes `.vscode/tasks.json`: `Ctrl+Shift+B` / `Cmd+Shift+B` runs the debug build and `F5` builds and starts debugging. Windows reuses the MinGW presets; macOS and Linux build in `build/vscode-debug` or `build/vscode-release`.
+
+## Releasing
+
+GitHub Actions runs only when a GitHub Release is published.
+
+1. Update the version in `CMakeLists.txt`, `CHANGELOG.md`, and `docs/release-notes/vX.Y.Z.md`, and push them to main.
+2. Publish a GitHub Release with `vX.Y.Z` as both tag and title.
+3. The workflow first marks the release as a prerelease, then runs the tests and builds the packages on all three platforms. Once everything is verified and uploaded, it becomes a full release and is marked as the latest. If a build fails, it stays a prerelease and in-app updates never see it.
+
+The assets are the Windows x64 installer, the macOS arm64 DMG, the Linux x64/arm64 DEB packages, and a `.sha256` file for each. Windows releases support free open-source Authenticode signing from SignPath Foundation: once configured, `FluentSerialAssistant.exe` is signed first, then the installer is built and signed. See the [SignPath setup guide](docs/signing/SIGNPATH_SETUP.md).
+
+For local packaging, `scripts/package_release.ps1` builds a portable Windows package; the platform installers come from `scripts/package_windows.ps1`, `scripts/package_unix.sh`, and `scripts/create_deb_package.sh`.
+
+## Repository layout
+
+```text
+.
+├── .github/workflows/   # Release tests and packaging
+├── docs/
+│   ├── ai-control.md    # AI, CLI, and MCP control
+│   ├── images/          # README screenshots
+│   ├── release-notes/   # Release notes for each version
+│   └── signing/         # Code signing setup
+├── packaging/windows/   # Inno Setup definition and translations
+├── scripts/             # Packaging scripts
+├── signing/signpath/    # SignPath artifact configurations
+├── src/
+│   ├── app/control/     # Session control boundary and local IPC
+│   ├── app/core/        # Protocols, checksums, plot parsing, encodings, updates, and other shared logic
+│   ├── app/resources/   # Qt resources, icons, and translations
+│   ├── app/serial/      # Serial port wrapper and the built-in virtual pair
+│   ├── app/view/        # Main window, settings, plots, protocol editor, and other UI
+│   │   └── workbench/   # Terminal workspace, split by feature: connection, terminal, sending, macros, scripts, and more
+│   ├── cli/             # Command-line tool
+│   └── mcp/             # MCP stdio server
+├── tests/               # Qt Test suites
+└── third_party/FluentQtWidgets/
+```
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE).
-
-`FluentQtWidgets` is also distributed under GPL-3.0-or-later, so redistribution of this project or a derivative must comply with the corresponding source-code and redistribution requirements.
+This project is licensed under the GNU General Public License v3.0 or later; see [LICENSE](LICENSE). `FluentQtWidgets`, which it depends on, is also GPL-3.0-or-later, so distributing this project or a derivative must follow the GPL's source and redistribution terms.
 
 ## Related project
 
@@ -223,4 +244,8 @@ This project is licensed under the GNU General Public License v3.0 or later. See
 
 ## Code signing policy
 
-Free code signing is provided by [SignPath.io](https://signpath.io/), with a certificate from [SignPath Foundation](https://signpath.org/), after the project's open-source application is approved. Team roles, release controls, signed artifact scope, and privacy details are documented in the [code signing policy](CODE_SIGNING_POLICY.md) and [privacy policy](PRIVACY.md).
+Free code signing is provided by [SignPath.io](https://signpath.io/), with a
+certificate from [SignPath Foundation](https://signpath.org/), after the
+project's open-source application is approved. Team roles, release controls,
+signed artifact scope, and the privacy statement are documented in the
+[code signing policy](CODE_SIGNING_POLICY.md) and [privacy policy](PRIVACY.md).
