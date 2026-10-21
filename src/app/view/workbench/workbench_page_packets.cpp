@@ -439,6 +439,7 @@ void WorkbenchPage::saveSendHistory() const
     AppSettings settings;
     settings.setValue(QStringLiteral("send/history"),
                       QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact)));
+    publishSharedList(SharedList::SendHistory);
 }
 
 void WorkbenchPage::loadSendPackets()
@@ -520,6 +521,7 @@ void WorkbenchPage::saveSendPackets() const
     AppSettings settings;
     settings.setValue(QStringLiteral("send/packets"),
                       QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact)));
+    publishSharedList(SharedList::SendPackets);
 }
 
 void WorkbenchPage::importSendPackets()

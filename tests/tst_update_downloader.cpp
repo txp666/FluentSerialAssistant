@@ -442,11 +442,12 @@ class UpdateDownloaderTest : public QObject
         QVERIFY2(server.listening, qPrintable(server.server.errorString()));
         QTemporaryDir directory;
         UpdateDownloader downloader;
+        downloader.m_transferTimeoutMs = 300;
         QSignalSpy failed(&downloader, &UpdateDownloader::failed);
         QSignalSpy finished(&downloader, &UpdateDownloader::finished);
         downloader.start(server.url(), server.payload.size(), server.sha256(),
                          directory.filePath(QStringLiteral("installer.bin")));
-        QTRY_COMPARE_WITH_TIMEOUT(failed.size(), 1, 40000);
+        QTRY_COMPARE_WITH_TIMEOUT(failed.size(), 1, 10000);
         QVERIFY(!downloader.isRunning());
         QVERIFY(finished.isEmpty());
         QVERIFY(directoryEntries(directory.path()).isEmpty());

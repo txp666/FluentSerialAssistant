@@ -5,6 +5,7 @@
 #include "app/core/modbus_utils.h"
 #include "app/core/protocol_template.h"
 #include "app/core/terminal_color_rules.h"
+#include "app/core/text_encoding.h"
 #include "app/serial/serial_controller.h"
 #include "app/view/app_page.h"
 
@@ -39,6 +40,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     friend class ProtocolWindowsTest;
     friend class TerminalSearchTest;
     friend class TerminalColorsTest;
+    friend class WorkbenchReliabilityTest;
 
   public:
     explicit WorkbenchPage(QWidget *parent = nullptr, bool restoreSavedSession = true, bool allowAutoOpen = true);
@@ -274,9 +276,9 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void processBufferedFrameData(const QByteArray &data);
     void flushRxFrameBuffer();
     void updateFrameControlState();
-    void loadProtocolTemplates();
+    void loadProtocolTemplates(bool restoreSavedSelection = true);
     void saveProtocolTemplates() const;
-    void updateProtocolTemplateCombo(int selectedIndex = -1);
+    void updateProtocolTemplateCombo(int selectedIndex = -1, bool applyToEditor = true);
     void updateProtocolTemplateUi();
     void updateProtocolTemplateActionState();
     void showProtocolTemplateWindow();
@@ -358,6 +360,19 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void sendAutoReplyRule(const AutoReplyRule &rule);
     void loadAutoReplyRules();
     void saveAutoReplyRules() const;
+
+    enum class SharedList
+    {
+        SendHistory,
+        SendPackets,
+        MacroSteps,
+        AutoReplyRules,
+        ProtocolTemplates
+    };
+    // All sessions persist these lists under the same settings keys. Each save
+    // reloads the other sessions so none of them writes back a stale copy.
+    void publishSharedList(SharedList list) const;
+    void reloadSharedList(SharedList list);
     void exportRecords(ExportFormat format);
     void updateReceiveCapture(bool enabled);
     void closeReceiveCapture();
@@ -415,6 +430,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     AppTerminal::ColorMatcher m_terminalColorMatcher;
     SerialPortConfig m_lastConfig;
     QByteArray m_rxFrameBuffer;
+    AppTextEncoding::StreamDecoder m_rxStreamDecoder;
     QByteArray m_autoReplyBuffer;
     qint64 m_rxCount = 0;
     qint64 m_txCount = 0;
@@ -451,6 +467,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     bool m_countersDirty = false;
     bool m_manualDisconnect = false;
     bool m_macroRunning = false;
+    bool m_macroStepsReloadPending = false;
     bool m_macroWaitingForResponse = false;
     bool m_scriptRunning = false;
     bool m_updatingProtocolTemplateUi = false;

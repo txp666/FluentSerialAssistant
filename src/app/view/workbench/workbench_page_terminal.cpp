@@ -453,8 +453,14 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     record.timestamp = now;
     record.direction = direction;
     record.bytes = data;
-    const QString decoded =
-        AppTextEncoding::decode(data, direction == RecordDirection::Rx ? receiveEncodingKey() : sendEncodingKey());
+    // Received data that updates the counters here comes straight from a read.
+    // Reads are slices of one byte stream, so decode them as a stream; framed
+    // records and sent data decode on their own.
+    const QString decoded = direction == RecordDirection::Rx && updateStats
+                                ? m_rxStreamDecoder.decode(data, receiveEncodingKey())
+                                : AppTextEncoding::decode(data, direction == RecordDirection::Rx
+                                                                    ? receiveEncodingKey()
+                                                                    : sendEncodingKey());
     record.terminalText = AppTextEncoding::toTerminalText(decoded);
     record.displayText = AppTextEncoding::toSingleLineText(decoded);
     record.sourceLabel = sourceLabel;

@@ -4,14 +4,66 @@
 
 #include <QtCore/QMetaObject>
 #include <QtCore/QPointer>
+#include <QtCore/QSemaphore>
 #include <QtCore/QThread>
 #include <QtCore/QTime>
 #include <QtCore/QVariantMap>
+
+#include <memory>
 
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
 namespace {
+
+using StopFlag = std::shared_ptr<const std::atomic_bool>;
+
+struct ScriptSendResult
+{
+    bool ok = false;
+    QString error;
+};
+
+// Runs a script request on the page's thread and waits for the result. The
+// wait ends once the script is stopped: a page being destroyed stops the script
+// and then waits for this thread, so a blocking wait here would deadlock.
+template <typename Result, typename Function>
+bool callOnPage(const QPointer<WorkbenchPage> &page, const StopFlag &stopped, Function function, Result *result)
+{
+    struct Call
+    {
+        QSemaphore done;
+        Result value{};
+    };
+    const auto call = std::make_shared<Call>();
+    if (!page || !QMetaObject::invokeMethod(
+                     page.data(),
+                     [call, function]() {
+                         call->value = function();
+                         call->done.release();
+                     },
+                     Qt::QueuedConnection)) {
+        return false;
+    }
+    while (!call->done.tryAcquire(1, 20)) {
+        if (stopped->load()) {
+            return false;
+        }
+    }
+    *result = std::move(call->value);
+    return true;
+}
+
+template <typename Result>
+std::function<Result()> pageSnapshot(const QPointer<WorkbenchPage> &page, const StopFlag &stopped,
+                                     Result (WorkbenchPage::*snapshot)() const)
+{
+    return [page, stopped, snapshot]() {
+        Result value;
+        callOnPage(page, stopped, [page, snapshot]() { return (page.data()->*snapshot)(); }, &value);
+        return value;
+    };
+}
 
 QString normalizedScriptLineEnding(QString value)
 {
@@ -158,99 +210,39 @@ void WorkbenchPage::startScript()
     const QString fileName = m_scriptFilePath.isEmpty() ? QStringLiteral("script.js") : m_scriptFilePath;
     QPointer<WorkbenchPage> page(this);
     const quint64 generation = m_connectionGeneration;
+    const StopFlag stopped = runner->stopFlag();
 
-    runner->setSendTextCallback([page, generation](const QString &payload, const QString &lineEnding, QString *error) {
-        if (!page) {
-            if (error) {
-                *error = AppI18n::text("脚本窗口已关闭");
-            }
-            return false;
-        }
-
-        bool ok = false;
-        QString localError;
-        QMetaObject::invokeMethod(
-            page,
-            [&]() {
-                if (generation != page->m_connectionGeneration || !page->m_serial.isOpen()) {
-                    localError = AppI18n::text("串口已断开");
-                    return;
+    const auto sendCallback = [page, generation, stopped](const QString &mode) {
+        return [page, generation, stopped, mode](const QString &payload, const QString &lineEnding, QString *error) {
+            ScriptSendResult result;
+            const auto send = [page, generation, stopped, mode, payload, lineEnding]() {
+                ScriptSendResult sendResult;
+                // A request queued just before the script stopped must not send.
+                if (stopped->load()) {
+                    sendResult.error = AppI18n::text("脚本已停止");
+                } else if (generation != page->m_connectionGeneration || !page->m_serial.isOpen()) {
+                    sendResult.error = AppI18n::text("串口已断开");
+                } else {
+                    sendResult.ok = page->sendScriptPayload(payload, mode, lineEnding, &sendResult.error);
                 }
-                ok = page->sendScriptPayload(payload, QStringLiteral("text"), lineEnding, &localError);
-            },
-            Qt::BlockingQueuedConnection);
-        if (error) {
-            *error = localError;
-        }
-        return ok;
-    });
-
-    runner->setSendHexCallback([page, generation](const QString &payload, const QString &lineEnding, QString *error) {
-        if (!page) {
-            if (error) {
-                *error = AppI18n::text("脚本窗口已关闭");
+                return sendResult;
+            };
+            if (!callOnPage(page, stopped, send, &result)) {
+                result.error = stopped->load() ? AppI18n::text("脚本已停止") : AppI18n::text("脚本窗口已关闭");
             }
-            return false;
-        }
-
-        bool ok = false;
-        QString localError;
-        QMetaObject::invokeMethod(
-            page,
-            [&]() {
-                if (generation != page->m_connectionGeneration || !page->m_serial.isOpen()) {
-                    localError = AppI18n::text("串口已断开");
-                    return;
-                }
-                ok = page->sendScriptPayload(payload, QStringLiteral("hex"), lineEnding, &localError);
-            },
-            Qt::BlockingQueuedConnection);
-        if (error) {
-            *error = localError;
-        }
-        return ok;
-    });
-
-    runner->setReceivedTextCallback([page]() {
-        QString value;
-        if (page) {
-            QMetaObject::invokeMethod(
-                page, [&]() { value = page->scriptReceivedTextSnapshot(); }, Qt::BlockingQueuedConnection);
-        }
-        return value;
-    });
-    runner->setReceivedHexCallback([page]() {
-        QString value;
-        if (page) {
-            QMetaObject::invokeMethod(
-                page, [&]() { value = page->scriptReceivedHexSnapshot(); }, Qt::BlockingQueuedConnection);
-        }
-        return value;
-    });
-    runner->setLastRxTextCallback([page]() {
-        QString value;
-        if (page) {
-            QMetaObject::invokeMethod(
-                page, [&]() { value = page->scriptLastRxTextSnapshot(); }, Qt::BlockingQueuedConnection);
-        }
-        return value;
-    });
-    runner->setLastRxHexCallback([page]() {
-        QString value;
-        if (page) {
-            QMetaObject::invokeMethod(
-                page, [&]() { value = page->scriptLastRxHexSnapshot(); }, Qt::BlockingQueuedConnection);
-        }
-        return value;
-    });
-    runner->setRecordsCallback([page]() {
-        QVariantList records;
-        if (page) {
-            QMetaObject::invokeMethod(
-                page, [&]() { records = page->scriptRecordSnapshot(); }, Qt::BlockingQueuedConnection);
-        }
-        return records;
-    });
+            if (error) {
+                *error = result.error;
+            }
+            return result.ok;
+        };
+    };
+    runner->setSendTextCallback(sendCallback(QStringLiteral("text")));
+    runner->setSendHexCallback(sendCallback(QStringLiteral("hex")));
+    runner->setReceivedTextCallback(pageSnapshot(page, stopped, &WorkbenchPage::scriptReceivedTextSnapshot));
+    runner->setReceivedHexCallback(pageSnapshot(page, stopped, &WorkbenchPage::scriptReceivedHexSnapshot));
+    runner->setLastRxTextCallback(pageSnapshot(page, stopped, &WorkbenchPage::scriptLastRxTextSnapshot));
+    runner->setLastRxHexCallback(pageSnapshot(page, stopped, &WorkbenchPage::scriptLastRxHexSnapshot));
+    runner->setRecordsCallback(pageSnapshot(page, stopped, &WorkbenchPage::scriptRecordSnapshot));
 
     runner->moveToThread(thread);
     m_scriptThread = thread;

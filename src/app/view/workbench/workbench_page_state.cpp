@@ -15,6 +15,7 @@ void WorkbenchPage::setupSerialSignals()
         m_manualDisconnect = false;
         m_lastRxTimestamp = QDateTime();
         m_rxFrameBuffer.clear();
+        m_rxStreamDecoder.reset();
         m_connectionStartedAt = QDateTime::currentDateTime();
         m_lastStatsRxCount = m_rxCount;
         m_lastStatsTxCount = m_txCount;

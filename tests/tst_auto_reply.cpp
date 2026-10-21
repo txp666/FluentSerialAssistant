@@ -1,13 +1,9 @@
+#include "app/serial/virtual_serial_pair.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 #include <QtCore/QTranslator>
+#include <QtTest/QSignalSpy>
 #include <QtTest/QTest>
-
-#ifdef Q_OS_UNIX
-#include <fcntl.h>
-#include <stdlib.h>
-#include <unistd.h>
-#endif
 
 using namespace WorkbenchPagePrivate;
 
@@ -42,9 +38,16 @@ class AutoReplyTest : public QObject
 
     void init()
     {
+        VirtualSerialPair::instance()->setEnabled(false);
         AppSettings settings;
         settings.clear();
         settings.sync();
+    }
+
+    void cleanup()
+    {
+        VirtualSerialPair::instance()->setEnabled(false);
+        QCoreApplication::processEvents();
     }
 
     void createFourRulesAndEditSelectedRule()
@@ -116,8 +119,7 @@ class AutoReplyTest : public QObject
         QCOMPARE(page.m_autoReplyList->currentRow(), 2);
         QCOMPARE(page.m_autoReplyRules.at(2).pattern, QStringLiteral("request4"));
 
-        WorkbenchPage restored(nullptr, false, false);
-        restored.loadAutoReplyRules();
+        WorkbenchPage restored(nullptr, true, false);
         QCOMPARE(restored.m_autoReplyRules.size(), 4);
         QCOMPARE(restored.m_autoReplyList->count(), 4);
         QCOMPARE(restored.m_autoReplyList->currentRow(), 0);
@@ -163,7 +165,8 @@ class AutoReplyTest : public QObject
         copied.m_autoReplySaveButton->click();
         QCOMPARE(copied.m_autoReplyRules.size(), 2);
         QCOMPARE(copied.m_autoReplyRules.at(1).pattern, QStringLiteral("edited"));
-        QCOMPARE(source.m_autoReplyRules.at(1).pattern, QStringLiteral("request2"));
+        // Sessions share the saved rules, so the source sees the edit too.
+        QCOMPARE(source.m_autoReplyRules.at(1).pattern, QStringLiteral("edited"));
 
         source.m_autoReplyNewButton->click();
         fillRule(source, QStringLiteral("Draft"), QStringLiteral("draft"), QStringLiteral("reply"));
@@ -177,23 +180,6 @@ class AutoReplyTest : public QObject
 
     void allMatchingEnabledRulesReply()
     {
-#ifdef Q_OS_UNIX
-        struct PseudoTerminal
-        {
-            int descriptor = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK);
-            ~PseudoTerminal()
-            {
-                if (descriptor >= 0) {
-                    ::close(descriptor);
-                }
-            }
-        } terminal;
-        QVERIFY(terminal.descriptor >= 0);
-        QCOMPARE(grantpt(terminal.descriptor), 0);
-        QCOMPARE(unlockpt(terminal.descriptor), 0);
-        const char *portName = ptsname(terminal.descriptor);
-        QVERIFY(portName);
-
         WorkbenchPage page(nullptr, false, false);
         const QStringList modes = {QStringLiteral("text"), QStringLiteral("regex"), QStringLiteral("hex"),
                                    QStringLiteral("text")};
@@ -208,28 +194,30 @@ class AutoReplyTest : public QObject
         }
         QCOMPARE(page.m_autoReplyRules.size(), 4);
 
+        // The device sits on the other end of the built-in virtual pair, so the
+        // request arrives in two reads on every platform.
+        VirtualSerialPair::instance()->setEnabled(true);
+        SerialController device;
         SerialPortConfig config;
-        config.portName = QString::fromLocal8Bit(portName);
+        config.portName = VirtualSerialPair::portAName();
+        QVERIFY2(device.openPort(config), qPrintable(device.errorString()));
+        config.portName = VirtualSerialPair::portBName();
         QVERIFY2(page.m_serial.openPort(config), qPrintable(page.m_serial.errorString()));
-        QCOMPARE(::write(terminal.descriptor, "PI", 2), 2);
+        QSignalSpy replies(&device, &SerialController::dataReceived);
+        QVERIFY(device.writeData(QByteArrayLiteral("PI")));
         QTRY_COMPARE(page.m_autoReplyBuffer, QByteArrayLiteral("PI"));
-        QCOMPARE(::write(terminal.descriptor, "NG", 2), 2);
+        QVERIFY(device.writeData(QByteArrayLiteral("NG")));
 
-        QByteArray received;
-        const auto replies = [&]() {
-            char buffer[256];
-            const auto count = ::read(terminal.descriptor, buffer, sizeof(buffer));
-            if (count > 0) {
-                received.append(buffer, count);
+        const auto received = [&replies]() {
+            QByteArray bytes;
+            for (const QList<QVariant> &arguments : replies) {
+                bytes.append(arguments.at(0).toByteArray());
             }
-            return received;
+            return bytes;
         };
-        QTRY_COMPARE(replies(), QByteArrayLiteral("reply0reply1reply2"));
+        QTRY_COMPARE(received(), QByteArrayLiteral("reply0reply1reply2"));
         QVERIFY(page.m_autoReplyBuffer.isEmpty());
         page.m_serial.closePort();
-#else
-        QSKIP("Pseudo-terminal serial integration is available on Unix platforms");
-#endif
     }
 
     void englishButtonLabels()

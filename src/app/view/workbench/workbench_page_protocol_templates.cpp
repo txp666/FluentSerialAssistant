@@ -99,8 +99,14 @@ void setEditValue(LineEdit *edit, int value)
 
 } // namespace
 
-void WorkbenchPage::loadProtocolTemplates()
+void WorkbenchPage::loadProtocolTemplates(bool restoreSavedSelection)
 {
+    const int previousIndex = m_protocolTemplateCombo ? m_protocolTemplateCombo->currentIndex() : -1;
+    const bool hadSelection = previousIndex >= 0 && previousIndex < m_protocolTemplates.size();
+    const AppProtocol::ProtocolTemplate previous =
+        hadSelection ? m_protocolTemplates.at(previousIndex) : AppProtocol::ProtocolTemplate();
+    const bool editorUnchanged = !restoreSavedSelection && hadSelection &&
+                                 AppProtocol::toJson(currentProtocolTemplateFromUi()) == AppProtocol::toJson(previous);
     AppSettings settings;
     const QByteArray json = settings.value(QLatin1String(ProtocolTemplateSettingsKey)).toString().toUtf8();
     QJsonParseError parseError;
@@ -109,6 +115,27 @@ void WorkbenchPage::loadProtocolTemplates()
         m_protocolTemplates = AppProtocol::listFromJson(document.array());
     } else {
         m_protocolTemplates = AppProtocol::defaultTemplates();
+    }
+
+    if (!restoreSavedSelection) {
+        // Another session saved the list. Keep this session's selection and
+        // enabled state. The editor follows the saved template unless it holds
+        // unsaved changes; a removed selection falls back to the first template.
+        int selectedIndex = -1;
+        for (int i = 0; hadSelection && i < m_protocolTemplates.size(); ++i) {
+            if (m_protocolTemplates.at(i).name == previous.name) {
+                selectedIndex = i;
+                break;
+            }
+        }
+        const bool applyToEditor =
+            selectedIndex < 0 || (editorUnchanged && AppProtocol::toJson(m_protocolTemplates.at(selectedIndex)) !=
+                                                         AppProtocol::toJson(previous));
+        updateProtocolTemplateCombo(qMax(0, selectedIndex), applyToEditor);
+        for (QuickPlotWindow *plotWindow : m_quickPlotWindows) {
+            plotWindow->setProtocolTemplates(m_protocolTemplates);
+        }
+        return;
     }
 
     const QString currentName = settings.value(QStringLiteral("protocolTemplate/current")).toString();
@@ -144,9 +171,10 @@ void WorkbenchPage::saveProtocolTemplates() const
             plotWindow->setProtocolTemplates(m_protocolTemplates);
         }
     }
+    publishSharedList(SharedList::ProtocolTemplates);
 }
 
-void WorkbenchPage::updateProtocolTemplateCombo(int selectedIndex)
+void WorkbenchPage::updateProtocolTemplateCombo(int selectedIndex, bool applyToEditor)
 {
     if (!m_protocolTemplateCombo) {
         return;
@@ -165,7 +193,11 @@ void WorkbenchPage::updateProtocolTemplateCombo(int selectedIndex)
         m_protocolTemplateCombo->addItem(m_protocolTemplates.at(i).name, QIcon(), i);
     }
     m_protocolTemplateCombo->setCurrentIndex(targetIndex);
-    applyProtocolTemplate(targetIndex);
+    if (applyToEditor) {
+        applyProtocolTemplate(targetIndex);
+    } else {
+        updateProtocolTemplateActionState();
+    }
 }
 
 void WorkbenchPage::updateProtocolTemplateUi()

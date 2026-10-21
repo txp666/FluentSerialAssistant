@@ -119,6 +119,30 @@ QString decode(const QByteArray &data, const QString &key)
     return codec->toUnicode(data.constData(), static_cast<int>(data.size()), &state);
 }
 
+StreamDecoder::StreamDecoder() = default;
+
+StreamDecoder::~StreamDecoder() = default;
+
+QString StreamDecoder::decode(const QByteArray &data, const QString &key)
+{
+    const QString normalized = normalizedKey(key);
+    if (!m_decoder || m_key != normalized) {
+        QTextCodec *codec = codecForKey(normalized);
+        if (!codec) {
+            return QString::fromUtf8(data);
+        }
+        m_decoder.reset(codec->makeDecoder());
+        m_key = normalized;
+    }
+    return m_decoder->toUnicode(data);
+}
+
+void StreamDecoder::reset()
+{
+    m_decoder.reset();
+    m_key.clear();
+}
+
 QString toTerminalText(QString text)
 {
     text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));

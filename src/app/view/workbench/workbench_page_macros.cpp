@@ -442,14 +442,12 @@ void WorkbenchPage::completeMacroStep(bool passed, const QString &message, const
     const bool hasNext = stepIndex + 1 < m_macroSteps.size() || m_macroCurrentLoop < m_macroLoopTotal;
     ++m_macroCurrentStep;
     const int delayMs = qBound(0, step.delayMs, 600000);
-    if (hasNext && delayMs > 0) {
-        if (m_macroStatusLabel) {
-            m_macroStatusLabel->setText(AppI18n::text("步骤间延时 %1 ms").arg(delayMs));
-        }
-        m_macroTimer.start(delayMs);
-        return;
+    if (hasNext && delayMs > 0 && m_macroStatusLabel) {
+        m_macroStatusLabel->setText(AppI18n::text("步骤间延时 %1 ms").arg(delayMs));
     }
-    runMacroCurrentStep();
+    // Continue from the event loop even without a delay. Running the next step
+    // directly would nest one call per step and overflow the stack on long runs.
+    m_macroTimer.start(hasNext ? delayMs : 0);
 }
 
 void WorkbenchPage::finishMacroSequence(const QString &message, bool passed)
@@ -459,6 +457,10 @@ void WorkbenchPage::finishMacroSequence(const QString &message, bool passed)
     m_macroWaitingForResponse = false;
     m_macroActiveResult = -1;
     m_macroWaitBuffer.clear();
+    if (m_macroStepsReloadPending) {
+        m_macroStepsReloadPending = false;
+        reloadSharedList(SharedList::MacroSteps);
+    }
 
     int passedCount = 0;
     int failedCount = 0;
@@ -579,6 +581,10 @@ void WorkbenchPage::loadMacroSteps()
 
 void WorkbenchPage::saveMacroSteps() const
 {
+    if (m_macroStepsReloadPending) {
+        // Another session saved newer steps while this one was running them.
+        return;
+    }
     QJsonArray array;
     for (const MacroStep &step : m_macroSteps) {
         QJsonObject object;
@@ -601,6 +607,7 @@ void WorkbenchPage::saveMacroSteps() const
     AppSettings settings;
     settings.setValue(QStringLiteral("macro/steps"),
                       QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact)));
+    publishSharedList(SharedList::MacroSteps);
 }
 
 void WorkbenchPage::exportMacroResults()

@@ -302,8 +302,6 @@ class WorkbenchQuickPlotTest : public QObject
         page.m_protocolTemplates = {editedTemplate};
         page.updateProtocolTemplateCombo(0);
         page.m_protocolEnabledCheck->setChecked(false);
-        firstTemplate.payloadOffset = 0;
-        secondTemplate.payloadOffset = 0;
         page.handleReceivedData(frame);
         QCOMPARE(first->m_rows.size(), 2);
         QCOMPARE(second->m_rows.size(), 2);

@@ -10,6 +10,16 @@
 using namespace FluentQt;
 using namespace WorkbenchPagePrivate;
 
+namespace {
+
+QList<WorkbenchPage *> &openWorkbenchPages()
+{
+    static QList<WorkbenchPage *> pages;
+    return pages;
+}
+
+} // namespace
+
 WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool allowAutoOpen)
     : AppPage(AppI18n::text("终端"), AppI18n::text("连接串口设备，查看收发记录，并执行文本或 HEX 数据发送。"), parent,
               false)
@@ -58,22 +68,21 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
     });
 
     refreshPorts();
+    // The lists are shared by all sessions. A blank session that skipped them
+    // would erase them the next time it saves its settings.
+    loadSendHistory();
+    loadSendPackets();
+    loadMacroSteps();
+    loadProtocolTemplates();
+    loadAutoReplyRules();
+    applyAutoReplyRule(m_autoReplyList->currentRow());
     if (restoreSavedSession) {
-        loadSendHistory();
-        loadSendPackets();
-        loadMacroSteps();
-        loadProtocolTemplates();
-        loadAutoReplyRules();
         restoreSettings();
     } else {
-        loadProtocolTemplates();
         updateFrameControlState();
         updateModbusUi();
-        updatePacketTable();
-        updateMacroTable();
         updateProtocolTemplateActionState();
         updateScriptActionState();
-        updateAutoReplyTable();
         updatePacketActionState();
         updateMacroActionState();
         updateAutoReplyActionState();
@@ -94,9 +103,11 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
             }
         });
     }
+    openWorkbenchPages().append(this);
 }
 WorkbenchPage::~WorkbenchPage()
 {
+    openWorkbenchPages().removeAll(this);
     const auto plotWindows = m_quickPlotWindows;
     m_quickPlotWindows.clear();
     m_quickPlotWindow = nullptr;
@@ -108,10 +119,14 @@ WorkbenchPage::~WorkbenchPage()
         m_scriptRunner->requestStop();
     }
     if (m_scriptThread) {
+        // Stopping interrupts the engine and releases any request waiting on
+        // this page, so the script thread finishes on its own.
         m_scriptThread->quit();
-        if (!m_scriptThread->wait(2000)) {
-            m_scriptThread->terminate();
-            m_scriptThread->wait();
+        if (!m_scriptThread->wait(5000)) {
+            // Never terminate a thread inside the JS engine. Let it finish and
+            // delete itself; its callbacks no longer reach this page.
+            qWarning("Script thread did not stop before the session closed");
+            m_scriptThread->setParent(nullptr);
         }
     }
     m_fileSendTimer.stop();
@@ -128,6 +143,89 @@ WorkbenchPage::~WorkbenchPage()
 void WorkbenchPage::reloadTerminalColors()
 {
     applyTerminalColorConfig(AppTerminal::loadColorConfig());
+}
+
+void WorkbenchPage::publishSharedList(SharedList list) const
+{
+    for (WorkbenchPage *page : openWorkbenchPages()) {
+        if (page != this) {
+            page->reloadSharedList(list);
+        }
+    }
+}
+
+void WorkbenchPage::reloadSharedList(SharedList list)
+{
+    // The editors keep their contents. A selection survives only if the same
+    // item is still listed, so a later save cannot overwrite a different item.
+    switch (list) {
+    case SharedList::SendHistory:
+        loadSendHistory();
+        updateHistoryCombo();
+        break;
+    case SharedList::SendPackets: {
+        const int row = m_packetList ? m_packetList->currentRow() : -1;
+        const SendPacket selected = row >= 0 && row < m_sendPackets.size() ? m_sendPackets.at(row) : SendPacket();
+        loadSendPackets();
+        for (int index = 0; row >= 0 && index < m_sendPackets.size(); ++index) {
+            if (m_sendPackets.at(index).group == selected.group && m_sendPackets.at(index).name == selected.name) {
+                updatePacketTable(index);
+                break;
+            }
+        }
+        break;
+    }
+    case SharedList::MacroSteps: {
+        if (m_macroRunning) {
+            // The running sequence indexes these steps; reload once it ends.
+            m_macroStepsReloadPending = true;
+            break;
+        }
+        const int row = m_macroList ? m_macroList->currentRow() : -1;
+        const MacroStep selected = row >= 0 && row < m_macroSteps.size() ? m_macroSteps.at(row) : MacroStep();
+        loadMacroSteps();
+        int selectedRow = -1;
+        for (int index = 0; row >= 0 && index < m_macroSteps.size(); ++index) {
+            const MacroStep &step = m_macroSteps.at(index);
+            if (step.name == selected.name && step.mode == selected.mode && step.payload == selected.payload &&
+                step.lineEnding == selected.lineEnding && step.responseMode == selected.responseMode &&
+                step.expectedResponse == selected.expectedResponse && step.timeoutMs == selected.timeoutMs &&
+                step.delayMs == selected.delayMs) {
+                selectedRow = index;
+                break;
+            }
+        }
+        updateMacroTable(selectedRow);
+        if (selectedRow < 0 && m_macroList) {
+            const QSignalBlocker blocker(m_macroList);
+            m_macroList->setCurrentRow(-1);
+            updateMacroActionState();
+        }
+        break;
+    }
+    case SharedList::AutoReplyRules: {
+        const int row = m_autoReplyList ? m_autoReplyList->currentRow() : -1;
+        const AutoReplyRule selected =
+            row >= 0 && row < m_autoReplyRules.size() ? m_autoReplyRules.at(row) : AutoReplyRule();
+        loadAutoReplyRules();
+        int selectedRow = -1;
+        for (int index = 0; row >= 0 && index < m_autoReplyRules.size(); ++index) {
+            const AutoReplyRule &rule = m_autoReplyRules.at(index);
+            if (rule.name == selected.name && rule.enabled == selected.enabled &&
+                rule.matchMode == selected.matchMode && rule.pattern == selected.pattern &&
+                rule.responseMode == selected.responseMode && rule.responsePayload == selected.responsePayload &&
+                rule.lineEnding == selected.lineEnding && rule.delayMs == selected.delayMs) {
+                selectedRow = index;
+                break;
+            }
+        }
+        updateAutoReplyTable(selectedRow);
+        break;
+    }
+    case SharedList::ProtocolTemplates:
+        loadProtocolTemplates(false);
+        break;
+    }
 }
 
 void WorkbenchPage::hideEvent(QHideEvent *event)

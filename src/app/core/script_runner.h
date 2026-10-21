@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <functional>
+#include <memory>
 
 class QJSEngine;
 class QJSValue;
@@ -78,6 +79,9 @@ class ScriptRunner : public QObject
     void setLastRxHexCallback(ScriptBridge::StringCallback callback);
     void setRecordsCallback(ScriptBridge::RecordsCallback callback);
     void requestStop();
+    // Shared with callbacks so they can stop waiting on another thread once the
+    // script is stopped, even after this runner has been destroyed.
+    std::shared_ptr<const std::atomic_bool> stopFlag() const;
 
   public slots:
     void runScript(const QString &script, const QString &fileName);
@@ -100,5 +104,5 @@ class ScriptRunner : public QObject
     ScriptBridge::RecordsCallback m_recordsCallback;
     mutable QMutex m_engineMutex;
     QJSEngine *m_engine = nullptr;
-    std::atomic_bool m_stopRequested = false;
+    std::shared_ptr<std::atomic_bool> m_stopRequested = std::make_shared<std::atomic_bool>(false);
 };

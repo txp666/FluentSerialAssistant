@@ -72,12 +72,13 @@ class DownloadWorker : public QObject
     ~DownloadWorker() override { shutdown(); }
 
     void begin(quint64 id, const QUrl &url, qint64 expectedSize, const QByteArray &sha256, const QString &destination,
-               std::shared_ptr<std::atomic_bool> cancellation)
+               std::shared_ptr<std::atomic_bool> cancellation, int transferTimeoutMs)
     {
         shutdown();
         m_id = id;
         m_active = true;
         m_cancellation = std::move(cancellation);
+        m_transferTimeoutMs = transferTimeoutMs;
         m_url = url;
         m_expectedSize = expectedSize;
         m_sha256 = sha256.toLower();
@@ -235,7 +236,7 @@ class DownloadWorker : public QObject
         networkRequest.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                                     QNetworkRequest::UserVerifiedRedirectPolicy);
         networkRequest.setMaximumRedirectsAllowed(5);
-        networkRequest.setTransferTimeout(kTransferTimeoutMs);
+        networkRequest.setTransferTimeout(m_transferTimeoutMs);
         if (kind != Kind::Single) {
             networkRequest.setRawHeader("Range", "bytes=" + QByteArray::number(first) + '-' + QByteArray::number(last));
         }
@@ -500,6 +501,7 @@ class DownloadWorker : public QObject
     quint64 m_id = 0;
     bool m_active = false;
     std::shared_ptr<std::atomic_bool> m_cancellation;
+    int m_transferTimeoutMs = kTransferTimeoutMs;
     QUrl m_url;
     qint64 m_expectedSize = 0;
     QByteArray m_sha256;
@@ -521,7 +523,8 @@ class UpdateDownloader::Private
     std::shared_ptr<std::atomic_bool> cancellation;
 };
 
-UpdateDownloader::UpdateDownloader(QObject *parent) : QObject(parent), d(std::make_unique<Private>())
+UpdateDownloader::UpdateDownloader(QObject *parent)
+    : QObject(parent), d(std::make_unique<Private>()), m_transferTimeoutMs(kTransferTimeoutMs)
 {
     d->worker = new DownloadWorker;
     d->worker->moveToThread(&d->thread);
@@ -588,8 +591,9 @@ void UpdateDownloader::start(const QUrl &url, qint64 expectedSize, const QByteAr
     d->cancellation = std::make_shared<std::atomic_bool>(false);
     QMetaObject::invokeMethod(
         d->worker,
-        [worker = d->worker, id, url, expectedSize, sha256, destination, cancellation = d->cancellation]() {
-            worker->begin(id, url, expectedSize, sha256, destination, cancellation);
+        [worker = d->worker, id, url, expectedSize, sha256, destination, cancellation = d->cancellation,
+         transferTimeoutMs = m_transferTimeoutMs]() {
+            worker->begin(id, url, expectedSize, sha256, destination, cancellation, transferTimeoutMs);
         },
         Qt::QueuedConnection);
 }

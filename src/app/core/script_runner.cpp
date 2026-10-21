@@ -149,7 +149,7 @@ void ScriptRunner::setRecordsCallback(ScriptBridge::RecordsCallback callback)
 
 void ScriptRunner::requestStop()
 {
-    m_stopRequested.store(true);
+    m_stopRequested->store(true);
     QMutexLocker locker(&m_engineMutex);
     if (m_engine) {
         m_engine->setInterrupted(true);
@@ -209,7 +209,9 @@ void ScriptRunner::runScript(const QString &script, const QString &fileName)
     emit finished(true, AppI18n::text("脚本执行完成"));
 }
 
-bool ScriptRunner::stopRequested() const { return m_stopRequested.load(); }
+std::shared_ptr<const std::atomic_bool> ScriptRunner::stopFlag() const { return m_stopRequested; }
+
+bool ScriptRunner::stopRequested() const { return m_stopRequested->load(); }
 
 QString ScriptRunner::errorText(const QJSValue &value, const QStringList &stackTrace) const
 {

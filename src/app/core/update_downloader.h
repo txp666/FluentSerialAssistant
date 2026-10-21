@@ -7,6 +7,8 @@
 
 #include <memory>
 
+class UpdateDownloaderTest;
+
 namespace AppUpdate {
 
 // Network I/O, disk writes, assembly and hashing run on a private worker thread.
@@ -34,8 +36,12 @@ class UpdateDownloader : public QObject
     void cancelled();
 
   private:
+    friend class ::UpdateDownloaderTest;
+
     class Private;
     std::unique_ptr<Private> d;
+    // Applies to downloads started afterwards. Tests shorten it to exercise stalls.
+    int m_transferTimeoutMs;
 };
 
 } // namespace AppUpdate

@@ -393,7 +393,6 @@ void WorkbenchPage::loadAutoReplyRules()
         m_autoReplyRules.append(rule);
     }
     updateAutoReplyTable(m_autoReplyRules.isEmpty() ? -1 : 0);
-    applyAutoReplyRule(m_autoReplyList->currentRow());
 }
 
 void WorkbenchPage::saveAutoReplyRules() const
@@ -420,4 +419,5 @@ void WorkbenchPage::saveAutoReplyRules() const
     AppSettings settings;
     settings.setValue(QStringLiteral("autoReply/rules"),
                       QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact)));
+    publishSharedList(SharedList::AutoReplyRules);
 }
