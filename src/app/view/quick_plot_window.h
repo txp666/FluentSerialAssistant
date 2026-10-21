@@ -56,6 +56,7 @@ class QuickPlotWindow : public QWidget
     };
 
     void appendValues(const QDateTime &timestamp, const AppPlot::PlotSample &values);
+    // The channel for a value, or -1 when it would exceed AppPlot::MaximumChannels.
     int channelIndexFor(const QString &name, int position);
     void ensureSeriesCount(int count);
     void updateStatus();
@@ -80,5 +81,6 @@ class QuickPlotWindow : public QWidget
     int m_plotRefreshRate = 0;
     bool m_paused = false;
     bool m_plottingActive = false;
+    bool m_channelsLimited = false;
     bool m_hasProtocolTemplate = false;
 };

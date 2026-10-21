@@ -94,8 +94,18 @@ bool parseRelease(const QByteArray &json, const QString &platformKey, const QStr
     const QUrl expectedDownload(
         QStringLiteral("https://github.com/txp666/FluentSerialAssistant/releases/download/%1/%2")
             .arg(tag, result.assetName));
+    const QJsonArray assets = object.value(QStringLiteral("assets")).toArray();
+    // Right after publishing, a release has no uploaded installers yet.
+    bool anyUploaded = false;
+    for (const auto &value : assets) {
+        anyUploaded = anyUploaded ||
+                      value.toObject().value(QStringLiteral("state")).toString() == QStringLiteral("uploaded");
+    }
+    if (!anyUploaded) {
+        return fail(AppI18n::text("新版本 %1 的安装包尚未就绪，请稍后再试").arg(result.version));
+    }
     int matches = 0;
-    for (const auto &value : object.value(QStringLiteral("assets")).toArray()) {
+    for (const auto &value : assets) {
         const auto asset = value.toObject();
         if (asset.value(QStringLiteral("name")).toString() != result.assetName) {
             continue;

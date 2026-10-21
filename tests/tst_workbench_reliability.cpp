@@ -1,3 +1,4 @@
+#include "app/core/script_runner.h"
 #include "app/serial/virtual_serial_pair.h"
 #include "app/view/settings_page.h"
 #include "app/view/workbench/workbench_page_internal.h"
@@ -320,6 +321,33 @@ class WorkbenchReliabilityTest : public QObject
         QCOMPARE(records.at(1).direction, QStringLiteral("tx"));
         QCOMPARE(records.at(1).bytes, QByteArrayLiteral("PONG"));
         QVERIFY(records.at(0).timestamp <= records.at(1).timestamp);
+    }
+
+    void scriptLogKeepsTheLastSendError()
+    {
+        ScriptBridge bridge;
+        bridge.setSendTextCallback([](const QString &, const QString &, QString *error) {
+            *error = QStringLiteral("port closed");
+            return false;
+        });
+        QVERIFY(!bridge.sendText(QStringLiteral("x")));
+        bridge.log(QStringLiteral("send failed"));
+        QCOMPARE(bridge.lastError(), QStringLiteral("port closed"));
+    }
+
+    void invalidLoopPayloadWarnsOnceAndStops()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        connectVirtualPort(page);
+        page.m_hexSendCheck->setChecked(true);
+        page.m_sendEdit->setPlainText(QStringLiteral("ZZ"));
+        page.m_loopIntervalEdit->setText(QStringLiteral("10"));
+        const int barsBefore = page.findChildren<InfoBar *>().size();
+        page.m_loopCheck->setChecked(true);
+        QTRY_VERIFY(!page.m_loopCheck->isChecked());
+        QVERIFY(!page.m_loopTimer.isActive());
+        QTest::qWait(100);
+        QCOMPARE(page.findChildren<InfoBar *>().size(), barsBefore + 1);
     }
 
     void hardwareFlowControlLeavesRtsToTheDriver()

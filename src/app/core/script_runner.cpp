@@ -63,7 +63,7 @@ QVariantList ScriptBridge::records() const { return m_recordsCallback ? m_record
 
 void ScriptBridge::log(const QString &message)
 {
-    m_lastError.clear();
+    // Only sends set lastError, so a script can log before checking it.
     emit logMessage(message);
 }
 

@@ -37,7 +37,13 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
         }
     });
     m_flushTimer.start(FlushIntervalMs);
-    connect(&m_loopTimer, &QTimer::timeout, this, &WorkbenchPage::sendCurrentPayload);
+    connect(&m_loopTimer, &QTimer::timeout, this, [this]() {
+        // A failed send fails again at every interval, so report it once and
+        // stop the loop.
+        if (!sendCurrentPayload()) {
+            m_loopCheck->setChecked(false);
+        }
+    });
     m_reconnectTimer.setInterval(ReconnectIntervalMs);
     connect(&m_reconnectTimer, &QTimer::timeout, this, &WorkbenchPage::attemptReconnect);
     m_statsTimer.setInterval(1000);

@@ -16,6 +16,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  hold-release:
+    name: Hold release until assets are uploaded
+    runs-on: ubuntu-24.04
+    steps:
+      # Publishing makes the release the latest one before any installer is
+      # uploaded, and the app checks the latest release. A prerelease is never
+      # the latest, so clients keep seeing the previous version until
+      # publish-release finishes. A failed build leaves it a prerelease.
+      - name: Mark release as prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --prerelease
+
   windows-release:
     name: Windows x64 / Inno Setup
     runs-on: windows-2022
@@ -382,6 +396,7 @@ jobs:
   publish-release:
     name: Publish GitHub Release
     needs:
+      - hold-release
       - windows-release
       - macos-release
       - linux-release
@@ -444,4 +459,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --latest
+        run: gh release edit "$RELEASE_TAG" --repo "$GH_REPO" --prerelease=false --latest

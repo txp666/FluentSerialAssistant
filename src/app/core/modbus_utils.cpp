@@ -169,6 +169,9 @@ QByteArray appendModbusCrc(QByteArray frame)
 
 QString crcText(bool valid) { return valid ? AppI18n::text("CRC 正确") : AppI18n::text("CRC 错误"); }
 
+// Upper-case only the code; the translated text around it keeps its case.
+QString hexByte(quint8 value) { return QStringLiteral("%1").arg(value, 2, 16, QLatin1Char('0')).toUpper(); }
+
 } // namespace
 
 namespace AppModbus {
@@ -344,9 +347,8 @@ ParseResult parseResponse(const QByteArray &frame)
         const quint8 exceptionCode = frame.size() >= 5 ? static_cast<unsigned char>(frame.at(2)) : 0;
         result.summary = AppI18n::text("Modbus 异常 · 站号 %1 · 功能 0x%2 · %3 · %4")
                              .arg(slave)
-                             .arg(function, 2, 16, QLatin1Char('0'))
-                             .arg(exceptionText(exceptionCode), crcText(result.crcValid))
-                             .toUpper();
+                             .arg(hexByte(function))
+                             .arg(exceptionText(exceptionCode), crcText(result.crcValid));
         return result;
     }
 
@@ -363,9 +365,8 @@ ParseResult parseResponse(const QByteArray &frame)
         }
         result.summary = AppI18n::text("Modbus 响应 · 站号 %1 · 功能 0x%2 · 数据 %3 · %4")
                              .arg(slave)
-                             .arg(function, 2, 16, QLatin1Char('0'))
-                             .arg(detail.isEmpty() ? QStringLiteral("-") : detail, crcText(result.crcValid))
-                             .toUpper();
+                             .arg(hexByte(function))
+                             .arg(detail.isEmpty() ? QStringLiteral("-") : detail, crcText(result.crcValid));
         return result;
     }
 
@@ -374,19 +375,17 @@ ParseResult parseResponse(const QByteArray &frame)
         const quint16 valueOrQuantity = readU16(frame, 4);
         result.summary = AppI18n::text("Modbus 响应 · 站号 %1 · 功能 0x%2 · 地址 %3 · 值/数量 %4 · %5")
                              .arg(slave)
-                             .arg(function, 2, 16, QLatin1Char('0'))
+                             .arg(hexByte(function))
                              .arg(address)
                              .arg(valueOrQuantity)
-                             .arg(crcText(result.crcValid))
-                             .toUpper();
+                             .arg(crcText(result.crcValid));
         return result;
     }
 
     result.summary = AppI18n::text("Modbus 响应 · 站号 %1 · 功能 0x%2 · %3")
                          .arg(slave)
-                         .arg(function, 2, 16, QLatin1Char('0'))
-                         .arg(crcText(result.crcValid))
-                         .toUpper();
+                         .arg(hexByte(function))
+                         .arg(crcText(result.crcValid));
     return result;
 }
 

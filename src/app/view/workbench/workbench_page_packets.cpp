@@ -337,35 +337,32 @@ bool WorkbenchPage::sendPacketPayload(const SendPacket &packet)
     return true;
 }
 
-void WorkbenchPage::sendCurrentPayload()
+bool WorkbenchPage::sendCurrentPayload()
 {
     if (!m_serial.isOpen()) {
-        if (m_loopCheck->isChecked()) {
-            m_loopCheck->setChecked(false);
-        }
         showWarning(AppI18n::text("无法发送"), AppI18n::text("请先连接串口"));
-        return;
+        return false;
     }
 
     bool ok = false;
     const QByteArray payload = currentPayload(&ok);
     if (!ok) {
-        return;
+        return false;
     }
     if (payload.isEmpty()) {
         showWarning(AppI18n::text("无法发送"), AppI18n::text("发送内容为空"));
-        return;
+        return false;
     }
     bool checksumOk = false;
     const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
     if (!checksumOk) {
-        return;
+        return false;
     }
 
     QString error;
     if (!m_serial.writeData(output, &error)) {
         showError(AppI18n::text("发送失败"), error);
-        return;
+        return false;
     }
 
     SendHistoryItem historyItem;
@@ -374,6 +371,7 @@ void WorkbenchPage::sendCurrentPayload()
     historyItem.lineEnding = selectedLineEndingKey();
     addSendHistory(historyItem);
     appendRecord(RecordDirection::Tx, output);
+    return true;
 }
 
 void WorkbenchPage::addSendHistory(const SendHistoryItem &item)

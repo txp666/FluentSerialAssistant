@@ -316,7 +316,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void moveTerminalSearchMatch(int direction);
     void selectTerminalSearchMatch();
     void flushPendingLines();
-    void sendCurrentPayload();
+    // Returns whether the payload was sent; failures have already been shown.
+    bool sendCurrentPayload();
     void addSendHistory(const SendHistoryItem &item);
     void loadSendHistory();
     void saveSendHistory() const;

@@ -164,6 +164,11 @@ void QuickPlotWindow::appendRecord(const QDateTime &timestamp, const QString &te
         }
         payload = result.payload;
     }
+    // Without fields, binary data plots a channel per byte, up to the limit.
+    if (m_parserConfig.protocol == AppPlot::Protocol::Binary && m_parserConfig.binaryFields.isEmpty()) {
+        const QByteArray &data = m_parserConfig.binarySource == AppPlot::BinarySource::Payload ? payload : frame;
+        m_channelsLimited = m_channelsLimited || data.size() > AppPlot::MaximumChannels;
+    }
     const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(m_parserConfig, text, frame, payload);
     for (const AppPlot::PlotSample &values : samples) {
         appendValues(timestamp, values);
@@ -227,6 +232,9 @@ void QuickPlotWindow::appendValues(const QDateTime &timestamp, const AppPlot::Pl
     for (int index = 0; index < values.size(); ++index) {
         const AppPlot::PlotValue &plotValue = values.at(index);
         const int channelIndex = channelIndexFor(plotValue.name, index);
+        if (channelIndex < 0) {
+            continue;
+        }
         if (row.values.size() < m_channelCount) {
             const int oldSize = row.values.size();
             row.values.resize(m_channelCount);
@@ -252,6 +260,7 @@ void QuickPlotWindow::clearData()
     m_rows.clear();
     m_channelNames.clear();
     m_channelCount = 0;
+    m_channelsLimited = false;
     m_nextSample = 0;
     if (m_plot) {
         m_plot->clearSeries();
@@ -349,6 +358,12 @@ int QuickPlotWindow::channelIndexFor(const QString &name, int position)
     if (existingIndex >= 0) {
         return existingIndex;
     }
+    // Every row stores a value per channel, so new names past the limit are
+    // dropped instead of widening every row.
+    if (m_channelNames.size() >= AppPlot::MaximumChannels) {
+        m_channelsLimited = true;
+        return -1;
+    }
 
     m_channelNames.append(channelName);
     ensureSeriesCount(m_channelNames.size());
@@ -382,6 +397,9 @@ void QuickPlotWindow::updateStatus()
     QString status = AppI18n::text("%1 · %2 点 · %3 通道").arg(state).arg(m_rows.size()).arg(qMax(1, m_channelCount));
     if (!m_parserConfig.fields.isEmpty()) {
         status += AppI18n::text(" · 字段：%1").arg(m_parserConfig.fields.join(QStringLiteral(", ")));
+    }
+    if (m_channelsLimited) {
+        status += AppI18n::text(" · 最多显示 %1 个通道").arg(AppPlot::MaximumChannels);
     }
     m_statusLabel->setText(status);
 }

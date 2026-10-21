@@ -1,3 +1,4 @@
+#include "app/core/app_i18n.h"
 #include "app/core/app_settings.h"
 #include "app/view/plot_parser_dialog.h"
 #include "app/view/quick_plot_window.h"
@@ -234,6 +235,32 @@ class WorkbenchQuickPlotTest : public QObject
         QVERIFY(!page.m_quickPlotWindow);
         page.handleReceivedData(QByteArray("7"));
         QCOMPARE(page.m_rxCount, qint64(7));
+    }
+
+    void plotsShowAtMostTheChannelLimit()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        AppPlot::ParserConfig binary;
+        binary.protocol = AppPlot::Protocol::Binary;
+        AppPlot::ParserConfig keyValue;
+        keyValue.protocol = AppPlot::Protocol::KeyValue;
+        auto *bytes = page.createQuickPlotWindow(binary);
+        auto *named = page.createQuickPlotWindow(keyValue);
+        QVERIFY(bytes && named);
+        QStringList pairs;
+        for (int index = 0; index < 40; ++index) {
+            pairs.append(QStringLiteral("k%1=%1").arg(index));
+        }
+        page.handleReceivedData(pairs.join(QLatin1Char(' ')).toUtf8());
+        const QString notice = AppI18n::text(" · 最多显示 %1 个通道").arg(AppPlot::MaximumChannels);
+        for (QuickPlotWindow *window : {bytes, named}) {
+            QCOMPARE(window->m_channelCount, AppPlot::MaximumChannels);
+            QCOMPARE(window->m_rows.last().values.size(), AppPlot::MaximumChannels);
+            QVERIFY(window->m_statusLabel->text().contains(notice));
+        }
+        QCOMPARE(named->m_rows.last().values.last(), 31.0);
+        named->clearData();
+        QVERIFY(!named->m_statusLabel->text().contains(notice));
     }
 
     void parserChangesAndPauseOnlyAffectTheSelectedWindow()

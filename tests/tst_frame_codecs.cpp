@@ -2,6 +2,7 @@
 #include "app/core/modbus_utils.h"
 #include "app/core/protocol_template.h"
 
+#include <QtCore/QTranslator>
 #include <QtTest/QTest>
 
 #include <functional>
@@ -121,6 +122,28 @@ class FrameCodecsTest : public QObject
             change(changed);
             QVERIFY(!(changed == base));
         }
+    }
+
+    void englishModbusSummariesKeepTheirCase()
+    {
+        Q_INIT_RESOURCE(app);
+        QTranslator translator;
+        QVERIFY(translator.load(QStringLiteral(":/app/i18n/fluentserialassistant.en_US.qm")));
+        QVERIFY(QCoreApplication::installTranslator(&translator));
+        const auto withCrc = [](QByteArray frame) {
+            return frame + AppChecksum::calculate(frame, QStringLiteral("crc16-modbus"),
+                                                  AppChecksum::ByteOrder::LittleEndian)
+                               .bytes;
+        };
+        const auto response = AppModbus::parseResponse(withCrc(QByteArray::fromHex("010F0000000A")));
+        const auto exception = AppModbus::parseResponse(withCrc(QByteArray::fromHex("018F02")));
+        QCoreApplication::removeTranslator(&translator);
+        QVERIFY(response.recognized && exception.recognized);
+        // Only the function code is upper case.
+        QVERIFY2(response.summary.startsWith(QStringLiteral("Modbus response · Slave ID 1 · Function 0x0F")),
+                 qPrintable(response.summary));
+        QVERIFY2(exception.summary.startsWith(QStringLiteral("Modbus exception · Slave ID 1 · Function 0x8F")),
+                 qPrintable(exception.summary));
     }
 
     void modbusQuantitiesFitOneFrame_data()

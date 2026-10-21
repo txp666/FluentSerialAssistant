@@ -8,6 +8,10 @@
 
 namespace AppPlot {
 
+// Most channels one plot shows. Binary frames without fields get a channel per
+// byte up to this count.
+constexpr int MaximumChannels = 32;
+
 enum class Protocol
 {
     Numbers,

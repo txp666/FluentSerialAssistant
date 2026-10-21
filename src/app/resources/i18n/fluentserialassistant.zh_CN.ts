@@ -542,6 +542,10 @@
         <translation> · 字段：%1</translation>
     </message>
     <message>
+        <source> · 最多显示 %1 个通道</source>
+        <translation> · 最多显示 %1 个通道</translation>
+    </message>
+    <message>
         <source>继续</source>
         <translation>继续</translation>
     </message>
@@ -2564,6 +2568,10 @@ JSON 对象：递归读取对象和数组中的数值
     <message>
         <source>未找到适用于当前系统的唯一安装包</source>
         <translation>未找到适用于当前系统的唯一安装包</translation>
+    </message>
+    <message>
+        <source>新版本 %1 的安装包尚未就绪，请稍后再试</source>
+        <translation>新版本 %1 的安装包尚未就绪，请稍后再试</translation>
     </message>
     <message>
         <source>下载完成并校验通过后，应用将退出并安装更新。</source>

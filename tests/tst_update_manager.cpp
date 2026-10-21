@@ -1,3 +1,4 @@
+#include "app/core/app_i18n.h"
 #include "app/core/update_checker.h"
 #include "app/core/update_downloader.h"
 #include "app/core/update_manager.h"
@@ -158,6 +159,29 @@ class UpdateManagerTest : public QObject
         QVERIFY(!available);
         QVERIFY(!error.isEmpty());
         QVERIFY(release.downloadUrl.isEmpty());
+    }
+
+    void releaseWithoutUploadedInstallersIsNotReadyYet()
+    {
+        // Right after publishing, GitHub lists the release before its assets
+        // are uploaded.
+        QJsonObject object = releaseJson();
+        auto assets = object.value(QStringLiteral("assets")).toArray();
+        for (int index = 0; index < assets.size(); ++index) {
+            auto asset = assets.at(index).toObject();
+            asset[QStringLiteral("state")] = QStringLiteral("new");
+            assets[index] = asset;
+        }
+        for (const QJsonArray &pending : {QJsonArray(), assets}) {
+            object[QStringLiteral("assets")] = pending;
+            AppUpdate::ReleaseInfo release;
+            bool available = true;
+            QString error;
+            QVERIFY(!AppUpdate::parseRelease(QJsonDocument(object).toJson(), QStringLiteral("windows-x64"),
+                                             QStringLiteral("0.1.13"), &release, &available, &error));
+            QVERIFY(!available);
+            QCOMPARE(error, AppI18n::text("新版本 %1 的安装包尚未就绪，请稍后再试").arg(QStringLiteral("0.1.14")));
+        }
     }
 
     void neverDowngradesOrOffersSameVersion()

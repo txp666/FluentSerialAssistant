@@ -261,8 +261,9 @@ AppPlot::PlotSample extractBinary(const AppPlot::ParserConfig &config, const QBy
 {
     AppPlot::PlotSample values;
     if (config.binaryFields.isEmpty()) {
-        values.reserve(data.size());
-        for (int index = 0; index < data.size(); ++index) {
+        const int count = int(qMin<qsizetype>(data.size(), AppPlot::MaximumChannels));
+        values.reserve(count);
+        for (int index = 0; index < count; ++index) {
             values.append(
                 {QStringLiteral("CH%1").arg(index + 1), static_cast<double>(static_cast<quint8>(data.at(index)))});
         }

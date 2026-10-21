@@ -257,7 +257,7 @@
     </message>
     <message>
         <source>%1 · 站号 %2 · 地址 %3 · 数量 %4</source>
-        <translation>%1 ? Slave ID %2 ? Address %3 ? Quantity %4</translation>
+        <translation>%1 · Slave ID %2 · Address %3 · Quantity %4</translation>
     </message>
     <message>
         <source>写单线圈值应为 0/1、true/false 或 on/off</source>
@@ -285,23 +285,23 @@
     </message>
     <message>
         <source>%1 · 站号 %2 · 地址 %3</source>
-        <translation>%1 ? Slave ID %2 ? Address %3</translation>
+        <translation>%1 · Slave ID %2 · Address %3</translation>
     </message>
     <message>
         <source>Modbus 异常 · 站号 %1 · 功能 0x%2 · %3 · %4</source>
-        <translation>Modbus exception ? Slave ID %1 ? Function 0x%2 ? %3 ? %4</translation>
+        <translation>Modbus exception · Slave ID %1 · Function 0x%2 · %3 · %4</translation>
     </message>
     <message>
         <source>Modbus 响应 · 站号 %1 · 功能 0x%2 · 数据 %3 · %4</source>
-        <translation>Modbus response ? Slave ID %1 ? Function 0x%2 ? Data %3 ? %4</translation>
+        <translation>Modbus response · Slave ID %1 · Function 0x%2 · Data %3 · %4</translation>
     </message>
     <message>
         <source>Modbus 响应 · 站号 %1 · 功能 0x%2 · 地址 %3 · 值/数量 %4 · %5</source>
-        <translation>Modbus response ? Slave ID %1 ? Function 0x%2 ? Address %3 ? Value/Quantity %4 ? %5</translation>
+        <translation>Modbus response · Slave ID %1 · Function 0x%2 · Address %3 · Value/Quantity %4 · %5</translation>
     </message>
     <message>
         <source>Modbus 响应 · 站号 %1 · 功能 0x%2 · %3</source>
-        <translation>Modbus response ? Slave ID %1 ? Function 0x%2 ? %3</translation>
+        <translation>Modbus response · Slave ID %1 · Function 0x%2 · %3</translation>
     </message>
     <message>
         <source>文本包含 %1 个无法用 %2 编码的字符</source>
@@ -540,6 +540,10 @@ Available only in this app. Baud rate and flow control are not simulated; switch
     <message>
         <source> · 字段：%1</source>
         <translation> · Fields: %1</translation>
+    </message>
+    <message>
+        <source> · 最多显示 %1 个通道</source>
+        <translation> · Showing at most %1 channels</translation>
     </message>
     <message>
         <source>继续</source>
@@ -828,8 +832,8 @@ Binary Fields: plots individual bytes by default; configure type, byte order, sc
     <message>
         <source>%1. %2 · %3
 %4：%5 → %6 · 延时 %7 ms</source>
-        <translation>%1. %2 ? %3
-%4: %5 ? %6 ? Delay %7 ms</translation>
+        <translation>%1. %2 · %3
+%4: %5 → %6 · Delay %7 ms</translation>
     </message>
     <message>
         <source>匹配：%1
@@ -983,7 +987,7 @@ Reply: %2</translation>
     </message>
     <message>
         <source>自动日志：%1 · %2 / %3</source>
-        <translation>Auto log: %1 ? %2 / %3</translation>
+        <translation>Auto log: %1 · %2 / %3</translation>
     </message>
     <message>
         <source>自动日志已启用，等待数据写入</source>
@@ -1103,13 +1107,13 @@ Reply: %2</translation>
     </message>
     <message>
         <source>等待 %1 · %2 ms</source>
-        <translation>Wait %1 ? %2 ms</translation>
+        <translation>Wait %1 · %2 ms</translation>
     </message>
     <message>
         <source>%1. %2
 %3 · %4 · %5 · 延时 %6 ms</source>
         <translation>%1. %2
-%3 ? %4 ? %5 ? Delay %6 ms</translation>
+%3 · %4 · %5 · Delay %6 ms</translation>
     </message>
     <message>
         <source>发送：%1
@@ -1143,7 +1147,7 @@ Expected response: %2</translation>
     </message>
     <message>
         <source>准备运行 %1 步 · %2 轮</source>
-        <translation>Ready to run %1 steps ? %2 rounds</translation>
+        <translation>Ready to run %1 steps · %2 rounds</translation>
     </message>
     <message>
         <source>等待响应</source>
@@ -1163,7 +1167,7 @@ Expected response: %2</translation>
     </message>
     <message>
         <source>第 %1/%2 轮 · %3</source>
-        <translation>Round %1/%2 ? %3</translation>
+        <translation>Round %1/%2 · %3</translation>
     </message>
     <message>
         <source>失败</source>
@@ -1203,7 +1207,7 @@ Expected response: %2</translation>
     </message>
     <message>
         <source>%1 · 通过 %2，失败 %3</source>
-        <translation>%1 ? Passed %2, failed %3</translation>
+        <translation>%1 · Passed %2, failed %3</translation>
     </message>
     <message>
         <source>宏命令完成</source>
@@ -1267,7 +1271,7 @@ Expected response: %2</translation>
     </message>
     <message>
         <source>已填入发送区 · %1</source>
-        <translation>Filled send area ? %1</translation>
+        <translation>Filled send area · %1</translation>
     </message>
     <message>
         <source>无法发送 Modbus 请求</source>
@@ -1279,7 +1283,7 @@ Expected response: %2</translation>
     </message>
     <message>
         <source>已发送 · %1</source>
-        <translation>Sent ? %1</translation>
+        <translation>Sent · %1</translation>
     </message>
     <message>
         <source>读取功能无需填写值</source>
@@ -1825,7 +1829,7 @@ Content: %4</translation>
     </message>
     <message>
         <source>匹配 0 · %1 条</source>
-        <translation>Matches 0 ? %1 items</translation>
+        <translation>Matches 0 · %1 items</translation>
     </message>
     <message>
         <source>匹配 %1/%2</source>
@@ -2564,6 +2568,10 @@ Installation log: %2</translation>
     <message>
         <source>未找到适用于当前系统的唯一安装包</source>
         <translation>A unique installer for this system could not be found.</translation>
+    </message>
+    <message>
+        <source>新版本 %1 的安装包尚未就绪，请稍后再试</source>
+        <translation>The installers for version %1 are not ready yet. Please try again later.</translation>
     </message>
     <message>
         <source>下载完成并校验通过后，应用将退出并安装更新。</source>
