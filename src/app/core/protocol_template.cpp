@@ -265,4 +265,44 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
     return result;
 }
 
+QByteArray exampleFrame(const ProtocolTemplate &protocolTemplate)
+{
+    const int payloadSize = protocolTemplate.payloadLength > 0 ? protocolTemplate.payloadLength : 4;
+    const qint64 checksumOffset = static_cast<qint64>(protocolTemplate.payloadOffset) + payloadSize;
+    const int checksumBytes = checksumSize(protocolTemplate);
+    if (protocolTemplate.payloadOffset < 0 || checksumOffset > 4096 || checksumOffset <= 0 ||
+        protocolTemplate.header.size() > checksumOffset || protocolTemplate.lengthOffset < 0 ||
+        protocolTemplate.lengthOffset + protocolTemplate.lengthSize > checksumOffset ||
+        protocolTemplate.commandOffset < 0 ||
+        protocolTemplate.commandOffset + protocolTemplate.commandSize > checksumOffset) {
+        return {};
+    }
+    QByteArray frame(static_cast<int>(checksumOffset), '\0');
+    frame.replace(0, protocolTemplate.header.size(), protocolTemplate.header);
+    if (protocolTemplate.commandSize > 0) {
+        frame[protocolTemplate.commandOffset] = '\x01';
+    }
+    const QByteArray payload = QByteArray::fromHex("6400C800");
+    for (int index = 0; index < payloadSize; ++index) {
+        frame[protocolTemplate.payloadOffset + index] = payload.at(index % payload.size());
+    }
+    quint32 length = protocolTemplate.lengthMode == LengthMode::FrameLength
+                         ? frame.size() + checksumBytes : payloadSize;
+    for (int index = 0; index < protocolTemplate.lengthSize; ++index) {
+        const int byteIndex = protocolTemplate.lengthByteOrder == AppChecksum::ByteOrder::LittleEndian
+                                  ? index : protocolTemplate.lengthSize - index - 1;
+        frame[protocolTemplate.lengthOffset + byteIndex] = static_cast<char>(length & 0xff);
+        length >>= 8;
+    }
+    if (checksumBytes > 0) {
+        const AppChecksum::ChecksumResult checksum = AppChecksum::calculate(
+            frame, protocolTemplate.checksumAlgorithm, protocolTemplate.checksumByteOrder);
+        if (!checksum.ok) {
+            return {};
+        }
+        frame.append(checksum.bytes);
+    }
+    return frame;
+}
+
 } // namespace AppProtocol

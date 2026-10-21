@@ -81,17 +81,7 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_protocolNameLabel = new BodyLabel(QString(), this);
     m_protocolNameLabel->setObjectName(QStringLiteral("quickPlotProtocolName"));
     m_protocolNameLabel->setFixedHeight(32);
-    AppSettings settings;
-    const QString savedConfig = settings.value(QStringLiteral("plot/parserConfig")).toString();
-    QJsonParseError savedConfigError;
-    const QJsonDocument savedConfigDocument = QJsonDocument::fromJson(savedConfig.toUtf8(), &savedConfigError);
-    QString configError;
-    if (savedConfigError.error != QJsonParseError::NoError || !savedConfigDocument.isObject() ||
-        !AppPlot::parserConfigFromJson(savedConfigDocument.object(), &m_parserConfig, &configError)) {
-        const QString savedProtocol =
-            settings.value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
-        AppPlot::protocolFromKey(savedProtocol, &m_parserConfig.protocol);
-    }
+    m_parserConfig = savedParserConfig();
     updateProtocolName();
     auto *protocolHelpButton = new TransparentToolButton(icon(FluentIcon::Question), this);
     AppUi::setFluentToolTip(protocolHelpButton, AppI18n::text("绘图协议示例"));
@@ -263,6 +253,23 @@ void QuickPlotWindow::clearData()
         m_plot->resetView();
     }
     updateStatus();
+}
+
+AppPlot::ParserConfig QuickPlotWindow::savedParserConfig()
+{
+    AppSettings settings;
+    const QString savedConfig = settings.value(QStringLiteral("plot/parserConfig")).toString();
+    QJsonParseError savedConfigError;
+    const QJsonDocument savedConfigDocument = QJsonDocument::fromJson(savedConfig.toUtf8(), &savedConfigError);
+    AppPlot::ParserConfig config;
+    QString configError;
+    if (savedConfigError.error != QJsonParseError::NoError || !savedConfigDocument.isObject() ||
+        !AppPlot::parserConfigFromJson(savedConfigDocument.object(), &config, &configError)) {
+        const QString savedProtocol =
+            settings.value(QStringLiteral("plot/protocol"), QStringLiteral("numbers")).toString();
+        AppPlot::protocolFromKey(savedProtocol, &config.protocol);
+    }
+    return config;
 }
 
 bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)

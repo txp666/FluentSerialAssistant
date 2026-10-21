@@ -5,7 +5,9 @@
 
 void WorkbenchPage::showQuickPlotWindow()
 {
-    PlotParserDialog dialog(AppPlot::ParserConfig{}, window(), true);
+    // Start from the last applied configuration so field filters and binary
+    // fields carry over; the protocol itself still has to be chosen.
+    PlotParserDialog dialog(QuickPlotWindow::savedParserConfig(), window(), true);
     dialog.setProtocolTemplates(m_protocolTemplates);
     if (dialog.exec() != QDialog::Accepted) {
         return;

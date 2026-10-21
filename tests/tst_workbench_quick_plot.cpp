@@ -416,6 +416,64 @@ class WorkbenchQuickPlotTest : public QObject
         QCOMPARE(window->m_plot->points(), QVector<QPointF>({QPointF(0, 21)}));
     }
 
+    void newPlotStartsFromTheLastAppliedConfiguration()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        AppPlot::ParserConfig binary;
+        binary.protocol = AppPlot::Protocol::Binary;
+        AppPlot::BinaryField field;
+        field.name = QStringLiteral("temperature");
+        field.byteOffset = 1;
+        field.type = AppPlot::BinaryType::Int16;
+        binary.binaryFields = {field};
+        QVERIFY(page.createQuickPlotWindow(binary));
+
+        int seededRows = -1;
+        QString seededName;
+        bool requiresChoice = false;
+        QTimer::singleShot(0, &page, [&]() {
+            auto *dialog = qobject_cast<PlotParserDialog *>(QApplication::activeModalWidget());
+            if (!dialog) {
+                return;
+            }
+            auto *combo = dialog->findChild<FluentQt::ComboBox *>(QStringLiteral("plotProtocolCombo"));
+            auto *fields = dialog->findChild<FluentQt::TableWidget *>(QStringLiteral("plotBinaryFieldsTable"));
+            requiresChoice = combo && combo->currentData().toString().isEmpty();
+            if (fields) {
+                seededRows = fields->rowCount();
+                seededName = seededRows > 0 ? fields->item(0, 0)->text() : QString();
+            }
+            dialog->reject();
+        });
+        page.showQuickPlotWindow();
+        // The protocol must still be chosen, but the binary fields carry over.
+        QVERIFY(requiresChoice);
+        QCOMPARE(seededRows, 1);
+        QCOMPARE(seededName, QStringLiteral("temperature"));
+    }
+
+    void controlPlotsLeaveUserWindowsAlone()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        auto *userWindow = page.createQuickPlotWindow(keyValueParser(QStringLiteral("temperature")));
+        QVERIFY(userWindow);
+        page.handleReceivedData(QByteArray("temperature=20 pressure=7"));
+        QCOMPARE(userWindow->m_rows.size(), 1);
+
+        QString error;
+        QVERIFY2(page.controlShowPlot(keyValueParser(QStringLiteral("pressure")), false, &error), qPrintable(error));
+        QCOMPARE(page.m_quickPlotWindows.size(), 2);
+        QCOMPARE(userWindow->m_parserConfig.fields, QStringList{QStringLiteral("temperature")});
+        QCOMPARE(userWindow->m_rows.size(), 1);
+        auto *controlWindow = page.m_controlPlotWindow.data();
+        QVERIFY(controlWindow && controlWindow != userWindow);
+
+        // Later control requests reuse the window they opened.
+        QVERIFY2(page.controlShowPlot(keyValueParser(QStringLiteral("pressure")), true, &error), qPrintable(error));
+        QCOMPARE(page.m_quickPlotWindows.size(), 2);
+        QCOMPARE(page.m_controlPlotWindow.data(), controlWindow);
+    }
+
     void cancelsPendingRefreshWhenHiddenMinimizedOrClosed()
     {
         WorkbenchPage page(nullptr, false, false);

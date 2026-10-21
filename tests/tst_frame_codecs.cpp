@@ -51,6 +51,25 @@ class FrameCodecsTest : public QObject
         QCOMPARE(parsed.errorMessage, unknown.errorMessage);
     }
 
+    void exampleFramesParseWithTheirTemplate()
+    {
+        AppProtocol::ProtocolTemplate frameLength = AppProtocol::defaultTemplate();
+        frameLength.lengthMode = AppProtocol::LengthMode::FrameLength;
+        frameLength.lengthSize = 2;
+        frameLength.lengthByteOrder = AppChecksum::ByteOrder::LittleEndian;
+        frameLength.commandOffset = 4;
+        frameLength.payloadOffset = 5;
+        frameLength.checksumAlgorithm = QStringLiteral("crc32");
+        for (const AppProtocol::ProtocolTemplate &protocol : {AppProtocol::defaultTemplate(), frameLength}) {
+            const auto parsed = AppProtocol::parseFrame(AppProtocol::exampleFrame(protocol), protocol);
+            QVERIFY2(parsed.ok && parsed.checksumValid, qPrintable(parsed.errorMessage));
+        }
+        // A header longer than the frame its fields describe cannot form a frame.
+        AppProtocol::ProtocolTemplate impossible = AppProtocol::defaultTemplate();
+        impossible.header = QByteArray(16, '\xAA');
+        QVERIFY(AppProtocol::exampleFrame(impossible).isEmpty());
+    }
+
     void modbusQuantitiesFitOneFrame_data()
     {
         QTest::addColumn<QString>("function");

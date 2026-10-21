@@ -104,50 +104,10 @@ QString protocolHint(AppPlot::Protocol protocol)
     }
 }
 
-QByteArray templateExample(const AppProtocol::ProtocolTemplate &protocolTemplate)
-{
-    const int payloadSize = protocolTemplate.payloadLength > 0 ? protocolTemplate.payloadLength : 4;
-    const qint64 checksumOffset = static_cast<qint64>(protocolTemplate.payloadOffset) + payloadSize;
-    const int checksumSize = AppProtocol::checksumSize(protocolTemplate);
-    if (protocolTemplate.payloadOffset < 0 || checksumOffset > 4096 || checksumOffset <= 0 ||
-        protocolTemplate.header.size() > checksumOffset || protocolTemplate.lengthOffset < 0 ||
-        protocolTemplate.lengthOffset + protocolTemplate.lengthSize > checksumOffset ||
-        protocolTemplate.commandOffset < 0 ||
-        protocolTemplate.commandOffset + protocolTemplate.commandSize > checksumOffset) {
-        return {};
-    }
-    QByteArray frame(static_cast<int>(checksumOffset), '\0');
-    frame.replace(0, protocolTemplate.header.size(), protocolTemplate.header);
-    if (protocolTemplate.commandSize > 0) {
-        frame[protocolTemplate.commandOffset] = '\x01';
-    }
-    const QByteArray payload = QByteArray::fromHex("6400C800");
-    for (int index = 0; index < payloadSize; ++index) {
-        frame[protocolTemplate.payloadOffset + index] = payload.at(index % payload.size());
-    }
-    quint32 length = protocolTemplate.lengthMode == AppProtocol::LengthMode::FrameLength
-                         ? frame.size() + checksumSize : payloadSize;
-    for (int index = 0; index < protocolTemplate.lengthSize; ++index) {
-        const int byteIndex = protocolTemplate.lengthByteOrder == AppChecksum::ByteOrder::LittleEndian
-                                  ? index : protocolTemplate.lengthSize - index - 1;
-        frame[protocolTemplate.lengthOffset + byteIndex] = static_cast<char>(length & 0xff);
-        length >>= 8;
-    }
-    if (checksumSize > 0) {
-        const AppChecksum::ChecksumResult checksum = AppChecksum::calculate(
-            frame, protocolTemplate.checksumAlgorithm, protocolTemplate.checksumByteOrder);
-        if (!checksum.ok) {
-            return {};
-        }
-        frame.append(checksum.bytes);
-    }
-    return frame;
-}
-
 } // namespace
 
 PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget *parent, bool requireProtocolChoice)
-    : QDialog(parent), m_config(config)
+    : QDialog(parent), m_config(config), m_fieldsProtocol(AppPlot::protocolKey(config.protocol))
 {
     using namespace FluentQt;
 
@@ -333,7 +293,15 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     root->addLayout(buttons);
     connect(cancelButton, &PushButton::clicked, this, &QDialog::reject);
     connect(m_applyButton, &PrimaryPushButton::clicked, this, &PlotParserDialog::accept);
-    connect(m_protocolCombo, &ComboBox::currentIndexChanged, this, [this](int) { updateProtocolControls(); });
+    connect(m_protocolCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        // Field names belong to one protocol, so keep them only for that protocol.
+        const QString key = m_protocolCombo->currentData().toString();
+        if (!key.isEmpty() && key != m_fieldsProtocol) {
+            m_fieldsEdit->clear();
+            m_fieldsProtocol = key;
+        }
+        updateProtocolControls();
+    });
     connect(m_binarySourceCombo, &ComboBox::currentIndexChanged, this, [this](int) { updateProtocolControls(); });
     connect(m_templateCombo, &ComboBox::currentIndexChanged, this, [this](int) { updatePreview(); });
     connect(m_fieldsEdit, &LineEdit::textChanged, this, [this]() { updatePreview(); });
@@ -454,9 +422,29 @@ void PlotParserDialog::updateProtocolControls()
     m_templateContainer->setVisible(binary && usesProtocolTemplate());
     m_protocolHint->setText(selected ? protocolHint(protocol) : AppI18n::text("每个曲线窗口都需要单独选择协议。"));
     m_fieldsEdit->setEnabled(selected);
-    if (binary) {
-        const QSignalBlocker blocker(m_sampleModeCombo);
-        m_sampleModeCombo->setCurrentIndex(m_sampleModeCombo->findData(QStringLiteral("hex")));
+    if (binary != m_binarySample) {
+        // Binary fields read bytes while the other protocols read text. Keep the
+        // sample's bytes and only change how they are shown, so a sample left
+        // from the previous protocol never makes the new one invalid.
+        m_binarySample = binary;
+        const QString sample = m_sampleEdit->toPlainText();
+        const bool hex = m_sampleModeCombo->currentData().toString() == QStringLiteral("hex");
+        QString converted = sample;
+        if (binary && !hex) {
+            converted = bytesToHex(sample.toUtf8());
+        } else if (!binary && hex) {
+            const HexParseResult parsed = parseHexPayload(sample);
+            if (parsed.ok) {
+                converted = QString::fromUtf8(parsed.bytes);
+            }
+        }
+        const QSignalBlocker modeBlocker(m_sampleModeCombo);
+        const QSignalBlocker sampleBlocker(m_sampleEdit);
+        m_sampleModeCombo->setCurrentIndex(
+            m_sampleModeCombo->findData(binary ? QStringLiteral("hex") : QStringLiteral("text")));
+        if (converted != sample) {
+            m_sampleEdit->setPlainText(converted);
+        }
     }
     updatePreview();
 }
@@ -556,7 +544,7 @@ void PlotParserDialog::loadExample()
         example = QStringLiteral("{\"sensor\":{\"temperature\":24.8,\"humidity\":60.5},\"pressure\":101.3}");
         break;
     case AppPlot::Protocol::Binary:
-        example = bytesToHex(usesProtocolTemplate() ? templateExample(protocolTemplate())
+        example = bytesToHex(usesProtocolTemplate() ? AppProtocol::exampleFrame(protocolTemplate())
                                                    : QByteArray::fromHex("6400C80000004841"));
         break;
     default:

@@ -461,19 +461,17 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
                 break;
             }
         }
-        m_updatingProtocolTemplateUi = true;
-        m_protocolNameEdit->setText(name);
-        m_protocolHeaderEdit->clear();
-        m_protocolLengthOffsetEdit->setText(QStringLiteral("0"));
-        m_protocolLengthSizeCombo->setCurrentIndex(m_protocolLengthSizeCombo->findData(0));
-        m_protocolCommandOffsetEdit->setText(QStringLiteral("0"));
-        m_protocolCommandSizeEdit->setText(QStringLiteral("0"));
-        m_protocolPayloadOffsetEdit->setText(QStringLiteral("0"));
-        m_protocolPayloadLengthEdit->setText(QStringLiteral("0"));
-        m_protocolChecksumAlgorithmCombo->setCurrentIndex(
-            m_protocolChecksumAlgorithmCombo->findData(AppProtocol::checksumNoneKey()));
+        // Start from a template's defaults so no option carries over from the
+        // previously selected template.
+        AppProtocol::ProtocolTemplate blank;
+        blank.name = name;
+        blank.lengthOffset = 0;
+        blank.lengthSize = 0;
+        blank.commandOffset = 0;
+        blank.commandSize = 0;
+        blank.payloadOffset = 0;
+        fillProtocolTemplateEditor(blank);
         m_protocolTemplateWindow->setSampleHex(QString());
-        m_updatingProtocolTemplateUi = false;
         updateProtocolTemplateActionState();
         m_protocolNameEdit->setFocus();
         m_protocolNameEdit->selectAll();

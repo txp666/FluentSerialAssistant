@@ -133,7 +133,7 @@ QList<AppControl::RecordSnapshot> WorkbenchPage::controlRecords(int limit, const
     const bool protocolEnabled = m_protocolEnabledCheck && m_protocolEnabledCheck->isChecked() &&
                                  m_protocolTemplateCombo && m_protocolTemplateCombo->currentIndex() >= 0;
     const AppProtocol::ProtocolTemplate protocol =
-        protocolEnabled ? currentProtocolTemplateFromUi() : AppProtocol::ProtocolTemplate();
+        protocolEnabled ? selectedProtocolTemplate() : AppProtocol::ProtocolTemplate();
 
     for (int index = m_records.size() - 1; index >= 0 && snapshots.size() < boundedLimit; --index) {
         const SessionRecord &record = m_records.at(index);
@@ -221,12 +221,13 @@ bool WorkbenchPage::controlShowPlot(const AppPlot::ParserConfig &config, bool cl
         return false;
     }
 
-    const auto protocolTemplate = currentProtocolTemplateFromUi();
+    const auto protocolTemplate = selectedProtocolTemplate();
     const bool usesPayload = config.protocol == AppPlot::Protocol::Binary &&
                              config.binarySource == AppPlot::BinarySource::Payload;
-    auto *plotWindow = m_quickPlotWindow;
+    QuickPlotWindow *plotWindow = m_controlPlotWindow;
     if (!plotWindow || !plotWindow->isVisible()) {
         plotWindow = createQuickPlotWindow(config, usesPayload ? &protocolTemplate : nullptr);
+        m_controlPlotWindow = plotWindow;
     } else {
         plotWindow->setProtocolTemplates(m_protocolTemplates);
         if (usesPayload) {

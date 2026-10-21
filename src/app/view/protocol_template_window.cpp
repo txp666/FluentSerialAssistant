@@ -176,10 +176,7 @@ ProtocolTemplateWindow::ProtocolTemplateWindow(QWidget *editor, QWidget *parent)
         root->addWidget(actionBar);
     }
 
-    connect(m_sampleEdit, &QPlainTextEdit::textChanged, this, [this]() {
-        m_manualSample = true;
-        updatePreview();
-    });
+    connect(m_sampleEdit, &QPlainTextEdit::textChanged, this, &ProtocolTemplateWindow::updatePreview);
     connect(exampleButton, &PushButton::clicked, this, &ProtocolTemplateWindow::useExampleFrame);
     connect(m_lastFrameButton, &PushButton::clicked, this, [this]() {
         if (m_lastFrame.isEmpty()) {
@@ -215,7 +212,6 @@ void ProtocolTemplateWindow::setSampleHex(const QString &hex)
 {
     const QSignalBlocker blocker(m_sampleEdit);
     m_sampleEdit->setPlainText(hex);
-    m_manualSample = true;
     if (isVisible() && !isMinimized()) {
         updatePreview();
     }
@@ -225,14 +221,9 @@ QString ProtocolTemplateWindow::sampleHex() const { return m_sampleEdit->toPlain
 
 void ProtocolTemplateWindow::setLastFrame(const QByteArray &frame)
 {
+    // The sample changes only on request, so it stays put while a template is edited.
     m_lastFrame = frame;
     m_lastFrameButton->setEnabled(!frame.isEmpty());
-    if (m_manualSample || !isVisible() || isMinimized()) {
-        return;
-    }
-    const QSignalBlocker blocker(m_sampleEdit);
-    m_sampleEdit->setPlainText(bytesToHex(frame));
-    updatePreview();
 }
 
 void ProtocolTemplateWindow::showEvent(QShowEvent *event)
@@ -243,9 +234,15 @@ void ProtocolTemplateWindow::showEvent(QShowEvent *event)
 
 void ProtocolTemplateWindow::useExampleFrame()
 {
+    // The documented frame fits the default layout; other layouts get a frame
+    // built for them.
+    QByteArray frame = QByteArray::fromHex("AA5503100102034D6E");
+    const AppProtocol::ParseResult parsed = AppProtocol::parseFrame(frame, m_protocolTemplate);
+    if (!parsed.ok || (parsed.checksumChecked && !parsed.checksumValid)) {
+        frame = AppProtocol::exampleFrame(m_protocolTemplate);
+    }
     const QSignalBlocker blocker(m_sampleEdit);
-    m_sampleEdit->setPlainText(QStringLiteral("AA 55 03 10 01 02 03 4D 6E"));
-    m_manualSample = true;
+    m_sampleEdit->setPlainText(bytesToHex(frame));
     updatePreview();
 }
 

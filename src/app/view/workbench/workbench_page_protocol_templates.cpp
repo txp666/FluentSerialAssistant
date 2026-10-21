@@ -240,13 +240,17 @@ void WorkbenchPage::updateProtocolTemplateActionState()
         m_protocolChecksumByteOrderCombo->setEnabled(checksumEnabled);
     }
     if (m_protocolStatusLabel && !m_updatingProtocolTemplateUi) {
-        const AppProtocol::ProtocolTemplate item = currentProtocolTemplateFromUi();
+        const AppProtocol::ProtocolTemplate item = selectedProtocolTemplate();
         if (!enabled) {
             m_protocolStatusLabel->setText(AppI18n::text("协议模板未启用") + QStringLiteral(" · ") + item.name);
         } else {
-            m_protocolStatusLabel->setText(AppI18n::text("%1 · 帧头 %2 B · 命令 %3 B · %4")
-                .arg(item.name).arg(item.header.size()).arg(item.commandSize)
-                .arg(checksumEnabled ? AppChecksum::labelForAlgorithm(item.checksumAlgorithm) : AppI18n::text("无校验")));
+            m_protocolStatusLabel->setText(
+                AppI18n::text("%1 · 帧头 %2 B · 命令 %3 B · %4")
+                    .arg(item.name)
+                    .arg(item.header.size())
+                    .arg(item.commandSize)
+                    .arg(AppProtocol::hasChecksum(item) ? AppChecksum::labelForAlgorithm(item.checksumAlgorithm)
+                                                        : AppI18n::text("无校验")));
         }
     }
     if (!m_updatingProtocolTemplateUi) {
@@ -297,6 +301,13 @@ void WorkbenchPage::updateProtocolTemplatePreview()
     m_protocolTemplateWindow->setProtocolTemplate(currentProtocolTemplateFromUi());
 }
 
+AppProtocol::ProtocolTemplate WorkbenchPage::selectedProtocolTemplate() const
+{
+    const int index = m_protocolTemplateCombo ? m_protocolTemplateCombo->currentIndex() : -1;
+    return index >= 0 && index < m_protocolTemplates.size() ? m_protocolTemplates.at(index)
+                                                            : AppProtocol::defaultTemplate();
+}
+
 AppProtocol::ProtocolTemplate WorkbenchPage::currentProtocolTemplateFromUi() const
 {
     AppProtocol::ProtocolTemplate item;
@@ -335,8 +346,33 @@ void WorkbenchPage::applyProtocolTemplate(int index)
         return;
     }
 
-    m_updatingProtocolTemplateUi = true;
     const AppProtocol::ProtocolTemplate item = m_protocolTemplates.at(index);
+    fillProtocolTemplateEditor(item);
+    if (m_protocolTemplateWindow) {
+        AppSettings settings;
+        const QJsonDocument examples = QJsonDocument::fromJson(
+            settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8());
+        const QJsonValue example = examples.object().value(item.name);
+        if (example.isString()) {
+            m_protocolTemplateWindow->setSampleHex(example.toString());
+        } else {
+            // Without a saved sample, keep the current one only if it is a valid
+            // frame for this template. Otherwise it would show errors and be
+            // saved as this template's sample.
+            const HexParseResult sample = parseHexPayload(m_protocolTemplateWindow->sampleHex());
+            const AppProtocol::ParseResult parsed =
+                sample.ok ? AppProtocol::parseFrame(sample.bytes, item) : AppProtocol::ParseResult();
+            if (!parsed.ok || (parsed.checksumChecked && !parsed.checksumValid)) {
+                m_protocolTemplateWindow->setSampleHex(bytesToHex(AppProtocol::exampleFrame(item)));
+            }
+        }
+    }
+    updateProtocolTemplateActionState();
+}
+
+void WorkbenchPage::fillProtocolTemplateEditor(const AppProtocol::ProtocolTemplate &item)
+{
+    m_updatingProtocolTemplateUi = true;
     if (m_protocolNameEdit) {
         m_protocolNameEdit->setText(item.name);
     }
@@ -353,20 +389,7 @@ void WorkbenchPage::applyProtocolTemplate(int index)
     setEditValue(m_protocolPayloadLengthEdit, item.payloadLength);
     setComboCurrentData(m_protocolChecksumAlgorithmCombo, item.checksumAlgorithm);
     setComboCurrentData(m_protocolChecksumByteOrderCombo, AppChecksum::byteOrderKey(item.checksumByteOrder));
-    if (m_protocolStatusLabel && (!m_protocolEnabledCheck || !m_protocolEnabledCheck->isChecked())) {
-        m_protocolStatusLabel->setText(AppI18n::text("协议模板未启用"));
-    }
     m_updatingProtocolTemplateUi = false;
-    if (m_protocolTemplateWindow) {
-        AppSettings settings;
-        const QJsonDocument examples = QJsonDocument::fromJson(
-            settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8());
-        const QJsonValue example = examples.object().value(item.name);
-        if (example.isString()) {
-            m_protocolTemplateWindow->setSampleHex(example.toString());
-        }
-    }
-    updateProtocolTemplateActionState();
 }
 
 void WorkbenchPage::saveCurrentProtocolTemplate()
@@ -470,14 +493,17 @@ void WorkbenchPage::insertProtocolTemplateExample()
 
 QString WorkbenchPage::protocolParseSourceLabel(const QByteArray &data)
 {
-    if (m_protocolTemplateWindow && m_protocolTemplateWindow->isVisible() && !m_protocolTemplateWindow->isMinimized()) {
+    // Keep the latest frame even while the editor is closed, so it is ready
+    // when the editor opens.
+    if (m_protocolTemplateWindow) {
         m_protocolTemplateWindow->setLastFrame(data);
     }
     if (!m_protocolEnabledCheck || !m_protocolEnabledCheck->isChecked() || m_protocolTemplates.isEmpty()) {
         return {};
     }
 
-    const AppProtocol::ProtocolTemplate item = currentProtocolTemplateFromUi();
+    // Parse with the saved template; unsaved editor changes apply once saved.
+    const AppProtocol::ProtocolTemplate item = selectedProtocolTemplate();
     const AppProtocol::ParseResult result = AppProtocol::parseFrame(data, item);
     if (!result.ok) {
         if (m_protocolStatusLabel) {

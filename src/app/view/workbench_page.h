@@ -13,6 +13,7 @@
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QFile>
 #include <QtCore/QHash>
+#include <QtCore/QPointer>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QTimer>
 #include <QtCore/QVariantList>
@@ -285,7 +286,11 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void showProtocolTemplateWindow();
     void updateProtocolTemplatePreview();
     AppProtocol::ProtocolTemplate currentProtocolTemplateFromUi() const;
+    // The saved template selected in the sidebar. Live parsing uses it, so
+    // unsaved editor changes take effect only once saved.
+    AppProtocol::ProtocolTemplate selectedProtocolTemplate() const;
     void applyProtocolTemplate(int index);
+    void fillProtocolTemplateEditor(const AppProtocol::ProtocolTemplate &item);
     void saveCurrentProtocolTemplate();
     void deleteCurrentProtocolTemplate();
     void insertProtocolTemplateExample();
@@ -538,6 +543,9 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::TextBrowser *m_terminalView = nullptr;
     DataTableWindow *m_dataTableWindow = nullptr;
     QuickPlotWindow *m_quickPlotWindow = nullptr;
+    // The window opened through the control interface. Control requests reuse
+    // only this one so they never reconfigure a window the user set up.
+    QPointer<QuickPlotWindow> m_controlPlotWindow;
     QList<QuickPlotWindow *> m_quickPlotWindows;
     int m_nextPlotWindowNumber = 1;
     ProtocolTemplateWindow *m_protocolTemplateWindow = nullptr;

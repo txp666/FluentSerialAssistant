@@ -60,5 +60,7 @@ QJsonObject toJson(const ProtocolTemplate &protocolTemplate);
 QList<ProtocolTemplate> listFromJson(const QJsonArray &array);
 QJsonArray listToJson(const QList<ProtocolTemplate> &protocolTemplates);
 ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocolTemplate);
+// A frame that the template parses, or empty when its fields cannot form one.
+QByteArray exampleFrame(const ProtocolTemplate &protocolTemplate);
 
 } // namespace AppProtocol

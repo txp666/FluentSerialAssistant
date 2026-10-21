@@ -59,5 +59,7 @@ class PlotParserDialog : public QDialog
     FluentQt::PrimaryPushButton *m_applyButton = nullptr;
     QWidget *m_binaryContainer = nullptr;
     QWidget *m_templateContainer = nullptr;
+    QString m_fieldsProtocol;
+    bool m_binarySample = false;
     bool m_updatingPreview = false;
 };

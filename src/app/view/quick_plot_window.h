@@ -24,6 +24,9 @@ class QuickPlotWindow : public QWidget
   public:
     explicit QuickPlotWindow(QWidget *parent = nullptr);
 
+    // The parser configuration a window last applied, used to prefill new windows.
+    static AppPlot::ParserConfig savedParserConfig();
+
     void appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
                       const QByteArray &payload = {});
     void clearData();

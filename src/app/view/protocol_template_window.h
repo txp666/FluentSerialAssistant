@@ -38,7 +38,6 @@ class ProtocolTemplateWindow : public QWidget
     AppProtocol::ProtocolTemplate m_protocolTemplate;
     QString m_configurationError;
     QByteArray m_lastFrame;
-    bool m_manualSample = false;
     QPlainTextEdit *m_sampleEdit = nullptr;
     FluentQt::TextBrowser *m_structureView = nullptr;
     FluentQt::TableView *m_resultTable = nullptr;
