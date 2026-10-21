@@ -306,18 +306,19 @@ void WorkbenchPage::handleReceivedData(const QByteArray &data)
         return;
     }
 
-    handleMacroReceivedData(data);
-    handleAutoReplyReceivedData(data);
-
+    // Record the data before reacting to it, so a reply sent by a macro step or
+    // an auto-reply rule is logged after the request that triggered it.
     if (!m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked() ||
         frameBreakModeKey() == QStringLiteral("timeout")) {
         appendRecord(RecordDirection::Rx, data, true, QString(),
                      !m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked());
-        return;
+    } else {
+        recordReceivedBytes(data);
+        processBufferedFrameData(data);
     }
 
-    recordReceivedBytes(data);
-    processBufferedFrameData(data);
+    handleMacroReceivedData(data);
+    handleAutoReplyReceivedData(data);
 }
 
 void WorkbenchPage::recordReceivedBytes(const QByteArray &data)
@@ -394,6 +395,11 @@ void WorkbenchPage::processBufferedFrameData(const QByteArray &data)
             appendRecord(RecordDirection::Rx, m_rxFrameBuffer.left(nextHeader), false);
             m_rxFrameBuffer.remove(0, nextHeader);
         }
+        // Only the next header ends the last frame. A quiet line ends it after
+        // the timeout instead, so a single reply is not held back.
+        if (!m_rxFrameBuffer.isEmpty()) {
+            m_rxFrameIdleTimer.start(numberEditValue(m_frameBreakIntervalEdit, 20, 1, 60000));
+        }
     }
 
     if (m_rxFrameBuffer.size() > MaxFrameBufferBytes) {
@@ -403,6 +409,7 @@ void WorkbenchPage::processBufferedFrameData(const QByteArray &data)
 
 void WorkbenchPage::flushRxFrameBuffer()
 {
+    m_rxFrameIdleTimer.stop();
     if (m_rxFrameBuffer.isEmpty()) {
         return;
     }
@@ -425,7 +432,8 @@ void WorkbenchPage::updateFrameControlState()
         m_frameFixedLengthEdit->setEnabled(enabled && mode == QStringLiteral("length"));
     }
     if (m_frameBreakIntervalEdit) {
-        m_frameBreakIntervalEdit->setEnabled(enabled && mode == QStringLiteral("timeout"));
+        m_frameBreakIntervalEdit->setEnabled(enabled &&
+                                             (mode == QStringLiteral("timeout") || mode == QStringLiteral("header")));
     }
 }
 

@@ -216,7 +216,7 @@ if(BUILD_TESTING)
     )
     get_target_property(workbench_test_libraries FluentSerialAssistant LINK_LIBRARIES)
     target_link_libraries(FluentSerialTestSupport PUBLIC ${workbench_test_libraries})
-    foreach(test_name IN ITEMS data_table_model workbench_data_table workbench_quick_plot workbench_reliability protocol_windows terminal_search terminal_colors
+    foreach(test_name IN ITEMS data_table_model frame_codecs workbench_data_table workbench_quick_plot workbench_reliability protocol_windows terminal_search terminal_colors
                                auto_reply virtual_serial_pair virtual_serial_workbench update_downloader update_installer
                                update_ui update_manager)
         add_executable(tst_${test_name} tests/tst_${test_name}.cpp)

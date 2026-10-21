@@ -2,6 +2,7 @@
 #include "app/serial/serial_controller.h"
 #include "app/serial/virtual_serial_pair.h"
 
+#include <QtCore/QScopeGuard>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QTest>
 
@@ -333,6 +334,42 @@ class VirtualSerialPairTest : public QObject
         QCOMPARE(replies, 0);
         QTRY_COMPARE(replies, 10);
         QCOMPARE(maximumDepth, 1);
+    }
+
+    void hardwareFlowControlOpensWithoutRtsErrors()
+    {
+#ifdef Q_OS_UNIX
+        const int terminal = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK);
+        QVERIFY(terminal >= 0);
+        const auto closeTerminal = qScopeGuard([terminal]() { ::close(terminal); });
+        QCOMPARE(grantpt(terminal), 0);
+        QCOMPARE(unlockpt(terminal), 0);
+        const char *portName = ptsname(terminal);
+        QVERIFY(portName);
+
+        // Qt rejects RTS changes under hardware flow control without touching the device.
+        QSerialPort probe(QString::fromLocal8Bit(portName));
+        probe.setFlowControl(QSerialPort::HardwareControl);
+        QVERIFY2(probe.open(QIODevice::ReadWrite), qPrintable(probe.errorString()));
+        QVERIFY(!probe.setRequestToSend(false));
+        QCOMPARE(probe.error(), QSerialPort::UnsupportedOperationError);
+        const QString rtsError = probe.errorString();
+        probe.close();
+
+        SerialController port;
+        QStringList errors;
+        connect(&port, &SerialController::errorOccurred, &port,
+                [&errors](const QString &message) { errors.append(message); });
+        SerialPortConfig hardware = config(QString::fromLocal8Bit(portName));
+        hardware.flowControl = QSerialPort::HardwareControl;
+        QVERIFY2(port.openPort(hardware), qPrintable(port.errorString()));
+        // The driver owns RTS, so opening must not try to set it. Pseudo-terminals
+        // also reject modem-line ioctls such as DTR, which are not checked here.
+        QVERIFY2(!errors.contains(rtsError), qPrintable(errors.join(QStringLiteral("; "))));
+        port.closePort();
+#else
+        QSKIP("Pseudo-terminal serial integration is available on Unix platforms");
+#endif
     }
 
     void physicalPortRemainsConnectedAcrossVirtualPairToggle()

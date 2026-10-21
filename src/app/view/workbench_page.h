@@ -450,6 +450,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QTimer m_statsTimer;
     QTimer m_fileSendTimer;
     QTimer m_macroTimer;
+    QTimer m_rxFrameIdleTimer;
     QThread *m_scriptThread = nullptr;
     ScriptRunner *m_scriptRunner = nullptr;
     QFile m_receiveCaptureFile;

@@ -173,6 +173,10 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
         result.errorMessage = AppI18n::text("长度字段字节数应为 0、1、2 或 4");
         return result;
     }
+    if (hasChecksum(protocolTemplate) && !AppChecksum::isSupportedAlgorithm(protocolTemplate.checksumAlgorithm)) {
+        result.errorMessage = AppI18n::text("不支持的校验算法");
+        return result;
+    }
 
     const int checksumBytes = checksumSize(protocolTemplate);
     if (protocolTemplate.lengthSize > 0) {

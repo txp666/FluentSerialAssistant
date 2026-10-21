@@ -18,6 +18,28 @@ const QList<AppChecksum::AlgorithmOption> &algorithmOptions()
     return options;
 }
 
+// Returns the option key for a supported name or alias, or an empty string.
+QString supportedAlgorithmKey(const QString &key)
+{
+    const QString normalized = key.trimmed().toLower();
+    if (normalized == QStringLiteral("modbus") || normalized == QStringLiteral("crc-modbus")) {
+        return QStringLiteral("crc16-modbus");
+    }
+    if (normalized == QStringLiteral("ccitt") || normalized == QStringLiteral("crc16")) {
+        return QStringLiteral("crc16-ccitt");
+    }
+    if (normalized == QStringLiteral("sum")) {
+        return QStringLiteral("sum8");
+    }
+
+    for (const AppChecksum::AlgorithmOption &option : algorithmOptions()) {
+        if (option.key == normalized) {
+            return option.key;
+        }
+    }
+    return {};
+}
+
 const AppChecksum::AlgorithmOption &optionForKey(const QString &key)
 {
     const QString normalized = AppChecksum::normalizedAlgorithmKey(key);
@@ -131,24 +153,11 @@ QString defaultAlgorithmKey() { return QStringLiteral("crc16-modbus"); }
 
 QString normalizedAlgorithmKey(const QString &key)
 {
-    const QString normalized = key.trimmed().toLower();
-    if (normalized == QStringLiteral("modbus") || normalized == QStringLiteral("crc-modbus")) {
-        return QStringLiteral("crc16-modbus");
-    }
-    if (normalized == QStringLiteral("ccitt") || normalized == QStringLiteral("crc16")) {
-        return QStringLiteral("crc16-ccitt");
-    }
-    if (normalized == QStringLiteral("sum")) {
-        return QStringLiteral("sum8");
-    }
-
-    for (const AlgorithmOption &option : algorithmOptions()) {
-        if (option.key == normalized) {
-            return option.key;
-        }
-    }
-    return defaultAlgorithmKey();
+    const QString supported = supportedAlgorithmKey(key);
+    return supported.isEmpty() ? defaultAlgorithmKey() : supported;
 }
+
+bool isSupportedAlgorithm(const QString &key) { return !supportedAlgorithmKey(key).isEmpty(); }
 
 QString labelForAlgorithm(const QString &key) { return optionForKey(key).label; }
 
@@ -172,7 +181,8 @@ QString byteOrderLabel(ByteOrder byteOrder)
 ChecksumResult calculate(const QByteArray &data, const QString &algorithmKey, ByteOrder byteOrder)
 {
     ChecksumResult result;
-    const QString key = normalizedAlgorithmKey(algorithmKey);
+    // An unsupported key falls through to the error below instead of the default algorithm.
+    const QString key = supportedAlgorithmKey(algorithmKey);
     const int widthBytes = widthForAlgorithm(key);
 
     if (key == QStringLiteral("crc16-modbus")) {

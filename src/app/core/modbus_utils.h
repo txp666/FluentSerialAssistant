@@ -44,6 +44,8 @@ QList<FunctionOption> functionOptions();
 QString defaultFunctionKey();
 QString normalizedFunctionKey(const QString &key);
 FunctionOption functionForKey(const QString &key);
+// The largest quantity whose request and response fit in one Modbus PDU.
+quint16 maximumQuantity(const FunctionOption &function);
 
 BuildResult buildRequest(const RequestConfig &config);
 ParseResult parseResponse(const QByteArray &frame);

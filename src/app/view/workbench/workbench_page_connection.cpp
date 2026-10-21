@@ -99,7 +99,8 @@ void WorkbenchPage::setControlsEnabledForConnection(bool connected)
         m_fileCancelButton->setEnabled(m_fileSendFile.isOpen());
     }
     updateMacroActionState();
-    m_rtsCheck->setEnabled(connected);
+    m_rtsCheck->setEnabled(connected &&
+                           flowControlFromData(m_flowControlCombo->currentData()) != QSerialPort::HardwareControl);
     m_dtrCheck->setEnabled(connected);
 
     m_portCombo->setEnabled(!connected);

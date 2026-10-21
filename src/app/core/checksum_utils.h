@@ -29,7 +29,10 @@ struct ChecksumResult
 
 QList<AlgorithmOption> options();
 QString defaultAlgorithmKey();
+// Unsupported keys normalize to the default algorithm; check them first where
+// silently checking a different algorithm would be wrong.
 QString normalizedAlgorithmKey(const QString &key);
+bool isSupportedAlgorithm(const QString &key);
 QString labelForAlgorithm(const QString &key);
 int widthForAlgorithm(const QString &key);
 ByteOrder byteOrderFromKey(const QString &key);

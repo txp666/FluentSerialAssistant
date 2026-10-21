@@ -46,6 +46,8 @@ WorkbenchPage::WorkbenchPage(QWidget *parent, bool restoreSavedSession, bool all
     connect(&m_fileSendTimer, &QTimer::timeout, this, &WorkbenchPage::sendNextFileChunk);
     m_macroTimer.setSingleShot(true);
     connect(&m_macroTimer, &QTimer::timeout, this, &WorkbenchPage::handleMacroTimer);
+    m_rxFrameIdleTimer.setSingleShot(true);
+    connect(&m_rxFrameIdleTimer, &QTimer::timeout, this, &WorkbenchPage::flushRxFrameBuffer);
     connect(ThemeManager::instance(), &ThemeManager::effectiveThemeChanged, this, [this]() { renderTerminal(); });
     connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this, [this]() {
         updateConnectionUi(m_serial.isOpen());

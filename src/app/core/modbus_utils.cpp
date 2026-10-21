@@ -132,16 +132,6 @@ QList<bool> parseCoils(const QString &text, bool *ok)
     return values;
 }
 
-bool quantityInRange(const FunctionOption &function, quint16 quantity)
-{
-    if (quantity == 0) {
-        return false;
-    }
-    if (!function.write || function.multiple) {
-        return function.coil ? quantity <= 2000 : quantity <= 125;
-    }
-    return quantity == 1;
-}
 
 QString exceptionText(quint8 code)
 {
@@ -233,6 +223,18 @@ FunctionOption functionForKey(const QString &key)
     return modbusFunctionOptions().at(2);
 }
 
+quint16 maximumQuantity(const FunctionOption &function)
+{
+    if (function.write && !function.multiple) {
+        return 1;
+    }
+    // Write requests also carry the values, so they allow fewer than reads.
+    if (function.coil) {
+        return function.write ? 1968 : 2000;
+    }
+    return function.write ? 123 : 125;
+}
+
 BuildResult buildRequest(const RequestConfig &config)
 {
     const FunctionOption function = functionForKey(config.functionKey);
@@ -240,9 +242,10 @@ BuildResult buildRequest(const RequestConfig &config)
     if (config.slaveId == 0 || config.slaveId > 247) {
         return fail(AppI18n::text("站号范围应为 1-247"));
     }
-    if (!quantityInRange(function, quantity)) {
-        return fail(function.coil ? AppI18n::text("线圈数量范围应为 1-2000")
-                                  : AppI18n::text("寄存器数量范围应为 1-125"));
+    const quint16 maximum = maximumQuantity(function);
+    if (quantity == 0 || quantity > maximum) {
+        return fail((function.coil ? AppI18n::text("线圈数量范围应为 1-%1") : AppI18n::text("寄存器数量范围应为 1-%1"))
+                        .arg(maximum));
     }
 
     QByteArray frame;

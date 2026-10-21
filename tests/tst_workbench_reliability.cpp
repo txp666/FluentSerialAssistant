@@ -2,6 +2,7 @@
 #include "app/view/workbench/workbench_page_internal.h"
 
 #include <QtCore/QElapsedTimer>
+#include <QtCore/QTemporaryDir>
 #include <QtCore/QThread>
 #include <QtTest/QTest>
 
@@ -12,11 +13,11 @@ class WorkbenchReliabilityTest : public QObject
     Q_OBJECT
 
   private:
-    static void connectVirtualPort(WorkbenchPage &page)
+    static void connectVirtualPort(WorkbenchPage &page, const QString &port = VirtualSerialPair::portAName())
     {
         VirtualSerialPair::instance()->setEnabled(true);
         page.refreshPorts();
-        page.m_portCombo->setCurrentIndex(page.m_portCombo->findData(VirtualSerialPair::portAName()));
+        page.m_portCombo->setCurrentIndex(page.m_portCombo->findData(port));
         page.m_connectButton->click();
         QVERIFY(page.m_serial.isOpen());
     }
@@ -261,6 +262,99 @@ class WorkbenchReliabilityTest : public QObject
             page.handleReceivedData(bytes.mid(offset, 3));
         }
         QCOMPARE(receivedText(page), text);
+    }
+
+    void headerFramesEndWhenTheLineGoesQuiet()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.m_autoFrameBreakCheck->setChecked(true);
+        page.m_frameModeCombo->setCurrentIndex(page.m_frameModeCombo->findData(QStringLiteral("header")));
+        page.m_framePatternEdit->setText(QStringLiteral("AA 55"));
+        setNumberEditValue(page.m_frameBreakIntervalEdit, 30, 1, 60000);
+        QVERIFY(page.m_frameBreakIntervalEdit->isEnabled());
+
+        // The next header ends the first frame; only a quiet line ends the last one.
+        page.handleReceivedData(QByteArray::fromHex("AA5501AA5502"));
+        QCOMPARE(page.m_records.size(), 1);
+        QCOMPARE(page.m_records.first().bytes, QByteArray::fromHex("AA5501"));
+        QTRY_COMPARE(page.m_records.size(), 2);
+        QCOMPARE(page.m_records.last().bytes, QByteArray::fromHex("AA5502"));
+
+        // A frame continued within the timeout stays whole.
+        page.handleReceivedData(QByteArray::fromHex("AA55"));
+        page.handleReceivedData(QByteArray::fromHex("0304"));
+        QTRY_COMPARE(page.m_records.size(), 3);
+        QCOMPARE(page.m_records.last().bytes, QByteArray::fromHex("AA550304"));
+    }
+
+    void autoReplyIsRecordedAfterItsRequest()
+    {
+        WorkbenchPage device(nullptr, false, false);
+        WorkbenchPage responder(nullptr, false, false);
+        connectVirtualPort(device);
+        connectVirtualPort(responder, VirtualSerialPair::portBName());
+        WorkbenchPage::AutoReplyRule rule;
+        rule.matchMode = QStringLiteral("text");
+        rule.pattern = QStringLiteral("PING");
+        rule.responseMode = QStringLiteral("text");
+        rule.responsePayload = QStringLiteral("PONG");
+        rule.lineEnding = QStringLiteral("none");
+        responder.m_autoReplyRules = {rule};
+
+        QString error;
+        QVERIFY2(device.controlSendBytes(QByteArrayLiteral("PING"), QString(), &error), qPrintable(error));
+        QTRY_COMPARE(device.controlStatus().receivedBytes, 4);
+        const auto records = responder.controlRecords(10, QStringLiteral("all"));
+        QCOMPARE(records.size(), 2);
+        QCOMPARE(records.at(0).direction, QStringLiteral("rx"));
+        QCOMPARE(records.at(0).bytes, QByteArrayLiteral("PING"));
+        QCOMPARE(records.at(1).direction, QStringLiteral("tx"));
+        QCOMPARE(records.at(1).bytes, QByteArrayLiteral("PONG"));
+        QVERIFY(records.at(0).timestamp <= records.at(1).timestamp);
+    }
+
+    void hardwareFlowControlLeavesRtsToTheDriver()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.m_flowControlCombo->setCurrentIndex(
+            page.m_flowControlCombo->findData(static_cast<int>(QSerialPort::HardwareControl)));
+        connectVirtualPort(page);
+        QVERIFY(!page.m_rtsCheck->isEnabled());
+        QVERIFY(page.m_dtrCheck->isEnabled());
+        page.m_connectButton->click();
+        page.m_flowControlCombo->setCurrentIndex(
+            page.m_flowControlCombo->findData(static_cast<int>(QSerialPort::NoFlowControl)));
+        connectVirtualPort(page);
+        QVERIFY(page.m_rtsCheck->isEnabled());
+    }
+
+    void savedReceiveCaptureWaitsForAConnection()
+    {
+        QTemporaryDir folder;
+        QVERIFY(folder.isValid());
+        AppSettings settings;
+        settings.setValue(QStringLiteral("receive/saveToFile"), true);
+        settings.setValue(QStringLiteral("export/folder"), folder.path());
+        settings.sync();
+        const auto files = [&folder]() { return QDir(folder.path()).entryList(QDir::Files); };
+
+        WorkbenchPage page(nullptr, true, false);
+        QVERIFY(page.m_saveReceiveCheck->isChecked());
+        QVERIFY(files().isEmpty());
+
+        SerialController device;
+        connectVirtualPort(page, VirtualSerialPair::portBName());
+        SerialPortConfig config;
+        config.portName = VirtualSerialPair::portAName();
+        QVERIFY(device.openPort(config));
+        QVERIFY(device.writeData(QByteArrayLiteral("captured")));
+        QTRY_COMPARE(page.controlStatus().receivedBytes, 8);
+        page.m_connectButton->click();
+        QVERIFY(!page.m_serial.isOpen());
+        QCOMPARE(files().size(), 1);
+        QFile capture(QDir(folder.path()).filePath(files().first()));
+        QVERIFY(capture.open(QIODevice::ReadOnly));
+        QCOMPARE(capture.readAll(), QByteArrayLiteral("captured"));
     }
 };
 

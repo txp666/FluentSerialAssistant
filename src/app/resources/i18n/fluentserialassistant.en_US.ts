@@ -248,12 +248,12 @@
         <translation>Slave ID must be 1-247</translation>
     </message>
     <message>
-        <source>线圈数量范围应为 1-2000</source>
-        <translation>Coil quantity must be 1-2000</translation>
+        <source>线圈数量范围应为 1-%1</source>
+        <translation>Coil quantity must be 1-%1</translation>
     </message>
     <message>
-        <source>寄存器数量范围应为 1-125</source>
-        <translation>Register quantity must be 1-125</translation>
+        <source>寄存器数量范围应为 1-%1</source>
+        <translation>Register quantity must be 1-%1</translation>
     </message>
     <message>
         <source>%1 · 站号 %2 · 地址 %3 · 数量 %4</source>

@@ -277,7 +277,9 @@ void WorkbenchPage::updateReceiveCapture(bool enabled)
     AppSettings settings;
     settings.setValue(QStringLiteral("receive/saveToFile"), enabled);
 
-    if (!enabled) {
+    // Restoring the option at startup must not create an empty file; the
+    // connection opens it.
+    if (!enabled || !m_serial.isOpen()) {
         closeReceiveCapture();
         return;
     }

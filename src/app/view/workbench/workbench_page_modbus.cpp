@@ -87,7 +87,8 @@ AppModbus::RequestConfig WorkbenchPage::currentModbusConfig() const
         m_modbusFunctionCombo ? m_modbusFunctionCombo->currentData().toString() : AppModbus::defaultFunctionKey();
     const AppModbus::FunctionOption function = AppModbus::functionForKey(config.functionKey);
     config.address = static_cast<quint16>(numberEditValue(m_modbusAddressEdit, 0, 0, 65535));
-    config.quantity = static_cast<quint16>(numberEditValue(m_modbusQuantityEdit, 1, 1, function.coil ? 2000 : 125));
+    config.quantity =
+        static_cast<quint16>(numberEditValue(m_modbusQuantityEdit, 1, 1, AppModbus::maximumQuantity(function)));
     config.valuesText = m_modbusValuesEdit ? m_modbusValuesEdit->toPlainText() : QString();
     return config;
 }
@@ -171,7 +172,7 @@ void WorkbenchPage::updateModbusUi()
     const bool needsValues = function.write;
     const bool quantityEnabled = !function.write || function.multiple;
     if (m_modbusQuantityEdit) {
-        const int maximumQuantity = function.coil ? 2000 : 125;
+        const int maximumQuantity = AppModbus::maximumQuantity(function);
         m_modbusQuantityEdit->setEnabled(quantityEnabled);
         m_modbusQuantityEdit->setValidator(new QIntValidator(1, maximumQuantity, m_modbusQuantityEdit));
         if (!quantityEnabled) {

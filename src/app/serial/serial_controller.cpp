@@ -137,7 +137,10 @@ bool SerialController::openPort(const SerialPortConfig &config)
         return false;
     }
 
-    setRequestToSend(config.requestToSend);
+    // With hardware flow control the driver owns RTS, and setting it fails.
+    if (config.flowControl != QSerialPort::HardwareControl) {
+        setRequestToSend(config.requestToSend);
+    }
     setDataTerminalReady(config.dataTerminalReady);
     emit opened(config.portName);
     return true;
