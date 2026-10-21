@@ -24,12 +24,19 @@ bool LocalControlServer::start(QString *error)
     if (m_server.isListening()) {
         return true;
     }
-    if (m_server.listen(localServerName())) {
+    const QString name = localServerName();
+    if (name.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("No private runtime directory is available for the control service");
+        }
+        return false;
+    }
+    if (m_server.listen(name)) {
         return true;
     }
 
     QLocalSocket probe;
-    probe.connectToServer(localServerName());
+    probe.connectToServer(name);
     if (probe.waitForConnected(150)) {
         if (error) {
             *error = QStringLiteral("Another Fluent Serial Assistant instance already owns the control service");
@@ -37,8 +44,8 @@ bool LocalControlServer::start(QString *error)
         return false;
     }
 
-    QLocalServer::removeServer(localServerName());
-    if (m_server.listen(localServerName())) {
+    QLocalServer::removeServer(name);
+    if (m_server.listen(name)) {
         return true;
     }
     if (error) {

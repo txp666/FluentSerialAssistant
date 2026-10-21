@@ -1,10 +1,23 @@
 #include "app/control/control_protocol.h"
 
+#include <QtCore/QDir>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QStandardPaths>
 
 namespace AppControl {
 
-QString localServerName() { return QStringLiteral("tech.zhangshu.FluentSerialAssistant.control.v1"); }
+QString localServerName()
+{
+#ifdef Q_OS_UNIX
+    // A bare name puts the socket in the temporary directory, which Linux shares
+    // between users: another user could create it first and receive the
+    // commands. The runtime directory is private to the user.
+    const QString directory = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    return directory.isEmpty() ? QString() : QDir(directory).filePath(QStringLiteral("fluentserial-control-v1"));
+#else
+    return QStringLiteral("tech.zhangshu.FluentSerialAssistant.control.v1");
+#endif
+}
 
 QByteArray encodeMessage(const QJsonObject &message)
 {

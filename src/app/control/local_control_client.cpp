@@ -15,8 +15,13 @@ ClientReply LocalControlClient::call(const QString &action, const QJsonObject &p
     ClientReply reply;
     const int boundedTimeout = qBound(100, timeoutMs, 60000);
 
+    const QString name = localServerName();
+    if (name.isEmpty()) {
+        reply.errorMessage = QStringLiteral("No private runtime directory is available for the control service");
+        return reply;
+    }
     QLocalSocket socket;
-    socket.connectToServer(localServerName(), QIODevice::ReadWrite);
+    socket.connectToServer(name, QIODevice::ReadWrite);
     if (!socket.waitForConnected(boundedTimeout)) {
         reply.errorMessage =
             QStringLiteral("Fluent Serial Assistant is not running or its control service is unavailable: %1")
