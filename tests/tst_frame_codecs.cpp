@@ -1,4 +1,6 @@
+#include "app/core/app_i18n.h"
 #include "app/core/checksum_utils.h"
+#include "app/core/hex_utils.h"
 #include "app/core/modbus_utils.h"
 #include "app/core/protocol_template.h"
 
@@ -12,6 +14,70 @@ class FrameCodecsTest : public QObject
     Q_OBJECT
 
   private slots:
+    void hexPayloadsParse_data()
+    {
+        QTest::addColumn<QString>("input");
+        QTest::addColumn<QByteArray>("bytes");
+        QTest::newRow("spaced") << QStringLiteral("AA 55 10") << QByteArray::fromHex("AA5510");
+        QTest::newRow("separators") << QStringLiteral("aa,55;10-ff\t01\n02") << QByteArray::fromHex("AA5510FF0102");
+        QTest::newRow("prefixed") << QStringLiteral("0xAA 0X5 0x0a") << QByteArray::fromHex("AA050A");
+        QTest::newRow("packed") << QStringLiteral("AA55FF") << QByteArray::fromHex("AA55FF");
+        QTest::newRow("prefixed packed") << QStringLiteral("0xAA55") << QByteArray::fromHex("AA55");
+        QTest::newRow("single digits") << QStringLiteral("A B") << QByteArray::fromHex("0A0B");
+        QTest::newRow("empty") << QString() << QByteArray();
+        QTest::newRow("blank") << QStringLiteral(" \n\t ") << QByteArray();
+    }
+
+    void hexPayloadsParse()
+    {
+        QFETCH(QString, input);
+        QFETCH(QByteArray, bytes);
+        const HexParseResult result = parseHexPayload(input);
+        QVERIFY2(result.ok, qPrintable(result.errorMessage));
+        QCOMPARE(result.bytes, bytes);
+        QCOMPARE(result.errorOffset, qsizetype(-1));
+    }
+
+    void malformedHexReportsWhere_data()
+    {
+        QTest::addColumn<QString>("input");
+        QTest::addColumn<int>("offset");
+        QTest::addColumn<QByteArray>("message");
+        QTest::newRow("letter") << QStringLiteral("AA ZZ") << 3 << QByteArray("包含非 HEX 字符");
+        QTest::newRow("full width") << QStringLiteral("ＡＡ") << 0 << QByteArray("包含非 HEX 字符");
+        QTest::newRow("prefix inside") << QStringLiteral("AA0x55") << 3 << QByteArray("包含非 HEX 字符");
+        QTest::newRow("bare prefix") << QStringLiteral("AA 0x") << 3 << QByteArray("0x 后缺少字节");
+        QTest::newRow("odd packed") << QStringLiteral("ABC") << 0 << QByteArray("连续 HEX 字符数量必须为偶数");
+        QTest::newRow("odd prefixed") << QStringLiteral("11 0xABC") << 5
+                                      << QByteArray("连续 HEX 字符数量必须为偶数");
+        QTest::newRow("only separators") << QStringLiteral(", ;-") << 0 << QByteArray("没有解析到有效字节");
+    }
+
+    void malformedHexReportsWhere()
+    {
+        QFETCH(QString, input);
+        QFETCH(int, offset);
+        QFETCH(QByteArray, message);
+        const HexParseResult result = parseHexPayload(input);
+        QVERIFY(!result.ok);
+        QVERIFY(result.bytes.isEmpty());
+        QCOMPARE(result.errorOffset, qsizetype(offset));
+        QCOMPARE(result.errorMessage, AppI18n::text(message.constData()));
+    }
+
+    void hexRoundTripsEveryByte()
+    {
+        QByteArray bytes;
+        for (int value = 0; value < 256; ++value) {
+            bytes.append(static_cast<char>(value));
+        }
+        const QString hex = bytesToHex(bytes);
+        QVERIFY(hex.startsWith(QStringLiteral("00 01 02")));
+        QVERIFY(hex.endsWith(QStringLiteral("FE FF")));
+        QCOMPARE(parseHexPayload(hex).bytes, bytes);
+        QCOMPARE(bytesToHex(QByteArray()), QString());
+    }
+
     void checksumsMatchStandardCheckValues_data()
     {
         QTest::addColumn<QString>("algorithm");
