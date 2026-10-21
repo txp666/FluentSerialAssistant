@@ -10,7 +10,6 @@
 
 namespace FluentQt {
 class CaptionLabel;
-class BodyLabel;
 class PushButton;
 class RealtimePlotWidget;
 } // namespace FluentQt
@@ -64,11 +63,10 @@ class QuickPlotWindow : public QWidget
     void setPlottingActive(bool active);
     void setPaused(bool paused);
     void showParserSettings();
-    void showProtocolHelp(QWidget *target);
     void exportCsv();
 
     FluentQt::RealtimePlotWidget *m_plot = nullptr;
-    FluentQt::BodyLabel *m_protocolNameLabel = nullptr;
+    FluentQt::PushButton *m_protocolButton = nullptr;
     FluentQt::PushButton *m_pauseButton = nullptr;
     FluentQt::CaptionLabel *m_statusLabel = nullptr;
     QVector<QString> m_channelNames;

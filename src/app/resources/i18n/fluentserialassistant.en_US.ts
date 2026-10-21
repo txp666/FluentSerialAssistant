@@ -390,10 +390,6 @@ Available only in this app. Baud rate and flow control are not simulated; switch
         <translation>Quick Plot</translation>
     </message>
     <message>
-        <source>协议</source>
-        <translation>Protocol</translation>
-    </message>
-    <message>
         <source>全部数字</source>
         <translation>All Numbers</translation>
     </message>
@@ -416,10 +412,6 @@ Available only in this app. Baud rate and flow control are not simulated; switch
     <message>
         <source>选择接收数据如何转换为曲线数据</source>
         <translation>Choose how received data is converted to curve data</translation>
-    </message>
-    <message>
-        <source>绘图协议示例</source>
-        <translation>Plot protocol examples</translation>
     </message>
     <message>
         <source>解析设置</source>
@@ -548,34 +540,6 @@ Available only in this app. Baud rate and flow control are not simulated; switch
     <message>
         <source>继续</source>
         <translation>Resume</translation>
-    </message>
-    <message>
-        <source>全部数字：提取每行里的所有数字
-  T=24.8 H=60.5  =&gt; CH1=24.8, CH2=60.5
-
-分隔值：读取逗号、分号、空格分隔的纯数字
-  24.8,60.5,101.3  =&gt; CH1, CH2, CH3
-
-键值对：支持多词或中文字段名
-  free sram: 43815 minimal sram: 38791
-
-JSON 对象：递归读取对象和数组中的数值
-  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
-
-二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值</source>
-        <translation>All Numbers: extracts all numbers from each line
-  T=24.8 H=60.5  =&gt; CH1=24.8, CH2=60.5
-
-Delimited Values: reads plain numbers separated by commas, semicolons, or spaces
-  24.8,60.5,101.3  =&gt; CH1, CH2, CH3
-
-Key-Value Pairs: supports multi-word and Unicode field names
-  free sram: 43815 minimal sram: 38791
-
-JSON Object: recursively reads numeric values from objects and arrays
-  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
-
-Binary Fields: plots individual bytes by default; configure type, byte order, scale, and offset in Parser Settings</translation>
     </message>
     <message>
         <source>暂无曲线数据</source>

@@ -390,10 +390,6 @@
         <translation>快速绘图</translation>
     </message>
     <message>
-        <source>协议</source>
-        <translation>协议</translation>
-    </message>
-    <message>
         <source>全部数字</source>
         <translation>全部数字</translation>
     </message>
@@ -416,10 +412,6 @@
     <message>
         <source>选择接收数据如何转换为曲线数据</source>
         <translation>选择接收数据如何转换为曲线数据</translation>
-    </message>
-    <message>
-        <source>绘图协议示例</source>
-        <translation>绘图协议示例</translation>
     </message>
     <message>
         <source>解析设置</source>
@@ -548,34 +540,6 @@
     <message>
         <source>继续</source>
         <translation>继续</translation>
-    </message>
-    <message>
-        <source>全部数字：提取每行里的所有数字
-  T=24.8 H=60.5  =&gt; CH1=24.8, CH2=60.5
-
-分隔值：读取逗号、分号、空格分隔的纯数字
-  24.8,60.5,101.3  =&gt; CH1, CH2, CH3
-
-键值对：支持多词或中文字段名
-  free sram: 43815 minimal sram: 38791
-
-JSON 对象：递归读取对象和数组中的数值
-  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
-
-二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值</source>
-        <translation>全部数字：提取每行里的所有数字
-  T=24.8 H=60.5  =&gt; CH1=24.8, CH2=60.5
-
-分隔值：读取逗号、分号、空格分隔的纯数字
-  24.8,60.5,101.3  =&gt; CH1, CH2, CH3
-
-键值对：支持多词或中文字段名
-  free sram: 43815 minimal sram: 38791
-
-JSON 对象：递归读取对象和数组中的数值
-  {&quot;system&quot;:{&quot;free&quot;:43815}} =&gt; system.free
-
-二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值</translation>
     </message>
     <message>
         <source>暂无曲线数据</source>

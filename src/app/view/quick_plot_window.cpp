@@ -16,7 +16,6 @@
 #include <QtGui/QShowEvent>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QSizePolicy>
 #include <QtWidgets/QVBoxLayout>
 
 #include <cmath>
@@ -74,48 +73,43 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     root->setSpacing(10);
 
     auto *toolbar = new QHBoxLayout;
-    toolbar->setSpacing(8);
+    toolbar->setSpacing(4);
 
-    auto *protocolLabel = new BodyLabel(AppI18n::text("协议"), this);
-    protocolLabel->setFixedHeight(32);
-    m_protocolNameLabel = new BodyLabel(QString(), this);
-    m_protocolNameLabel->setObjectName(QStringLiteral("quickPlotProtocolName"));
-    m_protocolNameLabel->setFixedHeight(32);
+    // The protocol button names the current protocol and opens its settings.
+    m_protocolButton = new PushButton(icon(FluentIcon::Setting), QString(), this);
+    m_protocolButton->setObjectName(QStringLiteral("quickPlotProtocolButton"));
+    m_protocolButton->setFixedHeight(32);
     m_parserConfig = savedParserConfig();
     updateProtocolName();
-    auto *protocolHelpButton = new TransparentToolButton(icon(FluentIcon::Question), this);
-    AppUi::setFluentToolTip(protocolHelpButton, AppI18n::text("绘图协议示例"));
-    protocolHelpButton->setFixedSize(32, 32);
-    protocolHelpButton->setIconSize(QSize(16, 16));
-    auto *parserSettingsButton = new PushButton(icon(FluentIcon::Setting), AppI18n::text("协议"), this);
-    parserSettingsButton->setObjectName(QStringLiteral("quickPlotProtocolButton"));
-    parserSettingsButton->setFixedHeight(32);
 
     m_pauseButton = new PushButton(icon(FluentIcon::Pause), AppI18n::text("暂停"), this);
     m_pauseButton->setFixedHeight(32);
-    auto *clearButton = new PushButton(icon(FluentIcon::Broom), AppI18n::text("清空"), this);
-    clearButton->setFixedHeight(32);
-    auto *resetButton = new PushButton(icon(FluentIcon::FitPage), AppI18n::text("复位视图"), this);
-    resetButton->setFixedHeight(32);
-    auto *exportButton = new PushButton(icon(FluentIcon::ImageExport), AppI18n::text("导出 CSV"), this);
-    exportButton->setFixedHeight(32);
+    auto *clearButton = new TransparentToolButton(icon(FluentIcon::Broom), this);
+    auto *resetButton = new TransparentToolButton(icon(FluentIcon::FitPage), this);
+    auto *exportButton = new TransparentToolButton(icon(FluentIcon::SaveAs), this);
+    for (const auto &action : {qMakePair(clearButton, AppI18n::text("清空")),
+                               qMakePair(resetButton, AppI18n::text("复位视图")),
+                               qMakePair(exportButton, AppI18n::text("导出 CSV"))}) {
+        action.first->setFixedSize(32, 32);
+        action.first->setIconSize(QSize(16, 16));
+        action.first->setAccessibleName(action.second);
+        AppUi::setFluentToolTip(action.first, action.second);
+    }
 
-    m_statusLabel = new CaptionLabel(QString(), this);
-    m_statusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    m_statusLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-    toolbar->addWidget(protocolLabel, 0, Qt::AlignVCenter);
-    toolbar->addWidget(m_protocolNameLabel, 0, Qt::AlignVCenter);
-    toolbar->addWidget(protocolHelpButton, 0, Qt::AlignVCenter);
-    toolbar->addWidget(parserSettingsButton, 0, Qt::AlignVCenter);
-    toolbar->addSpacing(4);
+    toolbar->addWidget(m_protocolButton, 0, Qt::AlignVCenter);
+    toolbar->addStretch(1);
     toolbar->addWidget(m_pauseButton, 0, Qt::AlignVCenter);
+    toolbar->addSpacing(4);
     toolbar->addWidget(clearButton, 0, Qt::AlignVCenter);
     toolbar->addWidget(resetButton, 0, Qt::AlignVCenter);
     toolbar->addWidget(exportButton, 0, Qt::AlignVCenter);
-    toolbar->addStretch(1);
-    toolbar->addWidget(m_statusLabel, 1, Qt::AlignVCenter);
     root->addLayout(toolbar);
+
+    // Below the chart the status has the full width, so a long field list wraps
+    // instead of pushing the buttons out of view.
+    m_statusLabel = new CaptionLabel(QString(), this);
+    m_statusLabel->setObjectName(QStringLiteral("quickPlotStatus"));
+    m_statusLabel->setWordWrap(true);
 
     m_plot = new RealtimePlotWidget(this);
     m_plot->setObjectName(QStringLiteral("quickPlotChart"));
@@ -134,14 +128,13 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_plot->setUpdatesEnabled(false);
     m_plot->setRefreshRate(0);
     root->addWidget(m_plot, 1);
+    root->addWidget(m_statusLabel);
 
-    connect(protocolHelpButton, &TransparentToolButton::clicked, this,
-            [this, protocolHelpButton]() { showProtocolHelp(protocolHelpButton); });
-    connect(parserSettingsButton, &PushButton::clicked, this, &QuickPlotWindow::showParserSettings);
+    connect(m_protocolButton, &PushButton::clicked, this, &QuickPlotWindow::showParserSettings);
     connect(m_pauseButton, &PushButton::clicked, this, [this]() { setPaused(!m_paused); });
-    connect(clearButton, &PushButton::clicked, this, &QuickPlotWindow::clearData);
-    connect(resetButton, &PushButton::clicked, m_plot, &RealtimePlotWidget::resetView);
-    connect(exportButton, &PushButton::clicked, this, &QuickPlotWindow::exportCsv);
+    connect(clearButton, &TransparentToolButton::clicked, this, &QuickPlotWindow::clearData);
+    connect(resetButton, &TransparentToolButton::clicked, m_plot, &RealtimePlotWidget::resetView);
+    connect(exportButton, &TransparentToolButton::clicked, this, &QuickPlotWindow::exportCsv);
 
     updateStatus();
 }
@@ -336,8 +329,10 @@ void QuickPlotWindow::updateProtocolName()
     if (requiresProtocolPayload() && m_hasProtocolTemplate) {
         name += QStringLiteral(" · ") + m_protocolTemplate.name;
     }
-    if (m_protocolNameLabel) {
-        m_protocolNameLabel->setText(name);
+    if (m_protocolButton) {
+        // A long template name would crowd out the other buttons.
+        m_protocolButton->setText(m_protocolButton->fontMetrics().elidedText(name, Qt::ElideRight, 240));
+        AppUi::setFluentToolTip(m_protocolButton, AppI18n::text("解析设置") + QStringLiteral(" · ") + name);
     }
 }
 
@@ -427,19 +422,6 @@ void QuickPlotWindow::showParserSettings()
             setProtocolTemplate(dialog.protocolTemplate());
         }
     }
-}
-
-void QuickPlotWindow::showProtocolHelp(QWidget *target)
-{
-    const QString content =
-        AppI18n::text("全部数字：提取每行里的所有数字\n  T=24.8 H=60.5  => CH1=24.8, "
-                      "CH2=60.5\n\n分隔值：读取逗号、分号、空格分隔的纯数字\n  24.8,60.5,101.3  => CH1, CH2, "
-                      "CH3\n\n键值对：支持多词或中文字段名\n  free sram: 43815 minimal sram: 38791\n\nJSON "
-                      "对象：递归读取对象和数组中的数值\n  {\"system\":{\"free\":43815}} => system.free\n\n"
-                      "二进制字段：默认按字节绘图，可在解析设置中配置类型、字节序、比例和加值");
-    FluentQt::TeachingTip::create(AppI18n::text("绘图协议示例"), content,
-                                  FluentQt::icon(FluentQt::FluentIcon::Question), QPixmap(), true, target,
-                                  FluentQt::TeachingTipTailPosition::Bottom, -1, this);
 }
 
 void QuickPlotWindow::exportCsv()
