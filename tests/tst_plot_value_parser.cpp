@@ -92,6 +92,35 @@ class PlotValueParserTest : public QObject
         QCOMPARE(values(samples.first()), QVector<double>({20.5, 60.0, 18.0, 1200.0, 3.0}));
     }
 
+    void keyValuesAreFoundAtTheEndOfLongLines()
+    {
+        // A record can hold a long run of words without a separator; the field after it must
+        // still be read (the pattern used to give up on lines this long).
+        const QString line = QStringLiteral("word ").repeated(20000) + QStringLiteral(", temp=1");
+        const auto samples = AppPlot::extractSamples(parser(Protocol::KeyValue), line);
+        QCOMPARE(samples.size(), 1);
+        QCOMPARE(names(samples.first()), QStringList({QStringLiteral("temp")}));
+        QCOMPARE(values(samples.first()), QVector<double>({1.0}));
+    }
+
+    void keyValuesKeepLongKeysWhole()
+    {
+        // The pattern matches eight words of a key; a longer key keeps its earlier words.
+        const auto samples = AppPlot::extractSamples(
+            parser(Protocol::KeyValue),
+            QStringLiteral("one two three four five six seven eight nine=1 x 10 rpm=2 \U0001D400 b c d e f g h i=3"));
+        QCOMPARE(samples.size(), 1);
+        QCOMPARE(names(samples.first()),
+                 QStringList({QStringLiteral("one two three four five six seven eight nine"), QStringLiteral("rpm"),
+                              QStringLiteral("\U0001D400 b c d e f g h i")}));
+        QCOMPARE(values(samples.first()), QVector<double>({1.0, 2.0, 3.0}));
+
+        const auto longKey = AppPlot::extractSamples(
+            parser(Protocol::KeyValue), QStringLiteral("word ").repeated(20000) + QStringLiteral("temp=1"));
+        QCOMPARE(longKey.size(), 1);
+        QCOMPARE(names(longKey.first()).first(), QStringLiteral("word ").repeated(20000) + QStringLiteral("temp"));
+    }
+
     void fieldFiltersIgnoreCaseAndSpacing()
     {
         const auto named =

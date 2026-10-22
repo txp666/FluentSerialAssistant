@@ -27,7 +27,7 @@ bool LocalControlServer::start(QString *error)
     const QString name = localServerName();
     if (name.isEmpty()) {
         if (error) {
-            *error = QStringLiteral("No private runtime directory is available for the control service");
+            *error = QStringLiteral("No location private to the user is available for the control service");
         }
         return false;
     }
@@ -39,7 +39,9 @@ bool LocalControlServer::start(QString *error)
     probe.connectToServer(name);
     if (probe.waitForConnected(150)) {
         if (error) {
-            *error = QStringLiteral("Another Fluent Serial Assistant instance already owns the control service");
+            *error = serverRunsAsCurrentUser(probe)
+                         ? QStringLiteral("Another Fluent Serial Assistant instance already owns the control service")
+                         : QStringLiteral("A process of another user holds the control service name");
         }
         return false;
     }

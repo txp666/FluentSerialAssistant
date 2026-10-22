@@ -227,7 +227,7 @@ class UpdateManagerTest : public QObject
     {
         AppUpdate::UpdateManager manager;
         std::atomic_bool installed = false;
-        manager.m_install = [&installed](const QString &, QString *) {
+        manager.m_install = [&installed](const QString &, const QByteArray &, QString *) {
             installed = true;
             return true;
         };
@@ -255,10 +255,14 @@ class UpdateManagerTest : public QObject
         manager.m_state = State::Verifying;
         manager.m_downloadAuthorized = true;
         manager.m_downloadPath = QStringLiteral("verified-package");
+        manager.m_release.sha256 = QByteArray(64, 'a');
         std::atomic_bool workerThread = false;
+        QByteArray digest;
         QThread *uiThread = QThread::currentThread();
-        manager.m_install = [succeeds, &workerThread, uiThread](const QString &, QString *error) {
+        manager.m_install = [succeeds, &workerThread, &digest, uiThread](const QString &, const QByteArray &sha256,
+                                                                         QString *error) {
             workerThread = QThread::currentThread() != uiThread;
+            digest = sha256;
             QThread::msleep(100);
             if (!succeeds)
                 *error = QStringLiteral("Authorization rejected");
@@ -275,6 +279,8 @@ class UpdateManagerTest : public QObject
         QVERIFY(ready.isEmpty());
         QTRY_VERIFY(ready.size() == 1 || manager.state() == State::Failed);
         QVERIFY(workerThread);
+        // The installer checks its own copy of the package against the release digest.
+        QCOMPARE(digest, QByteArray(64, 'a'));
         QVERIFY(ticks > 0);
         QCOMPARE(ready.size(), succeeds ? 1 : 0);
         if (!succeeds)
@@ -291,7 +297,7 @@ class UpdateManagerTest : public QObject
         AppUpdate::UpdateManager manager;
         manager.m_cacheRoot = cache.path();
         bool installed = false;
-        manager.m_install = [&installed](const QString &path, QString *) {
+        manager.m_install = [&installed](const QString &path, const QByteArray &, QString *) {
             installed = QFileInfo(path).size() > 0;
             return installed;
         };

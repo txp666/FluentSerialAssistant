@@ -17,7 +17,7 @@ ClientReply LocalControlClient::call(const QString &action, const QJsonObject &p
 
     const QString name = localServerName();
     if (name.isEmpty()) {
-        reply.errorMessage = QStringLiteral("No private runtime directory is available for the control service");
+        reply.errorMessage = QStringLiteral("No location private to the user is available for the control service");
         return reply;
     }
     QLocalSocket socket;
@@ -26,6 +26,11 @@ ClientReply LocalControlClient::call(const QString &action, const QJsonObject &p
         reply.errorMessage =
             QStringLiteral("Fluent Serial Assistant is not running or its control service is unavailable: %1")
                 .arg(socket.errorString());
+        return reply;
+    }
+    // Requests carry serial data and commands; never hand them to a service of another user.
+    if (!serverRunsAsCurrentUser(socket)) {
+        reply.errorMessage = QStringLiteral("The control service belongs to another user of this computer");
         return reply;
     }
 

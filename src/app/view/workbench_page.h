@@ -39,7 +39,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     friend class WorkbenchDataTableTest;
     friend class WorkbenchQuickPlotTest;
     friend class ProtocolWindowsTest;
-    friend class TerminalSearchTest;
+    friend class TerminalViewTest;
     friend class TerminalColorsTest;
     friend class WorkbenchReliabilityTest;
 

@@ -14,8 +14,21 @@
 #include <QtGui/QGuiApplication>
 #include <QtGui/QIcon>
 #include <QtGui/QScreen>
+#include <QtGui/QShowEvent>
+#include <QtGui/QWindow>
+
+#include <algorithm>
 
 using namespace FluentQt;
+
+namespace {
+
+// Both shrink to the screen's available area, so that the title bar buttons stay on screen on small
+// or highly scaled displays (1920x1080 at 150% leaves about 1280x672).
+constexpr QSize kPreferredMinimumSize(1040, 700);
+constexpr QSize kPreferredInitialSize(1120, 900);
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
 {
@@ -24,15 +37,18 @@ MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
     }
     setWindowTitle(AppI18n::text("Fluent 串口助手"));
     setWindowIcon(QIcon(QStringLiteral(":/app/logo.png")));
-    setMinimumSize(1040, 700);
-    resize(1120, 900);
     QScreen *targetScreen = screen();
     if (!targetScreen) {
         targetScreen = QGuiApplication::primaryScreen();
     }
     if (targetScreen) {
         const QRect available = targetScreen->availableGeometry();
+        setMinimumSize(kPreferredMinimumSize.boundedTo(available.size()));
+        resize(kPreferredInitialSize.boundedTo(available.size()));
         move(available.center() - rect().center());
+    } else {
+        setMinimumSize(kPreferredMinimumSize);
+        resize(kPreferredInitialSize);
     }
 
     m_updateManager = new AppUpdate::UpdateManager(this);
@@ -71,6 +87,56 @@ void MainWindow::closeEvent(QCloseEvent *event)
         m_workbenchPage->saveSettings();
     }
     MSFluentWindow::closeEvent(event);
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+    MSFluentWindow::showEvent(event);
+    // The native window exists once shown. From then on the minimum size follows the screen the
+    // window is on, as the window moves between screens or the screen's work area changes.
+    if (QWindow *window = windowHandle()) {
+        connect(window, &QWindow::screenChanged, this, &MainWindow::trackScreen, Qt::UniqueConnection);
+        trackScreen(window->screen());
+    }
+}
+
+void MainWindow::trackScreen(QScreen *screen)
+{
+    if (screen != m_trackedScreen) {
+        if (m_trackedScreen) {
+            disconnect(m_trackedScreen, &QScreen::availableGeometryChanged, this,
+                       &MainWindow::fitMinimumSizeToScreen);
+        }
+        m_trackedScreen = screen;
+        if (screen) {
+            connect(screen, &QScreen::availableGeometryChanged, this, &MainWindow::fitMinimumSizeToScreen);
+        }
+    }
+    fitMinimumSizeToScreen();
+}
+
+void MainWindow::fitMinimumSizeToScreen()
+{
+    if (!m_trackedScreen) {
+        return;
+    }
+    const QRect available = m_trackedScreen->availableGeometry();
+    setMinimumSize(kPreferredMinimumSize.boundedTo(available.size()));
+    // A window moved to a smaller screen, or whose screen's work area shrank, keeps its size until
+    // it is fitted in. One that fits stays where the user put it.
+    if (!isVisible() || (windowState() & (Qt::WindowMinimized | Qt::WindowMaximized | Qt::WindowFullScreen))) {
+        return;
+    }
+    QRect frame = frameGeometry();
+    if (frame.width() <= available.width() && frame.height() <= available.height()) {
+        return;
+    }
+    const QSize decoration = frame.size() - size();
+    frame.setSize(frame.size().boundedTo(available.size()));
+    frame.moveTo(std::clamp(frame.x(), available.left(), available.right() + 1 - frame.width()),
+                 std::clamp(frame.y(), available.top(), available.bottom() + 1 - frame.height()));
+    resize(frame.size() - decoration);
+    move(frame.topLeft());
 }
 
 void MainWindow::startUpdateCheck()
