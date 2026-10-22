@@ -6,6 +6,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QProcess>
 #include <QtCore/QTemporaryDir>
 #include <QtCore/QThread>
@@ -460,7 +461,28 @@ class UpdateInstallerTest : public QObject
         malformed.arguments[11] = QStringLiteral("$(touch INJECTED)") + QString(47, QLatin1Char('0'));
         QCOMPARE(runShell(malformed.script, malformed.arguments), 1);
         QVERIFY(malformed.state().isEmpty());
+        QVERIFY(QFileInfo(QDir(malformed.plan.workDirectory).filePath(QStringLiteral("failed"))).isDir());
         QCOMPARE(malformed.installedBytes(), QByteArray("old"));
+#endif
+    }
+
+    void failureBeforeTheInstallersDirectoryEndsTheWait()
+    {
+#ifdef Q_OS_WIN
+        QSKIP("POSIX shell execution is covered by Linux and macOS CI.");
+#else
+        // Behind the macOS administrator prompt nothing else reports that the installer stopped.
+        MacFixture fixture;
+        QVERIFY(fixture.initialize());
+        fixture.arguments[12] = QDir(fixture.directory.path()).filePath(QStringLiteral("missing"));
+        QCOMPARE(runShell(fixture.script, fixture.arguments), 1);
+        QVERIFY(QFileInfo(QDir(fixture.plan.workDirectory).filePath(QStringLiteral("failed"))).isDir());
+        QElapsedTimer timer;
+        timer.start();
+        QString error;
+        QVERIFY(!waitForHandoff(fixture.plan.workDirectory, fixture.plan.stateParent, &error));
+        QVERIFY(timer.elapsed() < 500);
+        QCOMPARE(fixture.installedBytes(), QByteArray("old"));
 #endif
     }
 
@@ -630,6 +652,29 @@ case "$3" in Package) echo fluent-serial-assistant;; Architecture) echo amd64;; 
         QString written = QString::fromUtf8(readFixture(output));
         written.remove(QChar(0xfeff));
         QCOMPARE(written.trimmed(), text);
+#endif
+    }
+
+    void windowsFailureBeforeTheInstallersDirectoryEndsTheWait()
+    {
+#ifndef Q_OS_WIN
+        QSKIP("The PowerShell installer runs on Windows.");
+#else
+        WindowsFixture fixture;
+        QVERIFY(fixture.initialize(true));
+        // No directory can be made below a file.
+        const QString file = QDir(fixture.directory.path()).filePath(QStringLiteral("file"));
+        QVERIFY(writeFixture(file, "not a directory"));
+        fixture.plan.stateParent = file;
+        int exitCode = 0;
+        const QByteArray output = runPowerShell(windowsInstallerScript(fixture.plan), &exitCode);
+        QVERIFY2(exitCode == 1, output.constData());
+        QVERIFY(QFileInfo(QDir(fixture.plan.workDirectory).filePath(QStringLiteral("failed"))).isDir());
+        QElapsedTimer timer;
+        timer.start();
+        QString error;
+        QVERIFY(!waitForHandoff(fixture.plan.workDirectory, fixture.plan.stateParent, &error));
+        QVERIFY(timer.elapsed() < 500);
 #endif
     }
 

@@ -63,10 +63,20 @@ QString powerShellEncodedCommand(const QString &script)
 static QString posixStateScript()
 {
     return QStringLiteral(R"SH(
-case "$expected_sha" in *[!0-9a-f]*) echo 'Invalid package digest.'; exit 1;; esac
-test "${#expected_sha}" -eq 64 || { echo 'Invalid package digest.'; exit 1; }
-state=$(mktemp -d "$state_parent/fluentserial-update.XXXXXX")
-/bin/chmod 755 "$state"
+case "$work" in /?*) ;; *) echo 'Invalid work directory.'; exit 1;; esac
+# Until the installer has its own directory, an empty directory "failed" in the work directory is
+# the only failure it can report there: writing a file could follow a link put in its place.
+abort() {
+    echo "ERROR: $*"
+    /bin/mkdir "$work/failed" 2>/dev/null || true
+    exit 1
+}
+case "$parent_pid:$wait_limit" in *[!0-9:]*|:*|*:) abort 'Invalid process or timeout.';; esac
+test "$parent_pid" -gt 1 || abort 'Invalid parent process.'
+case "$expected_sha" in *[!0-9a-f]*) abort 'Invalid package digest.';; esac
+test "${#expected_sha}" -eq 64 || abort 'Invalid package digest.'
+state=$(mktemp -d "$state_parent/fluentserial-update.XXXXXX") || abort 'Cannot create the installer directory.'
+/bin/chmod 755 "$state" || abort 'Cannot create the installer directory.'
 exec >> "$state/install.log" 2>&1
 )SH");
 }
@@ -118,8 +128,6 @@ move=${10}
 shasum=${11}
 expected_sha=${12}
 state_parent=${13}
-case "$parent_pid:$wait_limit" in *[!0-9:]*|:*|*:) echo 'Invalid process or timeout.'; exit 1;; esac
-test "$parent_pid" -gt 1 || { echo 'Invalid parent process.'; exit 1; }
 )SH") + posixStateScript() +
            QStringLiteral(R"SH(
 fail() {
@@ -208,8 +216,6 @@ apt_get=$7
 sha256sum=$8
 expected_sha=$9
 state_parent=${10}
-case "$parent_pid:$wait_limit" in *[!0-9:]*|:*|*:) echo 'Invalid process or timeout.'; exit 1;; esac
-test "$parent_pid" -gt 1 || { echo 'Invalid parent process.'; exit 1; }
 )SH") + posixStateScript() +
            QStringLiteral(R"SH(
 fail() { echo "ERROR: $*"; exit 1; }
@@ -258,7 +264,14 @@ function New-InstallerDirectory([string]$path, [bool]$readable) {
 }
 $name = 'FluentSerialAssistant-update-' + [guid]::NewGuid().ToString('N')
 $state = Join-Path $stateParent $name
-New-InstallerDirectory $state $true
+try {
+    New-InstallerDirectory $state $true
+} catch {
+    # Until the installer has its own directory, an empty directory "failed" in the work directory
+    # is the only failure it can report there: writing a file could follow a link put in its place.
+    try { New-Item -ItemType Directory -Path (Join-Path $work 'failed') | Out-Null } catch {}
+    exit 1
+}
 $logPath = Join-Path $state 'install.log'
 $verified = Join-Path $state 'package\setup.exe'
 try {
@@ -457,8 +470,9 @@ bool waitForHandoff(const QString &work, const QString &stateParent, QString *er
             break;
         }
         // The authorization step reports a refusal in the work directory, the installer everything
-        // else in its own.
-        if (reportsFailure(directory.filePath(QStringLiteral("result")))) {
+        // else in its own, once it has made it.
+        if (reportsFailure(directory.filePath(QStringLiteral("result"))) ||
+            QFileInfo(directory.filePath(QStringLiteral("failed"))).isDir()) {
             break;
         }
         if (state.isEmpty()) {
