@@ -21,7 +21,7 @@ class ControlServiceTest : public QObject
     Q_OBJECT
 
   private slots:
-    void socketLivesInADirectoryPrivateToTheUser()
+    void serviceNameIsPrivateToTheUser()
     {
 #ifdef Q_OS_UNIX
         const QString name = AppControl::localServerName();
@@ -44,7 +44,10 @@ class ControlServiceTest : public QObject
         QCoreApplication::setApplicationName(QStringLiteral("fluentserial-cli"));
         QCOMPARE(AppControl::localServerName(), name);
 #else
-        QSKIP("Windows uses a named pipe restricted to the current user");
+        // Pipe names are machine-wide: the name carries the user's SID, so each user has their own.
+        const QString name = AppControl::localServerName();
+        QVERIFY(name.startsWith(QStringLiteral("tech.zhangshu.FluentSerialAssistant.control.v1-S-1-")));
+        QVERIFY(name.size() < 256);
 #endif
     }
 
@@ -60,6 +63,13 @@ class ControlServiceTest : public QObject
         AppControl::LocalControlServer server(&service);
         QString error;
         QVERIFY2(server.start(&error), qPrintable(error));
+
+        // The client only talks to a service of its own user; this one is.
+        QLocalSocket probe;
+        probe.connectToServer(AppControl::localServerName());
+        QVERIFY(probe.waitForConnected(1000));
+        QVERIFY(AppControl::serverRunsAsCurrentUser(probe));
+        probe.disconnectFromServer();
 
         // The client blocks, so it runs beside the event loop that serves it.
         AppControl::ClientReply reply;
