@@ -22,7 +22,7 @@
 
 #include <algorithm>
 
-class TerminalSearchTest : public QObject
+class TerminalViewTest : public QObject
 {
     Q_OBJECT
 
@@ -1222,5 +1222,5 @@ class TerminalSearchTest : public QObject
     }
 };
 
-QTEST_MAIN(TerminalSearchTest)
-#include "tst_terminal_search.moc"
+QTEST_MAIN(TerminalViewTest)
+#include "tst_terminal_view.moc"
