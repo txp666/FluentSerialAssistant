@@ -25,9 +25,10 @@ const QRegularExpression &wholeNumberPattern()
     return pattern;
 }
 
-// A key is up to eight words ("motor speed"). Unbounded, every word of a long line without a
-// separator was tried as the start of a key running to the end of the line: matching took
-// quadratic time (about a second for 60,000 characters) and gave up on longer lines.
+// A key ("motor speed") matches at most eight words, and keyStart() finds the first word of a
+// longer one. Unbounded, every word of a long line without a separator was tried as the start of a
+// key running to the end of the line: matching took quadratic time (about a second for 60,000
+// characters) and gave up on longer lines.
 const QRegularExpression &keyValuePattern()
 {
     static const QRegularExpression pattern(
@@ -35,6 +36,52 @@ const QRegularExpression &keyValuePattern()
             R"((?:^|[^\p{L}\p{N}_\.\-/])([\p{L}_][\p{L}\p{N}_\.\-/]*(?:[ \t]+[\p{L}_][\p{L}\p{N}_\.\-/]*){0,7})[ \t]*[:=][ \t]*([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?))"),
         QRegularExpression::UseUnicodePropertiesOption);
     return pattern;
+}
+
+bool isKeyCharacter(char32_t character)
+{
+    return QChar::isLetter(character) || QChar::isNumber(character) || character == U'_' || character == U'.' ||
+           character == U'-' || character == U'/';
+}
+
+// The code point that ends at end, and where it starts.
+char32_t codePointBefore(const QString &text, qsizetype end, qsizetype *start)
+{
+    const QChar last = text.at(end - 1);
+    if (last.isLowSurrogate() && end >= 2 && text.at(end - 2).isHighSurrogate()) {
+        *start = end - 2;
+        return QChar::surrogateToUcs4(text.at(end - 2), last);
+    }
+    *start = end - 1;
+    return last.unicode();
+}
+
+// A key of more than eight words matches from a later word. Its earlier words are the words before
+// start that are separated only by blanks; the walk stops at a token that does not begin a word,
+// such as the number of the previous field.
+qsizetype keyStart(const QString &text, qsizetype start)
+{
+    for (;;) {
+        qsizetype blank = start;
+        while (blank > 0 && (text.at(blank - 1) == u' ' || text.at(blank - 1) == u'\t')) {
+            --blank;
+        }
+        qsizetype word = blank;
+        char32_t first = 0;
+        while (word > 0) {
+            qsizetype previous = 0;
+            const char32_t character = codePointBefore(text, word, &previous);
+            if (!isKeyCharacter(character)) {
+                break;
+            }
+            first = character;
+            word = previous;
+        }
+        if (blank == start || word == blank || !(QChar::isLetter(first) || first == U'_')) {
+            return start;
+        }
+        start = word;
+    }
 }
 
 QString normalizedFieldName(const QString &name) { return name.simplified().toCaseFolded(); }
@@ -125,7 +172,8 @@ AppPlot::PlotSample extractKeyValues(const QString &text)
         bool ok = false;
         const double value = match.captured(2).toDouble(&ok);
         if (ok && std::isfinite(value)) {
-            values.append({match.captured(1).simplified(), value});
+            const qsizetype start = keyStart(text, match.capturedStart(1));
+            values.append({text.mid(start, match.capturedEnd(1) - start).simplified(), value});
         }
     }
     return values;
