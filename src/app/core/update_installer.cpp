@@ -64,8 +64,9 @@ static QString posixStateScript()
 {
     return QStringLiteral(R"SH(
 case "$work" in /?*) ;; *) echo 'Invalid work directory.'; exit 1;; esac
-# Until the installer has its own directory, an empty directory "failed" in the work directory is
-# the only failure it can report there: writing a file could follow a link put in its place.
+# Until the app can find the installer's own directory through the pointer to it, an empty
+# directory "failed" in the work directory is the only failure the installer can report there:
+# writing a file could follow a link put in its place.
 abort() {
     echo "ERROR: $*"
     /bin/mkdir "$work/failed" 2>/dev/null || true
@@ -85,7 +86,7 @@ exec >> "$state/install.log" 2>&1
 static QString posixVerifyScript()
 {
     return QStringLiteral(R"SH(
-/bin/mkdir "$work/state.${state##*/}"
+/bin/mkdir "$work/state.${state##*/}" || abort 'Cannot point to the installer directory.'
 test -f "$package" || fail 'Update package is missing.'
 # The package may be a link to a file only root can read; the copy stays private.
 (umask 077 && /bin/cp "$package" "$verified")
@@ -262,20 +263,29 @@ function New-InstallerDirectory([string]$path, [bool]$readable) {
     if (Test-Path -LiteralPath $path) { throw 'Update state directory already exists.' }
     [System.IO.Directory]::CreateDirectory($path, $acl) | Out-Null
 }
+# Until the app can find the installer's own directory through the pointer to it, an empty
+# directory "failed" in the work directory is the only failure the installer can report there:
+# writing a file could follow a link put in its place.
+function Set-Failed {
+    try { New-Item -ItemType Directory -Path (Join-Path $work 'failed') | Out-Null } catch {}
+}
 $name = 'FluentSerialAssistant-update-' + [guid]::NewGuid().ToString('N')
 $state = Join-Path $stateParent $name
 try {
     New-InstallerDirectory $state $true
 } catch {
-    # Until the installer has its own directory, an empty directory "failed" in the work directory
-    # is the only failure it can report there: writing a file could follow a link put in its place.
-    try { New-Item -ItemType Directory -Path (Join-Path $work 'failed') | Out-Null } catch {}
+    Set-Failed
     exit 1
 }
 $logPath = Join-Path $state 'install.log'
 $verified = Join-Path $state 'package\setup.exe'
 try {
-    New-Item -ItemType Directory -Path (Join-Path $work ('state.' + $name)) | Out-Null
+    try {
+        New-Item -ItemType Directory -Path (Join-Path $work ('state.' + $name)) | Out-Null
+    } catch {
+        Set-Failed
+        throw
+    }
     New-InstallerDirectory (Join-Path $state 'package') $false
     if (!(Test-Path -LiteralPath $package -PathType Leaf)) { throw 'Update package is missing.' }
     Copy-Item -LiteralPath $package -Destination $verified

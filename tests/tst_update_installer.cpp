@@ -8,12 +8,15 @@
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QProcess>
+#include <QtCore/QScopeGuard>
 #include <QtCore/QTemporaryDir>
 #include <QtCore/QThread>
 #include <QtTest/QTest>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 using namespace AppUpdate::InstallerDetail;
@@ -482,6 +485,32 @@ class UpdateInstallerTest : public QObject
         QString error;
         QVERIFY(!waitForHandoff(fixture.plan.workDirectory, fixture.plan.stateParent, &error));
         QVERIFY(timer.elapsed() < 500);
+        QCOMPARE(fixture.installedBytes(), QByteArray("old"));
+#endif
+    }
+
+    void failureToPointToTheInstallersDirectoryStopsTheInstaller()
+    {
+#ifdef Q_OS_WIN
+        QSKIP("POSIX shell execution is covered by Linux and macOS CI.");
+#else
+        if (::geteuid() == 0) {
+            QSKIP("Root can write to any directory.");
+        }
+        MacFixture fixture;
+        QVERIFY(fixture.initialize());
+        QFile work(fixture.plan.workDirectory);
+        QVERIFY(work.setPermissions(QFile::ReadOwner | QFile::ExeOwner));
+        const auto restore =
+            qScopeGuard([&work]() { work.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner); });
+        QCOMPARE(runShell(fixture.script, fixture.arguments), 1);
+        const QDir parent(fixture.plan.stateParent);
+        const QStringList states = parent.entryList({QStringLiteral("fluentserial-update.*")}, QDir::Dirs);
+        QCOMPARE(states.size(), 1);
+        const QDir state(parent.filePath(states.first()));
+        QVERIFY(readFixture(state.filePath(QStringLiteral("install.log")))
+                    .contains("Cannot point to the installer directory."));
+        QCOMPARE(readFixture(state.filePath(QStringLiteral("result"))), QByteArray("1\n"));
         QCOMPARE(fixture.installedBytes(), QByteArray("old"));
 #endif
     }
