@@ -17,6 +17,8 @@
 #include <QtGui/QShowEvent>
 #include <QtGui/QWindow>
 
+#include <algorithm>
+
 using namespace FluentQt;
 
 namespace {
@@ -115,9 +117,26 @@ void MainWindow::trackScreen(QScreen *screen)
 
 void MainWindow::fitMinimumSizeToScreen()
 {
-    if (m_trackedScreen) {
-        setMinimumSize(kPreferredMinimumSize.boundedTo(m_trackedScreen->availableGeometry().size()));
+    if (!m_trackedScreen) {
+        return;
     }
+    const QRect available = m_trackedScreen->availableGeometry();
+    setMinimumSize(kPreferredMinimumSize.boundedTo(available.size()));
+    // A window moved to a smaller screen, or whose screen's work area shrank, keeps its size until
+    // it is fitted in. One that fits stays where the user put it.
+    if (!isVisible() || (windowState() & (Qt::WindowMinimized | Qt::WindowMaximized | Qt::WindowFullScreen))) {
+        return;
+    }
+    QRect frame = frameGeometry();
+    if (frame.width() <= available.width() && frame.height() <= available.height()) {
+        return;
+    }
+    const QSize decoration = frame.size() - size();
+    frame.setSize(frame.size().boundedTo(available.size()));
+    frame.moveTo(std::clamp(frame.x(), available.left(), available.right() + 1 - frame.width()),
+                 std::clamp(frame.y(), available.top(), available.bottom() + 1 - frame.height()));
+    resize(frame.size() - decoration);
+    move(frame.topLeft());
 }
 
 void MainWindow::startUpdateCheck()
