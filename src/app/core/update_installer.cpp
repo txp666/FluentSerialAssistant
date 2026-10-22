@@ -21,6 +21,7 @@
 #include <windows.h>
 
 #include <shellapi.h>
+#include <shlobj.h>
 #endif
 
 // The installer may run as root or as an administrator, while the work directory, where this
@@ -269,9 +270,33 @@ function New-InstallerDirectory([string]$path, [bool]$readable) {
 function Set-Failed {
     try { New-Item -ItemType Directory -Path (Join-Path $work 'failed') | Out-Null } catch {}
 }
+# The installer's directory must sit where only the system and administrators can rename, replace
+# or re-permission anything on its path. Otherwise the checked copy could be swapped after the check,
+# for one that then runs as an administrator.
+function Assert-ProtectedLocation([string]$path) {
+    $trusted = @('S-1-5-18', 'S-1-5-32-544', 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464', 'S-1-3-0')
+    # Delete, DeleteSubdirectoriesAndFiles, ChangePermissions, TakeOwnership and GENERIC_ALL.
+    $unsafe = 0x100D0040
+    $directory = Get-Item -LiteralPath $path -Force
+    while ($directory) {
+        if ($directory -isnot [System.IO.DirectoryInfo] -or ($directory.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+            throw ('Not a protected location: ' + $directory.FullName)
+        }
+        $acl = Get-Acl -LiteralPath $directory.FullName
+        $owner = $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+        $open = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | Where-Object {
+            $_.AccessControlType -eq 'Allow' -and $trusted -notcontains $_.IdentityReference.Value -and
+            !($_.PropagationFlags -band [System.Security.AccessControl.PropagationFlags]::InheritOnly) -and
+            ([int64]$_.FileSystemRights -band $unsafe)
+        })
+        if ($trusted -notcontains $owner -or $open.Count -gt 0) { throw ('Not a protected location: ' + $directory.FullName) }
+        $directory = $directory.Parent
+    }
+}
 $name = 'FluentSerialAssistant-update-' + [guid]::NewGuid().ToString('N')
 $state = Join-Path $stateParent $name
 try {
+    Assert-ProtectedLocation $stateParent
     New-InstallerDirectory $state $true
 } catch {
     Set-Failed
@@ -341,11 +366,19 @@ QStringList macInstallerArguments(const InstallPlan &plan)
 
 QString windowsInstallerCommand(const QString &script)
 {
-    // UTF-8 in base64 is half the size of -EncodedCommand's UTF-16. This travels inside the encoded
-    // bootstrap, and both must fit on a command line.
+    // This travels inside the encoded bootstrap, and both must fit on a command line. UTF-8 in base64
+    // is half the size of -EncodedCommand's UTF-16, and indentation and comment lines go: no string
+    // in these scripts spans lines.
+    QStringList code;
+    for (const QString &line : script.split(QLatin1Char('\n'))) {
+        const QString trimmed = line.trimmed();
+        if (!trimmed.isEmpty() && !trimmed.startsWith(QLatin1Char('#'))) {
+            code.append(trimmed);
+        }
+    }
     return QStringLiteral("-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"& ([ScriptBlock]::Create("
                           "[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('") +
-           QString::fromLatin1(script.toUtf8().toBase64()) + QStringLiteral("'))))\"");
+           QString::fromLatin1(code.join(QLatin1Char('\n')).toUtf8().toBase64()) + QStringLiteral("'))))\"");
 }
 
 QString windowsAuthorizationScript(const QString &executable, const QString &installerCommand,
@@ -458,7 +491,15 @@ QString logFailure(const QString &message, const QString &work, const QString &s
 QString defaultStateParent()
 {
 #ifdef Q_OS_WIN
-    return QDir::fromNativeSeparators(qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData")));
+    // From the system, not the environment, which the user sets. The installer refuses a location
+    // that anyone but the system and administrators could change in any case.
+    PWSTR path = nullptr;
+    QString programData;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &path))) {
+        programData = QDir::fromNativeSeparators(QString::fromWCharArray(path));
+    }
+    CoTaskMemFree(path);
+    return programData;
 #else
     return QStringLiteral("/tmp");
 #endif
@@ -560,6 +601,9 @@ bool launchUpdateInstaller(const QString &packagePath, const QByteArray &sha256,
     InstallerDetail::InstallPlan plan;
     plan.sha256 = sha256.toLower();
     plan.stateParent = defaultStateParent();
+    if (plan.stateParent.isEmpty()) {
+        return fail(AppI18n::text("无法创建更新安装目录。"));
+    }
     plan.parentPid = QCoreApplication::applicationPid();
     plan.targetPath = QCoreApplication::applicationDirPath();
 #ifdef Q_OS_MACOS

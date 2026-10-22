@@ -11,6 +11,7 @@
 #include <QtCore/QScopeGuard>
 #include <QtCore/QTemporaryDir>
 #include <QtCore/QThread>
+#include <QtCore/QUuid>
 #include <QtTest/QTest>
 
 #ifdef Q_OS_WIN
@@ -180,11 +181,22 @@ QString powerShellExecutable()
         .filePath(QStringLiteral("System32/WindowsPowerShell/v1.0/powershell.exe"));
 }
 
-// A copy of whoami.exe, which refuses the setup arguments, stands in for the setup program.
+// A copy of whoami.exe, which refuses the setup arguments, stands in for the setup program. The
+// installer only makes its directory where the user cannot change anything on the path, so the
+// state parent is a directory of its own in ProgramData.
 struct WindowsFixture
 {
     QTemporaryDir directory;
     InstallPlan plan;
+    // Removed with the fixture, also when a test points the plan elsewhere.
+    QString programDataDirectory;
+
+    ~WindowsFixture()
+    {
+        if (!programDataDirectory.isEmpty()) {
+            QDir(programDataDirectory).removeRecursively();
+        }
+    }
 
     bool initialize(bool matches)
     {
@@ -193,7 +205,10 @@ struct WindowsFixture
         }
         const QDir root(directory.path());
         plan.workDirectory = root.filePath(QStringLiteral("work's $data"));
-        plan.stateParent = root.filePath(QStringLiteral("state"));
+        programDataDirectory =
+            QDir(qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData")))
+                .filePath(QStringLiteral("FluentSerialAssistant-test-") + QUuid::createUuid().toString(QUuid::Id128));
+        plan.stateParent = programDataDirectory;
         plan.packagePath = QDir(plan.workDirectory).filePath(QStringLiteral("package.exe"));
         plan.targetPath = root.filePath(QStringLiteral("target"));
         plan.parentPid = 2147483647;
@@ -286,6 +301,9 @@ class UpdateInstallerTest : public QObject
                                        windowsInstallerCommand(QStringLiteral("echo 'x'")), plan.workDirectory);
         QVERIFY(bootstrap.contains(QStringLiteral("-Verb RunAs")));
         QVERIFY(bootstrap.contains(QStringLiteral("FromBase64String(''ZWNobyAneCc='')")));
+        // Only the code travels.
+        QCOMPARE(windowsInstallerCommand(QStringLiteral("  # comment\n\n    echo 'x'\n")),
+                 windowsInstallerCommand(QStringLiteral("echo 'x'")));
         QVERIFY(bootstrap.contains(QStringLiteral("Join-Path $work 'result'")));
         QVERIFY(bootstrap.contains(QStringLiteral("catch {")));
     }
@@ -704,6 +722,28 @@ case "$3" in Package) echo fluent-serial-assistant;; Architecture) echo amd64;; 
         QString error;
         QVERIFY(!waitForHandoff(fixture.plan.workDirectory, fixture.plan.stateParent, &error));
         QVERIFY(timer.elapsed() < 500);
+#endif
+    }
+
+    void windowsInstallerRefusesALocationTheUserCanChange()
+    {
+#ifndef Q_OS_WIN
+        QSKIP("The PowerShell installer runs on Windows.");
+#else
+        if (!isElevated()) {
+            QSKIP("The installer runs as an administrator; run this test elevated.");
+        }
+        // The user's own directory, where the checked copy could be renamed away and replaced.
+        WindowsFixture fixture;
+        QVERIFY(fixture.initialize(true));
+        const QString unprotected = QDir(fixture.directory.path()).filePath(QStringLiteral("state"));
+        QVERIFY(QDir().mkpath(unprotected));
+        fixture.plan.stateParent = unprotected;
+        int exitCode = 0;
+        const QByteArray output = runPowerShell(windowsInstallerScript(fixture.plan), &exitCode);
+        QVERIFY2(exitCode == 1, output.constData());
+        QVERIFY(QFileInfo(QDir(fixture.plan.workDirectory).filePath(QStringLiteral("failed"))).isDir());
+        QVERIFY(QDir(unprotected).isEmpty());
 #endif
     }
 
