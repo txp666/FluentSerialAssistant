@@ -166,9 +166,10 @@ void UpdateManager::handleDownloaded(const QString &path)
     // Package preparation and system authorization may take time. Keep the
     // event loop responsive while the installer acknowledges the handoff.
     const auto install = m_install;
-    m_installThread = QThread::create([this, path, install]() {
+    const QByteArray sha256 = m_release.sha256;
+    m_installThread = QThread::create([this, path, sha256, install]() {
         QString error;
-        const bool ready = install(path, &error);
+        const bool ready = install(path, sha256, &error);
         QMetaObject::invokeMethod(
             this,
             [this, ready, error]() {

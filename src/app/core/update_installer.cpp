@@ -9,16 +9,27 @@
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QProcess>
+#include <QtCore/QRegularExpression>
 #include <QtCore/QStandardPaths>
 #include <QtCore/QStorageInfo>
 #include <QtCore/QTemporaryDir>
 #include <QtCore/QThread>
+
+#include <utility>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
 
 #include <shellapi.h>
 #endif
+
+// The installer may run as root or as an administrator, while the work directory, where this
+// process left the package, belongs to the user. Another process of the user could replace the
+// package or anything else in it at any time, also with a link pointing elsewhere. So the
+// installer only reads from the work directory: it makes a directory of its own under a random
+// name, which the user cannot change, copies the package there and checks the copy against the
+// release digest before installing it, and keeps its log and results there too. An empty
+// directory "state.<name>" in the work directory tells this process where that is.
 
 namespace AppUpdate::InstallerDetail {
 
@@ -36,11 +47,49 @@ QString powerShellQuote(const QString &value)
     return QLatin1Char('\'') + escaped + QLatin1Char('\'');
 }
 
+QString powerShellEncodedCommand(const QString &script)
+{
+    QByteArray utf16;
+    utf16.reserve(script.size() * 2);
+    for (QChar character : script) {
+        utf16.append(static_cast<char>(character.unicode() & 0xff));
+        utf16.append(static_cast<char>(character.unicode() >> 8));
+    }
+    return QString::fromLatin1(utf16.toBase64());
+}
+
+// Shared by the macOS and Linux scripts: makes the installer's own directory, which only it can
+// change, and leaves the pointer to it in the work directory.
+static QString posixStateScript()
+{
+    return QStringLiteral(R"SH(
+case "$expected_sha" in *[!0-9a-f]*) echo 'Invalid package digest.'; exit 1;; esac
+test "${#expected_sha}" -eq 64 || { echo 'Invalid package digest.'; exit 1; }
+state=$(mktemp -d "$state_parent/fluentserial-update.XXXXXX")
+/bin/chmod 755 "$state"
+exec >> "$state/install.log" 2>&1
+)SH");
+}
+
+// Needs $verified, fail() and digest(), and the trap that reports the result.
+static QString posixVerifyScript()
+{
+    return QStringLiteral(R"SH(
+/bin/mkdir "$work/state.${state##*/}"
+test -f "$package" || fail 'Update package is missing.'
+# The package may be a link to a file only root can read; the copy stays private.
+(umask 077 && /bin/cp "$package" "$verified")
+actual=$(digest < "$verified")
+actual=${actual%% *}
+test "$actual" = "$expected_sha" || fail 'Update package does not match the release.'
+)SH");
+}
+
 static QString waitForParentScript()
 {
     return QStringLiteral(R"SH(
 test ! -e "$work/cancel" || fail 'Update handoff was cancelled.'
-: > "$work/ready"
+: > "$state/ready"
 remaining="$wait_limit"
 while kill -0 "$parent_pid" 2>/dev/null; do
     test ! -e "$work/cancel" || fail 'Update handoff was cancelled.'
@@ -54,9 +103,8 @@ test ! -e "$work/cancel" || fail 'Update handoff was cancelled.'
 
 QString macInstallerScript()
 {
-    return QStringLiteral(R"SH(#!/bin/sh
-set -eu
-umask 077
+    return QStringLiteral(R"SH(set -eu
+umask 022
 parent_pid=$1
 package=$2
 target=$3
@@ -67,24 +115,22 @@ ditto=$7
 codesign=$8
 plistbuddy=$9
 move=${10}
-exec >> "$work/install.log" 2>&1
+shasum=${11}
+expected_sha=${12}
+state_parent=${13}
+case "$parent_pid:$wait_limit" in *[!0-9:]*|:*|*:) echo 'Invalid process or timeout.'; exit 1;; esac
+test "$parent_pid" -gt 1 || { echo 'Invalid parent process.'; exit 1; }
+)SH") + posixStateScript() +
+           QStringLiteral(R"SH(
 fail() {
     echo "ERROR: $*"
-    printf '1\n' > "$work/result"
-    /bin/chmod 644 "$work/result"
     exit 1
 }
-case "$parent_pid:$wait_limit" in *[!0-9:]*|:*|*:) fail 'Invalid process or timeout.';; esac
-test "$parent_pid" -gt 1 || fail 'Invalid parent process.'
-case "$target" in /*.app) ;; *) fail 'Invalid application destination.';; esac
-test ! -L "$target" || fail 'Application destination must not be a symbolic link.'
-test -f "$package" || fail 'Update package is missing.'
-test -d "$work" || fail 'Update work directory is missing.'
-mount="$work/mount"
-stage="$(dirname "$target")/.$(basename "$target").update-$(basename "$work")"
-backup="$(dirname "$target")/.$(basename "$target").backup-$(basename "$work")"
-test ! -e "$stage" && test ! -L "$stage" || fail 'Staging path already exists.'
-test ! -e "$backup" && test ! -L "$backup" || fail 'Backup path already exists.'
+digest() { "$shasum" -a 256; }
+mount="$state/mount"
+verified="$state/package.dmg"
+stage="$(dirname "$target")/.$(basename "$target").update-${state##*/}"
+backup="$(dirname "$target")/.$(basename "$target").backup-${state##*/}"
 mounted=0
 old_moved=0
 new_installed=0
@@ -100,20 +146,26 @@ cleanup() {
     fi
     if test "$mounted" -eq 1; then "$hdiutil" detach "$mount" -quiet || true; fi
     if test -d "$stage" && test ! -L "$stage"; then /bin/rm -rf "$stage"; fi
+    /bin/rm -f "$verified"
     echo "Installer exit status: $status"
-    printf '%s\n' "$status" > "$work/result"
-    /bin/chmod 644 "$work/result"
+    printf '%s\n' "$status" > "$state/result"
     exit "$status"
 }
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
+)SH") + posixVerifyScript() +
+           QStringLiteral(R"SH(
+case "$target" in /*.app) ;; *) fail 'Invalid application destination.';; esac
+test ! -L "$target" || fail 'Application destination must not be a symbolic link.'
+test ! -e "$stage" && test ! -L "$stage" || fail 'Staging path already exists.'
+test ! -e "$backup" && test ! -L "$backup" || fail 'Backup path already exists.'
 if test -e "$target"; then
     test -d "$target" || fail 'Application destination is not a directory.'
     existing_id=$("$plistbuddy" -c 'Print :CFBundleIdentifier' "$target/Contents/Info.plist")
     test "$existing_id" = 'tech.zhangshu.FluentSerialAssistant' || fail 'Existing application identity does not match.'
 fi
 /bin/mkdir "$mount"
-"$hdiutil" attach "$package" -mountpoint "$mount" -readonly -nobrowse -noautoopen -quiet
+"$hdiutil" attach "$verified" -mountpoint "$mount" -readonly -nobrowse -noautoopen -quiet
 mounted=1
 source="$mount/FluentSerialAssistant.app"
 test -d "$source" && test ! -L "$source" || fail 'Disk image does not contain the expected application.'
@@ -144,9 +196,8 @@ if test "$old_moved" -eq 1; then echo "Previous application retained at: $backup
 
 QString linuxInstallerScript()
 {
-    return QStringLiteral(R"SH(#!/bin/sh
-set -eu
-umask 077
+    return QStringLiteral(R"SH(set -eu
+umask 022
 parent_pid=$1
 package=$2
 work=$3
@@ -154,21 +205,28 @@ wait_limit=$4
 dpkg_deb=$5
 dpkg=$6
 apt_get=$7
-exec >> "$work/install.log" 2>&1
+sha256sum=$8
+expected_sha=$9
+state_parent=${10}
+case "$parent_pid:$wait_limit" in *[!0-9:]*|:*|*:) echo 'Invalid process or timeout.'; exit 1;; esac
+test "$parent_pid" -gt 1 || { echo 'Invalid parent process.'; exit 1; }
+)SH") + posixStateScript() +
+           QStringLiteral(R"SH(
 fail() { echo "ERROR: $*"; exit 1; }
-trap 'status=$?; printf "%s\n" "$status" > "$work/result"; /bin/chmod 644 "$work/result"' EXIT
-case "$parent_pid:$wait_limit" in *[!0-9:]*|:*|*:) fail 'Invalid process or timeout.';; esac
-test "$parent_pid" -gt 1 || fail 'Invalid parent process.'
-test -f "$package" || fail 'Update package is missing.'
-package_name=$("$dpkg_deb" --field "$package" Package)
+digest() { "$sha256sum"; }
+verified="$state/package.deb"
+trap 'status=$?; /bin/rm -f "$verified"; printf "%s\n" "$status" > "$state/result"' EXIT
+)SH") + posixVerifyScript() +
+           QStringLiteral(R"SH(
+package_name=$("$dpkg_deb" --field "$verified" Package)
 test "$package_name" = 'fluent-serial-assistant' || fail 'DEB package identity does not match.'
-package_arch=$("$dpkg_deb" --field "$package" Architecture)
+package_arch=$("$dpkg_deb" --field "$verified" Architecture)
 system_arch=$("$dpkg" --print-architecture)
 test "$package_arch" = "$system_arch" || fail 'DEB architecture does not match this system.'
 )SH") + waitForParentScript() +
            QStringLiteral(R"SH(
 export DEBIAN_FRONTEND=noninteractive
-"$apt_get" --yes --no-remove install "$package"
+"$apt_get" --yes --no-remove install "$verified"
 echo 'Update installed successfully.'
 )SH");
 }
@@ -177,15 +235,42 @@ QString windowsInstallerScript(const InstallPlan &plan)
 {
     return QStringLiteral(R"PS($ErrorActionPreference = 'Stop'
 $package = %1
-$target = %2
-$work = %3
-$parentId = %4
-$waitLimit = %5
-$logPath = Join-Path $work 'install.log'
+$expected = %2
+$target = %3
+$work = %4
+$stateParent = %5
+$parentId = %6
+$waitLimit = %7
+# Only the system and administrators may change the installer's directories; users may read the
+# one with the log and the results, but not the one with the copy of the package.
+function New-InstallerDirectory([string]$path, [bool]$readable) {
+    $acl = New-Object System.Security.AccessControl.DirectorySecurity
+    $acl.SetOwner((New-Object System.Security.Principal.SecurityIdentifier 'S-1-5-32-544'))
+    $acl.SetAccessRuleProtection($true, $false)
+    $rules = @(@('S-1-5-18', 'FullControl'), @('S-1-5-32-544', 'FullControl'))
+    if ($readable) { $rules += ,@('S-1-5-32-545', 'ReadAndExecute') }
+    foreach ($rule in $rules) {
+        $identity = New-Object System.Security.Principal.SecurityIdentifier $rule[0]
+        $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($identity, $rule[1], 'ContainerInherit, ObjectInherit', 'None', 'Allow')))
+    }
+    if (Test-Path -LiteralPath $path) { throw 'Update state directory already exists.' }
+    [System.IO.Directory]::CreateDirectory($path, $acl) | Out-Null
+}
+$name = 'FluentSerialAssistant-update-' + [guid]::NewGuid().ToString('N')
+$state = Join-Path $stateParent $name
+New-InstallerDirectory $state $true
+$logPath = Join-Path $state 'install.log'
+$verified = Join-Path $state 'package\setup.exe'
 try {
+    New-Item -ItemType Directory -Path (Join-Path $work ('state.' + $name)) | Out-Null
+    New-InstallerDirectory (Join-Path $state 'package') $false
     if (!(Test-Path -LiteralPath $package -PathType Leaf)) { throw 'Update package is missing.' }
+    Copy-Item -LiteralPath $package -Destination $verified
+    if ((Get-FileHash -LiteralPath $verified -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+        throw 'Update package does not match the release.'
+    }
     if (Test-Path -LiteralPath (Join-Path $work 'cancel')) { throw 'Update handoff was cancelled.' }
-    New-Item -ItemType File -Path (Join-Path $work 'ready') -Force | Out-Null
+    New-Item -ItemType File -Path (Join-Path $state 'ready') | Out-Null
     $deadline = [DateTime]::UtcNow.AddSeconds($waitLimit)
     while (Get-Process -Id $parentId -ErrorAction SilentlyContinue) {
         if (Test-Path -LiteralPath (Join-Path $work 'cancel')) { throw 'Update handoff was cancelled.' }
@@ -193,20 +278,24 @@ try {
         Start-Sleep -Milliseconds 200
     }
     if (Test-Path -LiteralPath (Join-Path $work 'cancel')) { throw 'Update handoff was cancelled.' }
-    $arguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCLOSEAPPLICATIONS /DIR="' + $target + '" /LOG="' + (Join-Path $work 'setup.log') + '"'
-    $installer = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
+    $arguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCLOSEAPPLICATIONS /DIR="' + $target + '" /LOG="' + (Join-Path $state 'setup.log') + '"'
+    $installer = Start-Process -FilePath $verified -ArgumentList $arguments -Wait -PassThru
     if ($installer.ExitCode -ne 0) { throw ('Installer failed with exit code ' + $installer.ExitCode) }
     'Update installed successfully.' | Out-File -LiteralPath $logPath -Append -Encoding utf8
-    0 | Out-File -LiteralPath (Join-Path $work 'result') -Encoding ascii
+    0 | Out-File -LiteralPath (Join-Path $state 'result') -Encoding ascii
 } catch {
     $_ | Out-File -LiteralPath $logPath -Append -Encoding utf8
-    1 | Out-File -LiteralPath (Join-Path $work 'result') -Encoding ascii
+    1 | Out-File -LiteralPath (Join-Path $state 'result') -Encoding ascii
     exit 1
+} finally {
+    Remove-Item -LiteralPath $verified -Force -ErrorAction SilentlyContinue
 }
 )PS")
         .arg(powerShellQuote(QDir::toNativeSeparators(plan.packagePath)),
+             powerShellQuote(QString::fromLatin1(plan.sha256)),
              powerShellQuote(QDir::toNativeSeparators(plan.targetPath)),
-             powerShellQuote(QDir::toNativeSeparators(plan.workDirectory)), QString::number(plan.parentPid),
+             powerShellQuote(QDir::toNativeSeparators(plan.workDirectory)),
+             powerShellQuote(QDir::toNativeSeparators(plan.stateParent)), QString::number(plan.parentPid),
              QString::number(plan.waitSeconds));
 }
 
@@ -221,10 +310,22 @@ QStringList macInstallerArguments(const InstallPlan &plan)
             QStringLiteral("/usr/bin/ditto"),
             QStringLiteral("/usr/bin/codesign"),
             QStringLiteral("/usr/libexec/PlistBuddy"),
-            QStringLiteral("/bin/mv")};
+            QStringLiteral("/bin/mv"),
+            QStringLiteral("/usr/bin/shasum"),
+            QString::fromLatin1(plan.sha256),
+            plan.stateParent};
 }
 
-QString windowsAuthorizationScript(const QString &executable, const QString &encodedScript,
+QString windowsInstallerCommand(const QString &script)
+{
+    // UTF-8 in base64 is half the size of -EncodedCommand's UTF-16. This travels inside the encoded
+    // bootstrap, and both must fit on a command line.
+    return QStringLiteral("-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"& ([ScriptBlock]::Create("
+                          "[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('") +
+           QString::fromLatin1(script.toUtf8().toBase64()) + QStringLiteral("'))))\"");
+}
+
+QString windowsAuthorizationScript(const QString &executable, const QString &installerCommand,
                                    const QString &workDirectory)
 {
     return QStringLiteral(R"PS($ErrorActionPreference = 'Stop'
@@ -239,9 +340,7 @@ try {
 }
 )PS")
         .arg(powerShellQuote(QDir::toNativeSeparators(workDirectory)),
-             powerShellQuote(QDir::toNativeSeparators(executable)),
-             powerShellQuote(QStringLiteral("-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ") +
-                             encodedScript));
+             powerShellQuote(QDir::toNativeSeparators(executable)), powerShellQuote(installerCommand));
 }
 
 QStringList linuxInstallerArguments(const InstallPlan &plan)
@@ -252,7 +351,24 @@ QStringList linuxInstallerArguments(const InstallPlan &plan)
             QString::number(plan.waitSeconds),
             QStringLiteral("/usr/bin/dpkg-deb"),
             QStringLiteral("/usr/bin/dpkg"),
-            QStringLiteral("/usr/bin/apt-get")};
+            QStringLiteral("/usr/bin/apt-get"),
+            QStringLiteral("/usr/bin/sha256sum"),
+            QString::fromLatin1(plan.sha256),
+            plan.stateParent};
+}
+
+QStringList appleScriptArguments(const QString &command, bool administrator)
+{
+    QString escaped = command;
+    escaped.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    escaped.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    // The script spans lines; escaped line feeds reach the shell unchanged.
+    escaped.replace(QLatin1Char('\n'), QStringLiteral("\\n"));
+    QString script = QStringLiteral("do shell script \"") + escaped + QLatin1Char('"');
+    if (administrator) {
+        script += QStringLiteral(" with administrator privileges");
+    }
+    return {QStringLiteral("-e"), script};
 }
 
 QString authorizationWrapper(const QString &command, const QString &workDirectory)
@@ -260,6 +376,23 @@ QString authorizationWrapper(const QString &command, const QString &workDirector
     return command + QStringLiteral(" >>") + shellQuote(QDir(workDirectory).filePath(QStringLiteral("install.log"))) +
            QStringLiteral(" 2>&1; result=$?; if test \"$result\" -ne 0; then printf '%s\\n' \"$result\" >") +
            shellQuote(QDir(workDirectory).filePath(QStringLiteral("result"))) + QStringLiteral("; fi");
+}
+
+QString stateDirectory(const QString &workDirectory, const QString &stateParent)
+{
+    // Only names the installers make; anything else in the work directory is not a pointer.
+    static const QRegularExpression pointer(
+        QStringLiteral("^state\\.(fluentserial-update\\.[A-Za-z0-9]{6,}|FluentSerialAssistant-update-[0-9a-f]{32})$"));
+    const QStringList entries =
+        QDir(workDirectory).entryList({QStringLiteral("state.*")}, QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString &entry : entries) {
+        const QRegularExpressionMatch match = pointer.match(entry);
+        if (match.hasMatch()) {
+            const QString state = QDir(stateParent).filePath(match.captured(1));
+            return QFileInfo(state).isDir() ? state : QString();
+        }
+    }
+    return {};
 }
 
 } // namespace AppUpdate::InstallerDetail
@@ -273,24 +406,49 @@ bool writeFile(const QString &path, const QByteArray &contents)
            file.flush();
 }
 
-QString logFailure(const QString &message, const QString &work)
+// A result file that exists and does not say 0.
+bool reportsFailure(const QString &path)
 {
-    QFile log(QDir(work).filePath(QStringLiteral("install.log")));
-    QString detail;
-    if (log.open(QIODevice::ReadOnly)) {
-        detail = QString::fromUtf8(log.readAll()).right(2000).trimmed();
+    QFile result(path);
+    return result.open(QIODevice::ReadOnly) && result.readAll().trimmed() != QByteArray("0");
+}
+
+// The installer's log, after what the authorization step wrote to the work directory.
+QString logFailure(const QString &message, const QString &work, const QString &state)
+{
+    QStringList logs{QDir(work).filePath(QStringLiteral("install.log"))};
+    if (!state.isEmpty()) {
+        logs.append(QDir(state).filePath(QStringLiteral("install.log")));
     }
+    QString detail;
+    for (const QString &path : std::as_const(logs)) {
+        QFile log(path);
+        if (log.open(QIODevice::ReadOnly)) {
+            detail += QString::fromUtf8(log.readAll());
+        }
+    }
+    detail = detail.right(2000).trimmed();
     return AppI18n::text("%1\n安装日志：%2")
-        .arg(detail.isEmpty() ? message : message + QLatin1Char('\n') + detail, log.fileName());
+        .arg(detail.isEmpty() ? message : message + QLatin1Char('\n') + detail, logs.last());
+}
+
+QString defaultStateParent()
+{
+#ifdef Q_OS_WIN
+    return QDir::fromNativeSeparators(qEnvironmentVariable("ProgramData", QStringLiteral("C:/ProgramData")));
+#else
+    return QStringLiteral("/tmp");
+#endif
 }
 
 } // namespace
 
 namespace AppUpdate::InstallerDetail {
 
-bool waitForHandoff(const QString &work, QString *error)
+bool waitForHandoff(const QString &work, const QString &stateParent, QString *error)
 {
     const QDir directory(work);
+    QString state;
     QElapsedTimer timer;
     timer.start();
     // Includes the system authorization dialog and macOS package preparation.
@@ -298,18 +456,27 @@ bool waitForHandoff(const QString &work, QString *error)
         if (QThread::currentThread()->isInterruptionRequested()) {
             break;
         }
-        QFile result(directory.filePath(QStringLiteral("result")));
-        if (result.open(QIODevice::ReadOnly) && result.readAll().trimmed() != QByteArray("0")) {
+        // The authorization step reports a refusal in the work directory, the installer everything
+        // else in its own.
+        if (reportsFailure(directory.filePath(QStringLiteral("result")))) {
             break;
         }
-        if (QFile::exists(directory.filePath(QStringLiteral("ready")))) {
-            return true;
+        if (state.isEmpty()) {
+            state = stateDirectory(work, stateParent);
+        }
+        if (!state.isEmpty()) {
+            if (reportsFailure(QDir(state).filePath(QStringLiteral("result")))) {
+                break;
+            }
+            if (QFile::exists(QDir(state).filePath(QStringLiteral("ready")))) {
+                return true;
+            }
         }
         QThread::msleep(50);
     }
     writeFile(directory.filePath(QStringLiteral("cancel")), QByteArray("cancelled\n"));
     if (error) {
-        *error = logFailure(AppI18n::text("未能准备更新安装，当前应用将保持运行。"), work);
+        *error = logFailure(AppI18n::text("未能准备更新安装，当前应用将保持运行。"), work, state);
     }
     return false;
 }
@@ -333,7 +500,7 @@ QString shellCommand(const QString &program, const QStringList &arguments)
 
 namespace AppUpdate {
 
-bool launchUpdateInstaller(const QString &packagePath, QString *error)
+bool launchUpdateInstaller(const QString &packagePath, const QByteArray &sha256, QString *error)
 {
     if (error) {
         error->clear();
@@ -347,6 +514,10 @@ bool launchUpdateInstaller(const QString &packagePath, QString *error)
     const QFileInfo package(packagePath);
     if (!package.isFile() || package.isSymLink() || package.size() <= 0) {
         return fail(AppI18n::text("更新安装包不存在或为空。"));
+    }
+    static const QRegularExpression digest(QStringLiteral("^[0-9a-f]{64}$"));
+    if (!digest.match(QString::fromLatin1(sha256.toLower())).hasMatch()) {
+        return fail(AppI18n::text("更新安装包的校验值无效。"));
     }
 #if defined(Q_OS_WIN)
     const QString suffix = QStringLiteral("exe");
@@ -363,6 +534,8 @@ bool launchUpdateInstaller(const QString &packagePath, QString *error)
     }
 
     InstallerDetail::InstallPlan plan;
+    plan.sha256 = sha256.toLower();
+    plan.stateParent = defaultStateParent();
     plan.parentPid = QCoreApplication::applicationPid();
     plan.targetPath = QCoreApplication::applicationDirPath();
 #ifdef Q_OS_MACOS
@@ -409,19 +582,11 @@ bool launchUpdateInstaller(const QString &packagePath, QString *error)
 #ifdef Q_OS_WIN
     const QString powerShell = QDir(qEnvironmentVariable("SystemRoot", QStringLiteral("C:/Windows")))
                                    .filePath(QStringLiteral("System32/WindowsPowerShell/v1.0/powershell.exe"));
-    const auto encodedCommand = [](const QString &script) {
-        QByteArray utf16;
-        utf16.reserve(script.size() * 2);
-        for (QChar character : script) {
-            utf16.append(static_cast<char>(character.unicode() & 0xff));
-            utf16.append(static_cast<char>(character.unicode() >> 8));
-        }
-        return QString::fromLatin1(utf16.toBase64());
-    };
     const QString bootstrap = InstallerDetail::windowsAuthorizationScript(
-        powerShell, encodedCommand(InstallerDetail::windowsInstallerScript(plan)), plan.workDirectory);
+        powerShell, InstallerDetail::windowsInstallerCommand(InstallerDetail::windowsInstallerScript(plan)),
+        plan.workDirectory);
     const QString parameters = QStringLiteral("-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ") +
-                               encodedCommand(bootstrap);
+                               InstallerDetail::powerShellEncodedCommand(bootstrap);
     SHELLEXECUTEINFOW info{};
     info.cbSize = sizeof(info);
     info.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NOASYNC;
@@ -434,48 +599,40 @@ bool launchUpdateInstaller(const QString &packagePath, QString *error)
     info.lpParameters = arguments.c_str();
     info.nShow = SW_HIDE;
     if (!ShellExecuteExW(&info)) {
-        return fail(logFailure(AppI18n::text("系统未授权启动更新安装程序。"), plan.workDirectory));
+        return fail(logFailure(AppI18n::text("系统未授权启动更新安装程序。"), plan.workDirectory, QString()));
     }
     if (info.hProcess) {
         CloseHandle(info.hProcess);
     }
 #else
-    const QString scriptPath = QDir(plan.workDirectory).filePath(QStringLiteral("install.sh"));
+    // The script goes on the command line, not into a file the user could change before it runs
+    // with system rights.
     QString command;
 #ifdef Q_OS_MACOS
-    if (!writeFile(scriptPath, InstallerDetail::macInstallerScript().toUtf8())) {
-        return fail(AppI18n::text("无法创建更新安装脚本。"));
-    }
-    QStringList arguments{scriptPath};
+    QStringList arguments{QStringLiteral("-c"), InstallerDetail::macInstallerScript(), QStringLiteral("sh")};
     arguments.append(InstallerDetail::macInstallerArguments(plan));
     command = shellCommand(QStringLiteral("/bin/sh"), arguments);
     if (!QFileInfo(QFileInfo(plan.targetPath).absolutePath()).isWritable()) {
         const QString background = QStringLiteral("/usr/bin/nohup ") + command + QStringLiteral(" >/dev/null 2>&1 &");
-        QString escaped = background;
-        escaped.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
-        escaped.replace(QLatin1Char('"'), QStringLiteral("\\\""));
-        command = shellCommand(QStringLiteral("/usr/bin/osascript"),
-                               {QStringLiteral("-e"), QStringLiteral("do shell script \"") + escaped +
-                                                          QStringLiteral("\" with administrator privileges")});
+        command =
+            shellCommand(QStringLiteral("/usr/bin/osascript"), InstallerDetail::appleScriptArguments(background, true));
     }
 #else
     const QString pkexec = QStandardPaths::findExecutable(QStringLiteral("pkexec"));
     if (pkexec.isEmpty() || !QFileInfo::exists(QStringLiteral("/usr/bin/apt-get"))) {
         return fail(AppI18n::text("自动安装需要系统提供 pkexec 和 apt-get，请使用系统软件安装器安装已下载的 DEB。"));
     }
-    if (!writeFile(scriptPath, InstallerDetail::linuxInstallerScript().toUtf8())) {
-        return fail(AppI18n::text("无法创建更新安装脚本。"));
-    }
-    QStringList arguments{QStringLiteral("/bin/sh"), scriptPath};
+    QStringList arguments{QStringLiteral("/bin/sh"), QStringLiteral("-c"), InstallerDetail::linuxInstallerScript(),
+                          QStringLiteral("sh")};
     arguments.append(InstallerDetail::linuxInstallerArguments(plan));
     command = shellCommand(pkexec, arguments);
 #endif
     const QString wrapper = InstallerDetail::authorizationWrapper(command, plan.workDirectory);
     if (!QProcess::startDetached(QStringLiteral("/bin/sh"), {QStringLiteral("-c"), wrapper}, plan.workDirectory)) {
-        return fail(logFailure(AppI18n::text("无法启动更新安装程序。"), plan.workDirectory));
+        return fail(logFailure(AppI18n::text("无法启动更新安装程序。"), plan.workDirectory, QString()));
     }
 #endif
-    return InstallerDetail::waitForHandoff(plan.workDirectory, error);
+    return InstallerDetail::waitForHandoff(plan.workDirectory, plan.stateParent, error);
 #endif
 }
 

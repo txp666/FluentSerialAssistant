@@ -75,7 +75,7 @@ class UpdateManager : public QObject
     bool m_automatic = false;
     bool m_downloadAuthorized = false;
     QThread *m_installThread = nullptr;
-    std::function<bool(const QString &, QString *)> m_install;
+    std::function<bool(const QString &, const QByteArray &, QString *)> m_install;
 };
 
 } // namespace AppUpdate
