@@ -92,6 +92,17 @@ class PlotValueParserTest : public QObject
         QCOMPARE(values(samples.first()), QVector<double>({20.5, 60.0, 18.0, 1200.0, 3.0}));
     }
 
+    void keyValuesAreFoundAtTheEndOfLongLines()
+    {
+        // A record can hold a long run of words without a separator; the field after it must
+        // still be read (the pattern used to give up on lines this long).
+        const QString line = QStringLiteral("word ").repeated(20000) + QStringLiteral(", temp=1");
+        const auto samples = AppPlot::extractSamples(parser(Protocol::KeyValue), line);
+        QCOMPARE(samples.size(), 1);
+        QCOMPARE(names(samples.first()), QStringList({QStringLiteral("temp")}));
+        QCOMPARE(values(samples.first()), QVector<double>({1.0}));
+    }
+
     void fieldFiltersIgnoreCaseAndSpacing()
     {
         const auto named =

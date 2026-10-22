@@ -25,11 +25,14 @@ const QRegularExpression &wholeNumberPattern()
     return pattern;
 }
 
+// A key is up to eight words ("motor speed"). Unbounded, every word of a long line without a
+// separator was tried as the start of a key running to the end of the line: matching took
+// quadratic time (about a second for 60,000 characters) and gave up on longer lines.
 const QRegularExpression &keyValuePattern()
 {
     static const QRegularExpression pattern(
         QStringLiteral(
-            R"((?:^|[^\p{L}\p{N}_\.\-/])([\p{L}_][\p{L}\p{N}_\.\-/]*(?:[ \t]+[\p{L}_][\p{L}\p{N}_\.\-/]*)*)[ \t]*[:=][ \t]*([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?))"),
+            R"((?:^|[^\p{L}\p{N}_\.\-/])([\p{L}_][\p{L}\p{N}_\.\-/]*(?:[ \t]+[\p{L}_][\p{L}\p{N}_\.\-/]*){0,7})[ \t]*[:=][ \t]*([+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?))"),
         QRegularExpression::UseUnicodePropertiesOption);
     return pattern;
 }
