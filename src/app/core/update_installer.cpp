@@ -369,7 +369,12 @@ QString windowsInstallerCommand(const QString &script)
     // This travels inside the encoded bootstrap, and both must fit on a command line. UTF-8 in base64
     // is half the size of -EncodedCommand's UTF-16, and indentation and comment lines go: no string
     // in these scripts spans lines.
-    QStringList code;
+    // Started by a process that inherited PowerShell 7's module path, Windows PowerShell finds
+    // PowerShell 7's modules first and cannot load them (Get-Acl failed so), so the script runs
+    // with the system's module path.
+    QStringList code{
+        QStringLiteral("$env:PSModulePath = (@([Environment]::GetEnvironmentVariable('PSModulePath', 'Machine'), "
+                       "(Join-Path $PSHOME 'Modules')) | Where-Object { $_ }) -join ';'")};
     for (const QString &line : script.split(QLatin1Char('\n'))) {
         const QString trimmed = line.trimmed();
         if (!trimmed.isEmpty() && !trimmed.startsWith(QLatin1Char('#'))) {

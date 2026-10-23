@@ -300,7 +300,7 @@ class UpdateInstallerTest : public QObject
             windowsAuthorizationScript(QStringLiteral("C:/Windows/powershell.exe"),
                                        windowsInstallerCommand(QStringLiteral("echo 'x'")), plan.workDirectory);
         QVERIFY(bootstrap.contains(QStringLiteral("-Verb RunAs")));
-        QVERIFY(bootstrap.contains(QStringLiteral("FromBase64String(''ZWNobyAneCc='')")));
+        QVERIFY(bootstrap.contains(powerShellQuote(windowsInstallerCommand(QStringLiteral("echo 'x'")))));
         // Only the code travels.
         QCOMPARE(windowsInstallerCommand(QStringLiteral("  # comment\n\n    echo 'x'\n")),
                  windowsInstallerCommand(QStringLiteral("echo 'x'")));
@@ -773,6 +773,32 @@ case "$3" in Package) echo fluent-serial-assistant;; Architecture) echo amd64;; 
         QTRY_VERIFY_WITH_TIMEOUT(!fixture.read(QStringLiteral("result")).isEmpty(), 60000);
         QVERIFY2(fixture.read(QStringLiteral("install.log")).contains("Installer failed with exit code"),
                  fixture.read(QStringLiteral("install.log")).constData());
+#endif
+    }
+
+    void windowsInstallerCommandIgnoresPowerShell7Modules()
+    {
+#ifndef Q_OS_WIN
+        QSKIP("The PowerShell installer runs on Windows.");
+#else
+        // A process started from PowerShell 7 passes its module path on, and Windows PowerShell then
+        // finds modules it cannot load first: here one that needs PowerShell 7, as PowerShell 7's do.
+        QTemporaryDir modules;
+        QVERIFY(modules.isValid());
+        const QDir root(modules.path());
+        QVERIFY(root.mkpath(QStringLiteral("Microsoft.PowerShell.Security")));
+        QVERIFY(writeFixture(
+            root.filePath(QStringLiteral("Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1")),
+            "@{ ModuleVersion = '7.0.0.0'; PowerShellVersion = '7.0'; CmdletsToExport = @('Get-Acl') }"));
+        const QByteArray modulePath = qgetenv("PSModulePath");
+        const auto restore = qScopeGuard([modulePath]() { qputenv("PSModulePath", modulePath); });
+        qputenv("PSModulePath", QDir::toNativeSeparators(modules.path()).toLocal8Bit() + ';' + modulePath);
+        int exitCode = 0;
+        const QByteArray output = runPowerShell(QStringLiteral("$ErrorActionPreference = 'Stop'\n"
+                                                               "(Get-Acl -LiteralPath $env:SystemRoot).Owner"),
+                                                &exitCode);
+        QVERIFY2(exitCode == 0, output.constData());
+        QVERIFY2(!output.trimmed().isEmpty(), output.constData());
 #endif
     }
 
