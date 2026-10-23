@@ -455,7 +455,10 @@ jobs:
           fail_on_unmatched_files: true
           overwrite_files: true
 
+      # A release published as a prerelease stays one, so the app's update check, which only
+      # sees the latest release, does not offer it.
       - name: Mark complete release as latest
+        if: ${{ !github.event.release.prerelease }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
