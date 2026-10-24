@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.19
+    VERSION 0.1.20
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
