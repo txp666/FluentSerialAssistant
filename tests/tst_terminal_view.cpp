@@ -489,6 +489,43 @@ class TerminalViewTest : public QObject
         QCOMPARE(page.m_terminalSearchMatches.size(), 3);
     }
 
+    void searchBarStaysAtTheViewportTopRightWhenTheTerminalScrolls()
+    {
+        // Scrolling the viewport moves its children with the text, so incoming data that scrolled
+        // the terminal carried the open search bar out of view.
+        WorkbenchPage page(nullptr, false, false);
+        prepareHistory(page, true);
+        auto *searchButton = page.findChild<FluentQt::ToolButton *>(QStringLiteral("terminalSearchButton"));
+        QVERIFY(searchButton);
+        searchButton->click();
+        auto *searchBar = page.m_terminalSearchBar;
+        QTRY_VERIFY(searchBar->isVisible());
+        const auto anchored = [&page, searchBar]() {
+            const QRect viewport = page.m_terminalView->viewport()->rect();
+            return searchBar->y() == 8 && searchBar->geometry().right() == viewport.right() - 8;
+        };
+        QVERIFY(anchored());
+
+        QScrollBar *bar = page.m_terminalView->verticalScrollBar();
+        QVERIFY(bar->maximum() > 0);
+        bar->setValue(0);
+        QCoreApplication::processEvents();
+        QVERIFY(anchored());
+        bar->setValue(bar->maximum() / 2);
+        QCoreApplication::processEvents();
+        QVERIFY(anchored());
+
+        bar->setValue(bar->maximum());
+        for (int row = 300; row < 360; ++row) {
+            page.handleReceivedData(logLine(row, false));
+        }
+        page.flushPendingLines();
+        QCoreApplication::processEvents();
+        QCOMPARE(bar->value(), bar->maximum());
+        QVERIFY(searchBar->isVisible());
+        QVERIFY(anchored());
+    }
+
     void fragmentedReceiveLineReflowsExistingTextWhenResized()
     {
         WorkbenchPage page(nullptr, false, false);

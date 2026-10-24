@@ -272,6 +272,11 @@ QWidget *WorkbenchPage::createTerminalSection()
     searchRow->addWidget(closeButton, 0, Qt::AlignVCenter);
     searchPanel->hide();
     m_terminalView->viewport()->installEventFilter(this);
+    // Scrolling the viewport moves its children with the text, so incoming data that scrolled the
+    // terminal carried the open bar out of view. Put it back at the top right after each scroll.
+    for (QScrollBar *scrollBar : {m_terminalView->verticalScrollBar(), m_terminalView->horizontalScrollBar()}) {
+        connect(scrollBar, &QScrollBar::valueChanged, this, &WorkbenchPage::positionTerminalSearchBar);
+    }
 
     connect(clearButton, &ToolButton::clicked, this, [this]() {
         clearTerminal();
