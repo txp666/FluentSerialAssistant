@@ -12,7 +12,7 @@ namespace {
 constexpr const char *ProtocolTemplateSettingsKey = "protocolTemplate/templates";
 constexpr const char *ProtocolTemplateExamplesSettingsKey = "protocolTemplate/exampleFrames";
 
-QString protocolInputError(const LineEdit *nameEdit, const LineEdit *headerEdit,
+QString protocolInputError(const LineEdit *nameEdit, const LineEdit *headerEdit, const LineEdit *trailerEdit,
                            const QList<QPair<QString, const LineEdit *>> &numberEdits)
 {
     if (!nameEdit || nameEdit->text().trimmed().isEmpty()) {
@@ -22,6 +22,12 @@ QString protocolInputError(const LineEdit *nameEdit, const LineEdit *headerEdit,
         const HexParseResult header = parseHexPayload(headerEdit->text());
         if (!header.ok) {
             return AppI18n::text("帧头无效：%1，位置 %2").arg(header.errorMessage).arg(header.errorOffset + 1);
+        }
+    }
+    if (trailerEdit) {
+        const HexParseResult trailer = parseHexPayload(trailerEdit->text());
+        if (!trailer.ok) {
+            return AppI18n::text("帧尾无效：%1，位置 %2").arg(trailer.errorMessage).arg(trailer.errorOffset + 1);
         }
     }
     for (const auto &number : numberEdits) {
@@ -232,6 +238,9 @@ void WorkbenchPage::updateProtocolTemplateActionState()
     if (m_protocolChecksumByteOrderCombo) {
         m_protocolChecksumByteOrderCombo->setEnabled(checksumEnabled);
     }
+    if (m_protocolChecksumStartEdit) {
+        m_protocolChecksumStartEdit->setEnabled(checksumEnabled);
+    }
     if (m_protocolStatusLabel && !m_updatingProtocolTemplateUi) {
         const AppProtocol::ProtocolTemplate item = selectedProtocolTemplate();
         if (!enabled) {
@@ -290,12 +299,13 @@ void WorkbenchPage::updateProtocolTemplatePreview()
 
 QString WorkbenchPage::protocolTemplateInputError() const
 {
-    return protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit,
+    return protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit, m_protocolTrailerEdit,
                               {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
                                {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
                                {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
                                {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
-                               {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit}});
+                               {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit},
+                               {AppI18n::text("校验起始偏移"), m_protocolChecksumStartEdit}});
 }
 
 AppProtocol::ProtocolTemplate WorkbenchPage::selectedProtocolTemplate() const
@@ -313,6 +323,12 @@ AppProtocol::ProtocolTemplate WorkbenchPage::currentProtocolTemplateFromUi() con
         const HexParseResult result = parseHexPayload(m_protocolHeaderEdit->text());
         if (result.ok) {
             item.header = result.bytes;
+        }
+    }
+    if (m_protocolTrailerEdit) {
+        const HexParseResult result = parseHexPayload(m_protocolTrailerEdit->text());
+        if (result.ok) {
+            item.trailer = result.bytes;
         }
     }
     item.lengthOffset = intFromEdit(m_protocolLengthOffsetEdit);
@@ -333,6 +349,7 @@ AppProtocol::ProtocolTemplate WorkbenchPage::currentProtocolTemplateFromUi() con
     item.checksumByteOrder = AppChecksum::byteOrderFromKey(
         m_protocolChecksumByteOrderCombo ? m_protocolChecksumByteOrderCombo->currentData().toString()
                                          : AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian));
+    item.checksumStart = intFromEdit(m_protocolChecksumStartEdit);
     return item;
 }
 
@@ -376,6 +393,9 @@ void WorkbenchPage::fillProtocolTemplateEditor(const AppProtocol::ProtocolTempla
     if (m_protocolHeaderEdit) {
         m_protocolHeaderEdit->setText(bytesToHex(item.header));
     }
+    if (m_protocolTrailerEdit) {
+        m_protocolTrailerEdit->setText(bytesToHex(item.trailer));
+    }
     setEditValue(m_protocolLengthOffsetEdit, item.lengthOffset);
     setComboCurrentData(m_protocolLengthSizeCombo, item.lengthSize);
     setComboCurrentData(m_protocolLengthModeCombo, AppProtocol::lengthModeKey(item.lengthMode));
@@ -386,6 +406,7 @@ void WorkbenchPage::fillProtocolTemplateEditor(const AppProtocol::ProtocolTempla
     setEditValue(m_protocolPayloadLengthEdit, item.payloadLength);
     setComboCurrentData(m_protocolChecksumAlgorithmCombo, item.checksumAlgorithm);
     setComboCurrentData(m_protocolChecksumByteOrderCombo, AppChecksum::byteOrderKey(item.checksumByteOrder));
+    setEditValue(m_protocolChecksumStartEdit, item.checksumStart);
     m_updatingProtocolTemplateUi = false;
 }
 

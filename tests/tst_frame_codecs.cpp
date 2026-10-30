@@ -120,6 +120,80 @@ class FrameCodecsTest : public QObject
         QCOMPARE(parsed.errorMessage, unknown.errorMessage);
     }
 
+    void checksumRangeSkipsLeadingAndTrailingBytes()
+    {
+        const auto order = AppChecksum::ByteOrder::LittleEndian;
+        const QString crc = QStringLiteral("crc16-modbus");
+        const QByteArray data = QByteArray::fromHex("AA55010203040D0A");
+        const auto ranged = AppChecksum::calculate(data, crc, order, 2, 2);
+        QVERIFY(ranged.ok);
+        QCOMPARE(ranged.bytes, AppChecksum::calculate(QByteArray::fromHex("01020304"), crc, order).bytes);
+        QCOMPARE(AppChecksum::calculate(data, crc, order, 0, 0).bytes, AppChecksum::calculate(data, crc, order).bytes);
+        // Skipping every byte, or a negative count, leaves nothing to check.
+        for (const auto &skip :
+             {qMakePair(8, 0), qMakePair(0, 8), qMakePair(4, 4), qMakePair(6, 3), qMakePair(-1, 0)}) {
+            const auto empty = AppChecksum::calculate(data, crc, order, skip.first, skip.second);
+            QVERIFY(!empty.ok);
+            QVERIFY(!empty.errorMessage.isEmpty());
+        }
+    }
+
+    void checksumStartAndTrailerShapeTheFrame()
+    {
+        AppProtocol::ProtocolTemplate protocol = AppProtocol::defaultTemplate();
+        protocol.checksumStart = 2;
+        protocol.trailer = QByteArray::fromHex("0D0A");
+        // AA 55 | LEN 03 | CMD 10 | 01 02 03 | CRC over LEN..payload | 0D 0A
+        const QByteArray body = QByteArray::fromHex("AA550310010203");
+        const QByteArray crc =
+            AppChecksum::calculate(body.mid(2), protocol.checksumAlgorithm, protocol.checksumByteOrder).bytes;
+        const QByteArray frame = body + crc + protocol.trailer;
+        const auto parsed = AppProtocol::parseFrame(frame, protocol);
+        QVERIFY2(parsed.ok && parsed.checksumValid, qPrintable(parsed.errorMessage));
+        QCOMPARE(parsed.frameLength, int(frame.size()));
+        QCOMPARE(parsed.payload, QByteArray::fromHex("010203"));
+        QCOMPARE(parsed.checksum, crc);
+        const auto layout = AppProtocol::frameLayout(frame, protocol);
+        QCOMPARE(layout.checksumOffset, qint64(7));
+        QCOMPARE(layout.trailerOffset, qint64(9));
+        QCOMPARE(layout.frameLength, qint64(11));
+
+        AppProtocol::ProtocolTemplate wholeFrame = protocol;
+        wholeFrame.checksumStart = 0;
+        QVERIFY(!AppProtocol::parseFrame(frame, wholeFrame).checksumValid);
+
+        QByteArray wrongTrailer = frame;
+        wrongTrailer[wrongTrailer.size() - 1] = '\x0B';
+        const auto mismatch = AppProtocol::parseFrame(wrongTrailer, protocol);
+        QVERIFY(!mismatch.ok);
+        QCOMPARE(mismatch.errorMessage, AppI18n::text("帧尾不匹配"));
+
+        AppProtocol::ProtocolTemplate frameLength = protocol;
+        frameLength.lengthMode = AppProtocol::LengthMode::FrameLength;
+        const QByteArray example = AppProtocol::exampleFrame(frameLength);
+        QVERIFY(example.endsWith(protocol.trailer));
+        QCOMPARE(int(static_cast<unsigned char>(example.at(2))), int(example.size()));
+        const auto parsedExample = AppProtocol::parseFrame(example, frameLength);
+        QVERIFY2(parsedExample.ok && parsedExample.checksumValid, qPrintable(parsedExample.errorMessage));
+
+        AppProtocol::ProtocolTemplate pastChecksum = protocol;
+        pastChecksum.checksumStart = 7;
+        const auto late = AppProtocol::parseFrame(frame, pastChecksum);
+        QVERIFY(!late.ok);
+        QCOMPARE(late.errorMessage, AppI18n::text("校验起始偏移应小于校验位置 %1").arg(7));
+        // The example frame has a longer payload, so it needs a later start to fail.
+        QVERIFY(!AppProtocol::exampleFrame(pastChecksum).isEmpty());
+        pastChecksum.checksumStart = 100;
+        QVERIFY(AppProtocol::exampleFrame(pastChecksum).isEmpty());
+
+        QVERIFY(AppProtocol::fromJson(AppProtocol::toJson(protocol)) == protocol);
+        // Templates saved before these fields existed check the whole frame and have no trailer.
+        QJsonObject saved = AppProtocol::toJson(AppProtocol::defaultTemplate());
+        saved.remove(QStringLiteral("checksumStart"));
+        saved.remove(QStringLiteral("trailer"));
+        QVERIFY(AppProtocol::fromJson(saved) == AppProtocol::defaultTemplate());
+    }
+
     void exampleFramesParseWithTheirTemplate()
     {
         AppProtocol::ProtocolTemplate frameLength = AppProtocol::defaultTemplate();
@@ -148,8 +222,12 @@ class FrameCodecsTest : public QObject
         fixedPayload.payloadLength = 2;
         AppProtocol::ProtocolTemplate noLength = AppProtocol::defaultTemplate();
         noLength.lengthSize = 0;
+        AppProtocol::ProtocolTemplate trailer = AppProtocol::defaultTemplate();
+        trailer.trailer = QByteArray::fromHex("0D0A");
+        AppProtocol::ProtocolTemplate trailerNoLength = noLength;
+        trailerNoLength.trailer = QByteArray::fromHex("03");
         for (const AppProtocol::ProtocolTemplate &protocol :
-             {AppProtocol::defaultTemplate(), frameLength, fixedPayload, noLength}) {
+             {AppProtocol::defaultTemplate(), frameLength, fixedPayload, noLength, trailer, trailerNoLength}) {
             const QByteArray frame = AppProtocol::exampleFrame(protocol);
             const auto parsed = AppProtocol::parseFrame(frame, protocol);
             QVERIFY2(parsed.ok && parsed.checksumValid, qPrintable(parsed.errorMessage));
@@ -157,7 +235,8 @@ class FrameCodecsTest : public QObject
             QCOMPARE(layout.lengthValue, parsed.lengthValue);
             QCOMPARE(layout.frameLength, qint64(parsed.frameLength));
             QCOMPARE(layout.payloadLength, qint64(parsed.payload.size()));
-            QCOMPARE(layout.checksumOffset, qint64(parsed.frameLength - parsed.checksum.size()));
+            QCOMPARE(layout.trailerOffset, qint64(parsed.frameLength - protocol.trailer.size()));
+            QCOMPARE(layout.checksumOffset, layout.trailerOffset - parsed.checksum.size());
         }
         // A length field past the end of the frame reads as 0.
         const auto truncated = AppProtocol::frameLayout(QByteArray::fromHex("AA55"), AppProtocol::defaultTemplate());
@@ -182,6 +261,8 @@ class FrameCodecsTest : public QObject
             [](auto &item) { item.payloadLength = 3; },
             [](auto &item) { item.checksumAlgorithm = QStringLiteral("crc32"); },
             [](auto &item) { item.checksumByteOrder = AppChecksum::ByteOrder::BigEndian; },
+            [](auto &item) { item.checksumStart = 2; },
+            [](auto &item) { item.trailer = QByteArray::fromHex("0D0A"); },
         };
         for (const auto &change : changes) {
             AppProtocol::ProtocolTemplate changed = base;

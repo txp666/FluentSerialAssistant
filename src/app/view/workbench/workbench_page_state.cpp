@@ -197,6 +197,10 @@ void WorkbenchPage::restoreSettings()
         m_checksumByteOrderCombo->setCurrentIndex(checksumByteOrderIndex);
     }
     m_checksumAppendCheck->setChecked(settings.value(QStringLiteral("checksum/autoAppend"), false).toBool());
+    setNumberEditValue(m_checksumSkipLeadingEdit, settings.value(QStringLiteral("checksum/skipLeading"), 0).toInt(), 0,
+                       MaxChecksumSkipBytes);
+    setNumberEditValue(m_checksumSkipTrailingEdit, settings.value(QStringLiteral("checksum/skipTrailing"), 0).toInt(),
+                       0, MaxChecksumSkipBytes);
     const int eolIndex = m_lineEndingCombo->findData(lineEnding);
     if (eolIndex >= 0) {
         m_lineEndingCombo->setCurrentIndex(eolIndex);
@@ -302,6 +306,10 @@ void WorkbenchPage::saveSettings() const
     settings.setValue(QStringLiteral("checksum/algorithm"), checksumAlgorithmKey());
     settings.setValue(QStringLiteral("checksum/byteOrder"), AppChecksum::byteOrderKey(checksumByteOrder()));
     settings.setValue(QStringLiteral("checksum/autoAppend"), m_checksumAppendCheck->isChecked());
+    settings.setValue(QStringLiteral("checksum/skipLeading"),
+                      numberEditValue(m_checksumSkipLeadingEdit, 0, 0, MaxChecksumSkipBytes));
+    settings.setValue(QStringLiteral("checksum/skipTrailing"),
+                      numberEditValue(m_checksumSkipTrailingEdit, 0, 0, MaxChecksumSkipBytes));
     settings.setValue(QStringLiteral("send/lineEnding"), selectedLineEndingKey());
     settings.setValue(QStringLiteral("send/showTx"), m_showTxCheck->isChecked());
     settings.setValue(QStringLiteral("send/txColor"), selectedTxColor().name(QColor::HexRgb));
@@ -416,6 +424,12 @@ void WorkbenchPage::copySessionConfigFrom(const WorkbenchPage &source)
         m_checksumByteOrderCombo->setCurrentIndex(checksumByteOrderIndex);
     }
     m_checksumAppendCheck->setChecked(source.m_checksumAppendCheck->isChecked());
+    setNumberEditValue(m_checksumSkipLeadingEdit,
+                       numberEditValue(source.m_checksumSkipLeadingEdit, 0, 0, MaxChecksumSkipBytes), 0,
+                       MaxChecksumSkipBytes);
+    setNumberEditValue(m_checksumSkipTrailingEdit,
+                       numberEditValue(source.m_checksumSkipTrailingEdit, 0, 0, MaxChecksumSkipBytes), 0,
+                       MaxChecksumSkipBytes);
     const int lineEndingIndex = m_lineEndingCombo->findData(source.selectedLineEndingKey());
     if (lineEndingIndex >= 0) {
         m_lineEndingCombo->setCurrentIndex(lineEndingIndex);

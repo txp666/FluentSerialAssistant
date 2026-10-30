@@ -18,7 +18,8 @@ AppChecksum::ByteOrder WorkbenchPage::checksumByteOrder() const
                                              : AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian));
 }
 
-QByteArray WorkbenchPage::payloadWithOptionalChecksum(const QByteArray &payload, bool *ok)
+QByteArray WorkbenchPage::payloadWithOptionalChecksum(const QByteArray &payload, const QString &lineEndingKey, bool *ok,
+                                                      QString *error)
 {
     if (ok) {
         *ok = false;
@@ -31,26 +32,54 @@ QByteArray WorkbenchPage::payloadWithOptionalChecksum(const QByteArray &payload,
         return payload;
     }
 
-    const AppChecksum::ChecksumResult result =
-        AppChecksum::calculate(payload, checksumAlgorithmKey(), checksumByteOrder());
+    int trailingBytes = 0;
+    const AppChecksum::ChecksumResult result = sendChecksum(payload, lineEndingKey, &trailingBytes);
     if (!result.ok) {
-        showWarning(AppI18n::text("校验计算失败"), result.errorMessage);
+        if (error) {
+            *error = result.errorMessage;
+        } else {
+            showWarning(AppI18n::text("校验计算失败"), result.errorMessage);
+        }
         return payload;
     }
 
     QByteArray output = payload;
-    output.append(result.bytes);
+    output.insert(output.size() - trailingBytes, result.bytes);
     if (ok) {
         *ok = true;
     }
-    setChecksumResultText(QStringLiteral("%1 0x%2 · %3")
-                              .arg(AppChecksum::labelForAlgorithm(checksumAlgorithmKey()),
-                                   QStringLiteral("%1")
-                                       .arg(result.value, AppChecksum::widthForAlgorithm(checksumAlgorithmKey()) * 2,
-                                            16, QLatin1Char('0'))
-                                       .toUpper(),
-                                   bytesToHex(result.bytes)));
     return output;
+}
+
+AppChecksum::ChecksumResult WorkbenchPage::sendChecksum(const QByteArray &payload, const QString &lineEndingKey,
+                                                        int *trailingBytes)
+{
+    // The line ending always ends the frame, so it follows the checksum too.
+    const int skipLeading = numberEditValue(m_checksumSkipLeadingEdit, 0, 0, MaxChecksumSkipBytes);
+    const int skipTrailing = numberEditValue(m_checksumSkipTrailingEdit, 0, 0, MaxChecksumSkipBytes) +
+                             int(lineEndingForKey(lineEndingKey).size());
+    if (trailingBytes) {
+        *trailingBytes = skipTrailing;
+    }
+    const AppChecksum::ChecksumResult result =
+        AppChecksum::calculate(payload, checksumAlgorithmKey(), checksumByteOrder(), skipLeading, skipTrailing);
+    if (!result.ok) {
+        return result;
+    }
+
+    QString text = QStringLiteral("%1 0x%2 · %3")
+                       .arg(AppChecksum::labelForAlgorithm(checksumAlgorithmKey()),
+                            QStringLiteral("%1")
+                                .arg(result.value, AppChecksum::widthForAlgorithm(checksumAlgorithmKey()) * 2, 16,
+                                     QLatin1Char('0'))
+                                .toUpper(),
+                            bytesToHex(result.bytes));
+    if (skipLeading > 0 || skipTrailing > 0) {
+        text += QStringLiteral(" · ") +
+                AppI18n::text("覆盖字节 %1–%2").arg(skipLeading).arg(payload.size() - skipTrailing - 1);
+    }
+    setChecksumResultText(text);
+    return result;
 }
 
 void WorkbenchPage::calculateChecksumForCurrentPayload()
@@ -65,20 +94,10 @@ void WorkbenchPage::calculateChecksumForCurrentPayload()
         return;
     }
 
-    const AppChecksum::ChecksumResult result =
-        AppChecksum::calculate(payload, checksumAlgorithmKey(), checksumByteOrder());
+    const AppChecksum::ChecksumResult result = sendChecksum(payload, selectedLineEndingKey());
     if (!result.ok) {
         showWarning(AppI18n::text("校验计算失败"), result.errorMessage);
-        return;
     }
-
-    setChecksumResultText(QStringLiteral("%1 0x%2 · %3")
-                              .arg(AppChecksum::labelForAlgorithm(checksumAlgorithmKey()),
-                                   QStringLiteral("%1")
-                                       .arg(result.value, AppChecksum::widthForAlgorithm(checksumAlgorithmKey()) * 2,
-                                            16, QLatin1Char('0'))
-                                       .toUpper(),
-                                   bytesToHex(result.bytes)));
 }
 
 void WorkbenchPage::setChecksumResultText(const QString &text)

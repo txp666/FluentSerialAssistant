@@ -98,7 +98,8 @@ bool operator==(const ProtocolTemplate &left, const ProtocolTemplate &right)
            left.lengthByteOrder == right.lengthByteOrder && left.commandOffset == right.commandOffset &&
            left.commandSize == right.commandSize && left.payloadOffset == right.payloadOffset &&
            left.payloadLength == right.payloadLength && left.checksumAlgorithm == right.checksumAlgorithm &&
-           left.checksumByteOrder == right.checksumByteOrder;
+           left.checksumByteOrder == right.checksumByteOrder && left.checksumStart == right.checksumStart &&
+           left.trailer == right.trailer;
 }
 
 ProtocolTemplate fromJson(const QJsonObject &object)
@@ -123,6 +124,9 @@ ProtocolTemplate fromJson(const QJsonObject &object)
     item.checksumAlgorithm = object.value(QStringLiteral("checksumAlgorithm")).toString(item.checksumAlgorithm);
     item.checksumByteOrder = AppChecksum::byteOrderFromKey(
         object.value(QStringLiteral("checksumByteOrder")).toString(AppChecksum::byteOrderKey(item.checksumByteOrder)));
+    item.checksumStart = boundedOffset(object.value(QStringLiteral("checksumStart")).toInt(item.checksumStart));
+    item.trailer =
+        QByteArray::fromHex(object.value(QStringLiteral("trailer")).toString(bytesToHex(item.trailer)).toLatin1());
     if (item.name.isEmpty()) {
         item.name = defaultTemplate().name;
     }
@@ -144,6 +148,8 @@ QJsonObject toJson(const ProtocolTemplate &protocolTemplate)
     object.insert(QStringLiteral("payloadLength"), protocolTemplate.payloadLength);
     object.insert(QStringLiteral("checksumAlgorithm"), protocolTemplate.checksumAlgorithm);
     object.insert(QStringLiteral("checksumByteOrder"), AppChecksum::byteOrderKey(protocolTemplate.checksumByteOrder));
+    object.insert(QStringLiteral("checksumStart"), protocolTemplate.checksumStart);
+    object.insert(QStringLiteral("trailer"), bytesToHex(protocolTemplate.trailer));
     return object;
 }
 
@@ -172,6 +178,7 @@ FrameLayout frameLayout(const QByteArray &frame, const ProtocolTemplate &protoco
 {
     FrameLayout layout;
     const int checksumBytes = checksumSize(protocolTemplate);
+    const int trailerBytes = int(protocolTemplate.trailer.size());
     if (protocolTemplate.lengthSize > 0 && protocolTemplate.lengthOffset >= 0 &&
         protocolTemplate.lengthOffset + protocolTemplate.lengthSize <= frame.size()) {
         layout.lengthValue = readUnsigned(frame, protocolTemplate.lengthOffset, protocolTemplate.lengthSize,
@@ -182,11 +189,13 @@ FrameLayout frameLayout(const QByteArray &frame, const ProtocolTemplate &protoco
     if (protocolTemplate.lengthSize > 0 && protocolTemplate.lengthMode == LengthMode::FrameLength) {
         layout.frameLength = layout.lengthValue;
     } else if (protocolTemplate.payloadLength > 0) {
-        layout.frameLength = qint64(protocolTemplate.payloadOffset) + protocolTemplate.payloadLength + checksumBytes;
+        layout.frameLength =
+            qint64(protocolTemplate.payloadOffset) + protocolTemplate.payloadLength + checksumBytes + trailerBytes;
     } else if (protocolTemplate.lengthSize > 0) {
-        layout.frameLength = qint64(protocolTemplate.payloadOffset) + layout.lengthValue + checksumBytes;
+        layout.frameLength = qint64(protocolTemplate.payloadOffset) + layout.lengthValue + checksumBytes + trailerBytes;
     }
-    layout.checksumOffset = layout.frameLength - checksumBytes;
+    layout.trailerOffset = layout.frameLength - trailerBytes;
+    layout.checksumOffset = layout.trailerOffset - checksumBytes;
     layout.payloadLength = protocolTemplate.payloadLength > 0
                                ? protocolTemplate.payloadLength
                                : layout.checksumOffset - protocolTemplate.payloadOffset;
@@ -234,6 +243,10 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
 
     const QByteArray currentFrame = frame.left(frameLength);
     result.frameLength = frameLength;
+    if (!protocolTemplate.trailer.isEmpty() && !currentFrame.endsWith(protocolTemplate.trailer)) {
+        result.errorMessage = AppI18n::text("帧尾不匹配");
+        return result;
+    }
 
     if (protocolTemplate.commandSize > 0) {
         if (protocolTemplate.commandOffset < 0 ||
@@ -252,14 +265,19 @@ ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocol
     result.payload = currentFrame.mid(protocolTemplate.payloadOffset, int(layout.payloadLength));
 
     if (checksumBytes > 0) {
-        if (checksumBytes >= currentFrame.size()) {
+        if (layout.checksumOffset <= 0) {
             result.errorMessage = AppI18n::text("校验字段超出帧范围");
             return result;
         }
-        const QByteArray checksumPayload = currentFrame.left(currentFrame.size() - checksumBytes);
-        result.checksum = currentFrame.right(checksumBytes);
+        const int checksumOffset = int(layout.checksumOffset);
+        if (protocolTemplate.checksumStart >= checksumOffset) {
+            result.errorMessage = AppI18n::text("校验起始偏移应小于校验位置 %1").arg(checksumOffset);
+            return result;
+        }
+        result.checksum = currentFrame.mid(checksumOffset, checksumBytes);
         const AppChecksum::ChecksumResult checksum = AppChecksum::calculate(
-            checksumPayload, protocolTemplate.checksumAlgorithm, protocolTemplate.checksumByteOrder);
+            currentFrame.mid(protocolTemplate.checksumStart, checksumOffset - protocolTemplate.checksumStart),
+            protocolTemplate.checksumAlgorithm, protocolTemplate.checksumByteOrder);
         if (!checksum.ok) {
             result.errorMessage = checksum.errorMessage;
             return result;
@@ -290,7 +308,8 @@ QByteArray exampleFrame(const ProtocolTemplate &protocolTemplate)
         protocolTemplate.header.size() > checksumOffset || protocolTemplate.lengthOffset < 0 ||
         protocolTemplate.lengthOffset + protocolTemplate.lengthSize > checksumOffset ||
         protocolTemplate.commandOffset < 0 ||
-        protocolTemplate.commandOffset + protocolTemplate.commandSize > checksumOffset) {
+        protocolTemplate.commandOffset + protocolTemplate.commandSize > checksumOffset ||
+        (checksumBytes > 0 && protocolTemplate.checksumStart >= checksumOffset)) {
         return {};
     }
     QByteArray frame(static_cast<int>(checksumOffset), '\0');
@@ -303,7 +322,8 @@ QByteArray exampleFrame(const ProtocolTemplate &protocolTemplate)
         frame[protocolTemplate.payloadOffset + index] = payload.at(index % payload.size());
     }
     quint32 length = protocolTemplate.lengthMode == LengthMode::FrameLength
-                         ? frame.size() + checksumBytes : payloadSize;
+                         ? frame.size() + checksumBytes + protocolTemplate.trailer.size()
+                         : payloadSize;
     for (int index = 0; index < protocolTemplate.lengthSize; ++index) {
         const int byteIndex = protocolTemplate.lengthByteOrder == AppChecksum::ByteOrder::LittleEndian
                                   ? index : protocolTemplate.lengthSize - index - 1;
@@ -311,13 +331,15 @@ QByteArray exampleFrame(const ProtocolTemplate &protocolTemplate)
         length >>= 8;
     }
     if (checksumBytes > 0) {
-        const AppChecksum::ChecksumResult checksum = AppChecksum::calculate(
-            frame, protocolTemplate.checksumAlgorithm, protocolTemplate.checksumByteOrder);
+        const AppChecksum::ChecksumResult checksum =
+            AppChecksum::calculate(frame.mid(protocolTemplate.checksumStart), protocolTemplate.checksumAlgorithm,
+                                   protocolTemplate.checksumByteOrder);
         if (!checksum.ok) {
             return {};
         }
         frame.append(checksum.bytes);
     }
+    frame.append(protocolTemplate.trailer);
     return frame;
 }
 

@@ -330,7 +330,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
         layout->addLayout(fields);
     };
 
-    auto *basicGroup = group(AppI18n::text("名称与帧头"));
+    auto *basicGroup = group(AppI18n::text("名称、帧头与帧尾"));
     auto *editorTemplateCombo = new ComboBox(editor);
     editorTemplateCombo->setObjectName(QStringLiteral("protocolEditorTemplateCombo"));
     editorTemplateCombo->setPlaceholderText(AppI18n::text("未保存的协议"));
@@ -360,6 +360,12 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     m_protocolHeaderEdit->setPlaceholderText(AppI18n::text("帧头 HEX，如 AA 55"));
     makeCompactControl(m_protocolHeaderEdit);
     addFormRow(basicGroup, AppI18n::text("帧头"), m_protocolHeaderEdit);
+
+    m_protocolTrailerEdit = new LineEdit(editor);
+    m_protocolTrailerEdit->setObjectName(QStringLiteral("protocolTemplateTrailerEdit"));
+    m_protocolTrailerEdit->setPlaceholderText(AppI18n::text("帧尾 HEX，如 0D 0A，可留空"));
+    makeCompactControl(m_protocolTrailerEdit);
+    addFormRow(basicGroup, AppI18n::text("帧尾"), m_protocolTrailerEdit);
 
     auto *lengthGroup = group(AppI18n::text("长度字段"));
     m_protocolLengthOffsetEdit = createNumberEdit(editor, 2, 0, 65535);
@@ -423,7 +429,12 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     addChecksumByteOrderOptions(m_protocolChecksumByteOrderCombo);
     makeCompactControl(m_protocolChecksumByteOrderCombo);
     addFormRow(checksumGroup, AppI18n::text("字节序"), m_protocolChecksumByteOrderCombo);
-    auto *checksumHint = new CaptionLabel(AppI18n::text("校验位于帧末尾，计算范围为校验前的全部字节。"), editor);
+
+    m_protocolChecksumStartEdit = createNumberEdit(editor, 0, 0, 65535);
+    m_protocolChecksumStartEdit->setObjectName(QStringLiteral("protocolTemplateChecksumStartEdit"));
+    addFormRow(checksumGroup, AppI18n::text("起始偏移"), m_protocolChecksumStartEdit);
+    auto *checksumHint =
+        new CaptionLabel(AppI18n::text("校验位于载荷之后、帧尾之前，计算范围从起始偏移到校验前一字节。"), editor);
     checksumHint->setWordWrap(true);
     checksumGroup->addWidget(checksumHint);
 
@@ -486,6 +497,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     });
     connect(m_protocolNameEdit, &LineEdit::textChanged, this, markDirty);
     connect(m_protocolHeaderEdit, &LineEdit::textChanged, this, markDirty);
+    connect(m_protocolTrailerEdit, &LineEdit::textChanged, this, markDirty);
     connect(m_protocolLengthOffsetEdit, &LineEdit::textChanged, this, markDirty);
     connect(m_protocolLengthSizeCombo, &ComboBox::currentIndexChanged, this, markDirty);
     connect(m_protocolLengthModeCombo, &ComboBox::currentIndexChanged, this, markDirty);
@@ -496,6 +508,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     connect(m_protocolPayloadLengthEdit, &LineEdit::textChanged, this, markDirty);
     connect(m_protocolChecksumAlgorithmCombo, &ComboBox::currentIndexChanged, this, markDirty);
     connect(m_protocolChecksumByteOrderCombo, &ComboBox::currentIndexChanged, this, markDirty);
+    connect(m_protocolChecksumStartEdit, &LineEdit::textChanged, this, markDirty);
     connect(m_protocolSaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentProtocolTemplate);
     connect(m_protocolDeleteButton, &PushButton::clicked, this, &WorkbenchPage::deleteCurrentProtocolTemplate);
     connect(m_protocolExampleButton, &PushButton::clicked, this, &WorkbenchPage::insertProtocolTemplateExample);
@@ -538,6 +551,32 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     m_checksumAppendCheck->setMinimumWidth(0);
     m_checksumAppendCheck->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     addFormRow(root, AppI18n::text("字节序"), m_checksumByteOrderCombo, m_checksumAppendCheck);
+
+    // Bytes skipped at the end follow the checksum, and the line ending
+    // follows them.
+    auto *checksumRange = new QWidget(section);
+    auto *checksumRangeLayout = new QHBoxLayout(checksumRange);
+    checksumRangeLayout->setContentsMargins(0, 0, 0, 0);
+    checksumRangeLayout->setSpacing(6);
+    m_checksumSkipLeadingEdit = createNumberEdit(checksumRange, 0, 0, MaxChecksumSkipBytes);
+    m_checksumSkipLeadingEdit->setObjectName(QStringLiteral("checksumSkipLeadingEdit"));
+    m_checksumSkipTrailingEdit = createNumberEdit(checksumRange, 0, 0, MaxChecksumSkipBytes);
+    m_checksumSkipTrailingEdit->setObjectName(QStringLiteral("checksumSkipTrailingEdit"));
+    const QString checksumRangeTip =
+        AppI18n::text("开头和末尾跳过的字节不参与校验，校验码插在末尾跳过的字节之前；换行符始终在最后。");
+    const auto checksumRangeLabel = [checksumRange](const QString &text) {
+        auto *label = new CaptionLabel(text, checksumRange);
+        label->setFixedHeight(CompactControlHeight);
+        return label;
+    };
+    checksumRangeLayout->addWidget(checksumRangeLabel(AppI18n::text("开头")));
+    checksumRangeLayout->addWidget(m_checksumSkipLeadingEdit, 1);
+    checksumRangeLayout->addWidget(checksumRangeLabel(AppI18n::text("末尾")));
+    checksumRangeLayout->addWidget(m_checksumSkipTrailingEdit, 1);
+    checksumRange->setToolTip(checksumRangeTip);
+    m_checksumSkipLeadingEdit->setToolTip(checksumRangeTip);
+    m_checksumSkipTrailingEdit->setToolTip(checksumRangeTip);
+    addFormRow(root, AppI18n::text("跳过字节"), checksumRange);
 
     m_checksumResultLabel = new CaptionLabel(AppI18n::text("校验未计算"), section);
     m_checksumResultLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
@@ -592,6 +631,16 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     connect(m_checksumAppendCheck, &CheckBox::toggled, this, [](bool checked) {
         AppSettings settings;
         settings.setValue(QStringLiteral("checksum/autoAppend"), checked);
+    });
+    connect(m_checksumSkipLeadingEdit, &LineEdit::textChanged, this, [this](const QString &) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("checksum/skipLeading"),
+                          numberEditValue(m_checksumSkipLeadingEdit, 0, 0, MaxChecksumSkipBytes));
+    });
+    connect(m_checksumSkipTrailingEdit, &LineEdit::textChanged, this, [this](const QString &) {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("checksum/skipTrailing"),
+                          numberEditValue(m_checksumSkipTrailingEdit, 0, 0, MaxChecksumSkipBytes));
     });
     connect(m_checksumCalcButton, &PushButton::clicked, this, &WorkbenchPage::calculateChecksumForCurrentPayload);
     connect(m_hexSendCheck, &CheckBox::toggled, this, [this](bool checked) {

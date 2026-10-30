@@ -362,25 +362,15 @@ bool WorkbenchPage::sendScriptPayload(const QString &payloadText, const QString 
         return false;
     }
 
-    QByteArray output = payload;
-    if (m_checksumAppendCheck && m_checksumAppendCheck->isChecked()) {
-        const AppChecksum::ChecksumResult checksum =
-            AppChecksum::calculate(payload, checksumAlgorithmKey(), checksumByteOrder());
-        if (!checksum.ok) {
-            if (error) {
-                *error = checksum.errorMessage;
-            }
-            return false;
+    bool checksumOk = false;
+    QString checksumError;
+    const QByteArray output =
+        payloadWithOptionalChecksum(payload, normalizedScriptLineEnding(lineEndingKey), &checksumOk, &checksumError);
+    if (!checksumOk) {
+        if (error) {
+            *error = checksumError;
         }
-        output.append(checksum.bytes);
-        setChecksumResultText(
-            QStringLiteral("%1 0x%2 · %3")
-                .arg(AppChecksum::labelForAlgorithm(checksumAlgorithmKey()),
-                     QStringLiteral("%1")
-                         .arg(checksum.value, AppChecksum::widthForAlgorithm(checksumAlgorithmKey()) * 2, 16,
-                              QLatin1Char('0'))
-                         .toUpper(),
-                     bytesToHex(checksum.bytes)));
+        return false;
     }
 
     QString writeError;

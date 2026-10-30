@@ -262,7 +262,14 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QString formatRecordLine(const SessionRecord &record, int *contentStart = nullptr) const;
     void applyTerminalColorConfig(const AppTerminal::ColorConfig &config);
     QColor selectedTxColor() const;
-    QByteArray payloadWithOptionalChecksum(const QByteArray &payload, bool *ok = nullptr);
+    // Puts the checksum in front of the bytes skipped at the end and the line
+    // ending. A failure goes to error, or to a warning when error is null.
+    QByteArray payloadWithOptionalChecksum(const QByteArray &payload, const QString &lineEndingKey, bool *ok = nullptr,
+                                           QString *error = nullptr);
+    // The checksum of the send settings' range of payload; trailingBytes
+    // receives how many bytes follow the checksum.
+    AppChecksum::ChecksumResult sendChecksum(const QByteArray &payload, const QString &lineEndingKey,
+                                             int *trailingBytes = nullptr);
     void calculateChecksumForCurrentPayload();
     void setChecksumResultText(const QString &text);
     AppModbus::RequestConfig currentModbusConfig() const;
@@ -525,6 +532,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::LineEdit *m_framePatternEdit = nullptr;
     FluentQt::LineEdit *m_protocolNameEdit = nullptr;
     FluentQt::LineEdit *m_protocolHeaderEdit = nullptr;
+    FluentQt::LineEdit *m_protocolTrailerEdit = nullptr;
     FluentQt::PlainTextEdit *m_modbusValuesEdit = nullptr;
     FluentQt::PlainTextEdit *m_packetPayloadEdit = nullptr;
     FluentQt::PlainTextEdit *m_macroPayloadEdit = nullptr;
@@ -628,10 +636,13 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::LineEdit *m_protocolCommandSizeEdit = nullptr;
     FluentQt::LineEdit *m_protocolPayloadOffsetEdit = nullptr;
     FluentQt::LineEdit *m_protocolPayloadLengthEdit = nullptr;
+    FluentQt::LineEdit *m_protocolChecksumStartEdit = nullptr;
     FluentQt::LineEdit *m_modbusSlaveEdit = nullptr;
     FluentQt::LineEdit *m_modbusAddressEdit = nullptr;
     FluentQt::LineEdit *m_modbusQuantityEdit = nullptr;
     FluentQt::LineEdit *m_loopIntervalEdit = nullptr;
+    FluentQt::LineEdit *m_checksumSkipLeadingEdit = nullptr;
+    FluentQt::LineEdit *m_checksumSkipTrailingEdit = nullptr;
     FluentQt::LineEdit *m_macroTimeoutEdit = nullptr;
     FluentQt::LineEdit *m_macroDelayEdit = nullptr;
     FluentQt::LineEdit *m_macroLoopCountEdit = nullptr;

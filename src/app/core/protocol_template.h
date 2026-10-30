@@ -30,6 +30,10 @@ struct ProtocolTemplate
     int payloadLength = 0;
     QString checksumAlgorithm = QStringLiteral("none");
     AppChecksum::ByteOrder checksumByteOrder = AppChecksum::ByteOrder::LittleEndian;
+    // The checksum covers the bytes from this offset up to the checksum.
+    int checksumStart = 0;
+    // Fixed bytes that end every frame, after the checksum.
+    QByteArray trailer;
 };
 
 struct ParseResult
@@ -53,6 +57,7 @@ struct FrameLayout
     quint32 lengthValue = 0;
     qint64 frameLength = 0;
     qint64 checksumOffset = 0;
+    qint64 trailerOffset = 0;
     qint64 payloadLength = 0;
 };
 

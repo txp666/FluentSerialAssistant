@@ -322,7 +322,7 @@ void WorkbenchPage::sendAutoReplyRule(const AutoReplyRule &rule)
         return;
     }
     bool checksumOk = false;
-    const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
+    const QByteArray output = payloadWithOptionalChecksum(payload, rule.lineEnding, &checksumOk);
     if (!checksumOk) {
         if (m_autoReplyStatusLabel) {
             m_autoReplyStatusLabel->setText(AppI18n::text("自动应答校验失败：%1").arg(rule.name));

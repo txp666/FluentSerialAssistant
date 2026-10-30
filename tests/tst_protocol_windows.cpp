@@ -343,7 +343,7 @@ class ProtocolWindowsTest : public QObject
         auto *status = window->findChild<FluentQt::FluentLabelBase *>(QStringLiteral("protocolTemplateParseStatusLabel"));
         auto *sample = window->findChild<QPlainTextEdit *>(QStringLiteral("protocolTemplateSampleEdit"));
         QVERIFY(structure && table && status && sample);
-        QCOMPARE(table->model()->rowCount(), 6);
+        QCOMPARE(table->model()->rowCount(), 7);
         QCOMPARE(table->model()->data(table->model()->index(0, 2)).toString(), QStringLiteral("AA 55"));
         QCOMPARE(table->model()->data(table->model()->index(2, 2)).toString(), QStringLiteral("10"));
         QCOMPARE(table->model()->data(table->model()->index(3, 2)).toString(), QStringLiteral("01 02 03"));
@@ -428,6 +428,45 @@ class ProtocolWindowsTest : public QObject
         QCOMPARE(AppProtocol::listToJson(page.m_protocolTemplates), before);
         page.m_protocolPayloadOffsetEdit->setText(QStringLiteral("4"));
         QVERIFY(page.m_protocolSaveButton->isEnabled());
+        page.m_protocolTrailerEdit->setText(QStringLiteral("0D ZZ"));
+        QVERIFY(!page.m_protocolSaveButton->isEnabled());
+        page.m_protocolTrailerEdit->setText(QStringLiteral("0D 0A"));
+        QVERIFY(page.m_protocolSaveButton->isEnabled());
+    }
+
+    void frameWindowShowsTrailerAndChecksumRange()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.showProtocolTemplateWindow();
+        auto *window = page.m_protocolTemplateWindow;
+        auto *table = window->findChild<FluentQt::TableView *>(QStringLiteral("protocolTemplateResultsTable"));
+        auto *status =
+            window->findChild<FluentQt::FluentLabelBase *>(QStringLiteral("protocolTemplateParseStatusLabel"));
+        auto *trailer = window->findChild<FluentQt::LineEdit *>(QStringLiteral("protocolTemplateTrailerEdit"));
+        auto *start = window->findChild<FluentQt::LineEdit *>(QStringLiteral("protocolTemplateChecksumStartEdit"));
+        QVERIFY(table && status && trailer && start);
+        QVERIFY(start->isEnabled());
+        trailer->setText(QStringLiteral("0D 0A"));
+        start->setText(QStringLiteral("2"));
+        const AppProtocol::ProtocolTemplate protocol = page.currentProtocolTemplateFromUi();
+        QCOMPARE(protocol.trailer, QByteArray::fromHex("0D0A"));
+        QCOMPARE(protocol.checksumStart, 2);
+
+        const QByteArray frame = AppProtocol::exampleFrame(protocol);
+        window->setSampleHex(bytesToHex(frame));
+        QVERIFY2(status->text().contains(AppI18n::text("校验正确")), qPrintable(status->text()));
+        const auto cell = [table](int row, int column) {
+            return table->model()->data(table->model()->index(row, column)).toString();
+        };
+        QCOMPARE(cell(5, 0), AppI18n::text("帧尾"));
+        QCOMPARE(cell(5, 2), QStringLiteral("0D 0A"));
+        const int checksumOffset = int(frame.size()) - 4;
+        QVERIFY(cell(4, 2).contains(AppI18n::text("覆盖 %1").arg(QStringLiteral("2–%1").arg(checksumOffset - 1))));
+        capture(*window, QStringLiteral("frame-protocol-trailer"));
+
+        page.m_protocolChecksumAlgorithmCombo->setCurrentIndex(
+            page.m_protocolChecksumAlgorithmCombo->findData(AppProtocol::checksumNoneKey()));
+        QVERIFY(!start->isEnabled());
     }
 
     void excessiveFourByteLengthIsRejectedByBothProtocolPreviews_data()
