@@ -70,8 +70,8 @@ The macOS build is not notarized by Apple. If macOS blocks it on first launch, c
 
 ### Protocols and tools
 
-- Frame protocol templates: define header, length, command, payload, and checksum in a visual editor and check them against a sample or the latest received frame. Once enabled, received records show the command and checksum status.
-- Checksums: CRC16-Modbus, CRC16-CCITT, CRC32, LRC, XOR, and SUM8, calculated by hand or appended when sending.
+- Frame protocol templates: define header, length, command, payload, checksum, and frame tail in a visual editor, with the checksum starting at a chosen offset, and check them against a sample or the latest received frame. Once enabled, received records show the command and checksum status.
+- Checksums: CRC16-Modbus, CRC16-CCITT, CRC32, LRC, XOR, and SUM8, calculated by hand or added when sending. Bytes at the start and end (such as a header or tail) can be skipped; the checksum goes in front of the skipped end bytes and the line ending.
 - Modbus RTU: build common read and write requests with CRC and summarize responses.
 
 ### Automation

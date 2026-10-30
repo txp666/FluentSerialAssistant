@@ -116,6 +116,10 @@
         <translation>Unsupported checksum algorithm</translation>
     </message>
     <message>
+        <source>校验范围为空：共 %1 B，跳过开头 %2 B、末尾 %3 B</source>
+        <translation>Checksum range is empty: %1 B in total, skipping %2 B at the start and %3 B at the end</translation>
+    </message>
+    <message>
         <source>无法读取字体文件。</source>
         <translation>Unable to read font file.</translation>
     </message>
@@ -1150,10 +1154,6 @@ Expected response: %2</translation>
         <translation>Send content is invalid</translation>
     </message>
     <message>
-        <source>校验码追加失败</source>
-        <translation>Failed to append checksum</translation>
-    </message>
-    <message>
         <source>等待响应超时</source>
         <translation>Response wait timed out</translation>
     </message>
@@ -1570,6 +1570,26 @@ Content: %4</translation>
     <message>
         <source>校验未计算</source>
         <translation>Checksum not calculated</translation>
+    </message>
+    <message>
+        <source>跳过字节</source>
+        <translation>Skip Bytes</translation>
+    </message>
+    <message>
+        <source>开头</source>
+        <translation>Start</translation>
+    </message>
+    <message>
+        <source>末尾</source>
+        <translation>End</translation>
+    </message>
+    <message>
+        <source>开头和末尾跳过的字节不参与校验，校验码插在末尾跳过的字节之前；换行符始终在最后。</source>
+        <translation>Bytes skipped at the start and end are not checked. The checksum goes in front of the bytes skipped at the end, and the line ending always comes last.</translation>
+    </message>
+    <message>
+        <source>覆盖字节 %1–%2</source>
+        <translation>Covers bytes %1–%2</translation>
     </message>
     <message>
         <source>HEX 发送</source>
@@ -2284,6 +2304,10 @@ Total sent: %2</translation>
         <translation>Header mismatch</translation>
     </message>
     <message>
+        <source>帧尾不匹配</source>
+        <translation>Tail mismatch</translation>
+    </message>
+    <message>
         <source>长度字段字节数应为 0、1、2 或 4</source>
         <translation>Length field size must be 0, 1, 2, or 4 bytes</translation>
     </message>
@@ -2310,6 +2334,10 @@ Total sent: %2</translation>
     <message>
         <source>校验字段超出帧范围</source>
         <translation>Checksum field is outside the frame</translation>
+    </message>
+    <message>
+        <source>校验起始偏移应小于校验位置 %1</source>
+        <translation>Checksum start offset must be less than the checksum position %1</translation>
     </message>
     <message>
         <source>%1 · CMD %2 · LEN %3 · PAYLOAD %4 B · %5</source>
@@ -2726,6 +2754,14 @@ Installation log: %2</translation>
         <translation>Invalid frame header: %1 at position %2</translation>
     </message>
     <message>
+        <source>帧尾无效：%1，位置 %2</source>
+        <translation>Invalid frame tail: %1 at position %2</translation>
+    </message>
+    <message>
+        <source>校验起始偏移</source>
+        <translation>Checksum start offset</translation>
+    </message>
+    <message>
         <source>%1需要输入有效的非负整数</source>
         <translation>%1 requires a valid nonnegative integer</translation>
     </message>
@@ -2742,8 +2778,8 @@ Installation log: %2</translation>
         <translation>Edit protocol</translation>
     </message>
     <message>
-        <source>名称与帧头</source>
-        <translation>Name and frame header</translation>
+        <source>名称、帧头与帧尾</source>
+        <translation>Name, frame header and tail</translation>
     </message>
     <message>
         <source>未保存的协议</source>
@@ -2752,6 +2788,10 @@ Installation log: %2</translation>
     <message>
         <source>帧头 HEX，如 AA 55</source>
         <translation>Frame header in HEX, e.g. AA 55</translation>
+    </message>
+    <message>
+        <source>帧尾 HEX，如 0D 0A，可留空</source>
+        <translation>Frame tail in HEX, e.g. 0D 0A (optional)</translation>
     </message>
     <message>
         <source>长度字段</source>
@@ -2786,8 +2826,12 @@ Installation log: %2</translation>
         <translation>Algorithm</translation>
     </message>
     <message>
-        <source>校验位于帧末尾，计算范围为校验前的全部字节。</source>
-        <translation>The checksum is at the end of the frame and covers all preceding bytes.</translation>
+        <source>起始偏移</source>
+        <translation>Start offset</translation>
+    </message>
+    <message>
+        <source>校验位于载荷之后、帧尾之前，计算范围从起始偏移到校验前一字节。</source>
+        <translation>The checksum follows the payload and precedes the frame tail. It covers the bytes from the start offset up to the checksum.</translation>
     </message>
     <message>
         <source>添加示例</source>
@@ -2864,6 +2908,14 @@ Installation log: %2</translation>
     <message>
         <source>预期 %1</source>
         <translation>Expected %1</translation>
+    </message>
+    <message>
+        <source>覆盖 %1</source>
+        <translation>Covers %1</translation>
+    </message>
+    <message>
+        <source>无帧尾</source>
+        <translation>No frame tail</translation>
     </message>
     <message>
         <source>整帧</source>

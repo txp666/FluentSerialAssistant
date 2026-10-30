@@ -31,6 +31,7 @@ const QList<FrameArea> &frameAreas()
         {"命令", QStringLiteral("#70449a"), QStringLiteral("#eee2fb")},
         {"载荷", QStringLiteral("#21673e"), QStringLiteral("#def3e5")},
         {"校验", QStringLiteral("#a34728"), QStringLiteral("#ffe5d8")},
+        {"帧尾", QStringLiteral("#9a2f63"), QStringLiteral("#fbe1ee")},
         {"其他", QStringLiteral("#555555"), QStringLiteral("#eeeeee")},
     };
     return areas;
@@ -259,6 +260,8 @@ void ProtocolTemplateWindow::updatePreview()
     const AppProtocol::FrameLayout layout = AppProtocol::frameLayout(frame, m_protocolTemplate);
     const qint64 expectedFrameLength = layout.frameLength;
     const qint64 checksumOffset = qMax<qint64>(0, layout.checksumOffset);
+    const qint64 trailerOffset = qMax<qint64>(0, layout.trailerOffset);
+    const int trailerSize = int(m_protocolTemplate.trailer.size());
     const qint64 payloadLength = qMax<qint64>(0, layout.payloadLength);
 
     QString html = QStringLiteral("<table cellspacing='4' cellpadding='5'>");
@@ -267,8 +270,10 @@ void ProtocolTemplateWindow::updatePreview()
         if (i % 12 == 0) {
             html += QStringLiteral("<tr>");
         }
-        int areaIndex = 5;
-        if (checksumSize > 0 && i >= checksumOffset && i < expectedFrameLength) {
+        int areaIndex = 6;
+        if (trailerSize > 0 && i >= trailerOffset && i < expectedFrameLength) {
+            areaIndex = 5;
+        } else if (checksumSize > 0 && i >= checksumOffset && i < checksumOffset + checksumSize) {
             areaIndex = 4;
         } else if (i < m_protocolTemplate.header.size()) {
             areaIndex = 0;
@@ -320,18 +325,27 @@ void ProtocolTemplateWindow::updatePreview()
     if (checksumSize > 0) {
         QString checksumValue = bytesToHex(result.checksum);
         if (result.checksumChecked) {
+            const int checksumStart = m_protocolTemplate.checksumStart;
             const AppChecksum::ChecksumResult expected =
-                AppChecksum::calculate(frame.left(result.frameLength - checksumSize),
+                AppChecksum::calculate(frame.mid(checksumStart, int(checksumOffset) - checksumStart),
                                        m_protocolTemplate.checksumAlgorithm, m_protocolTemplate.checksumByteOrder);
             checksumValue += QStringLiteral(" · ") + (result.checksumValid ? AppI18n::text("正确") : AppI18n::text("错误"));
             if (expected.ok) {
                 checksumValue += QStringLiteral(" · ") + AppI18n::text("预期 %1").arg(bytesToHex(expected.bytes));
             }
+            const QString coverage = byteRange(checksumStart, int(checksumOffset) - checksumStart);
+            checksumValue += QStringLiteral(" · ") + AppI18n::text("覆盖 %1").arg(coverage);
         }
         addRow(AppI18n::text("校验"), byteRange(int(qMin<qint64>(checksumOffset, 1024 * 1024)), checksumSize),
                checksumValue);
     } else {
         addRow(AppI18n::text("校验"), QStringLiteral("—"), AppI18n::text("无校验"));
+    }
+    if (trailerSize > 0) {
+        addRow(AppI18n::text("帧尾"), byteRange(int(qMin<qint64>(trailerOffset, 1024 * 1024)), trailerSize),
+               bytesToHex(frame.mid(int(qMin<qint64>(trailerOffset, frame.size())), trailerSize)));
+    } else {
+        addRow(AppI18n::text("帧尾"), QStringLiteral("—"), AppI18n::text("无帧尾"));
     }
     addRow(AppI18n::text("整帧"), QStringLiteral("0–%1").arg(qMax<qsizetype>(0, frame.size() - 1)),
            AppI18n::text("当前 %1 B / 需要 %2 B").arg(frame.size()).arg(expectedFrameLength));

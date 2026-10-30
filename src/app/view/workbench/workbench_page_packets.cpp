@@ -317,7 +317,7 @@ bool WorkbenchPage::sendPacketPayload(const SendPacket &packet)
         return false;
     }
     bool checksumOk = false;
-    const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
+    const QByteArray output = payloadWithOptionalChecksum(payload, packet.lineEnding, &checksumOk);
     if (!checksumOk) {
         return false;
     }
@@ -354,7 +354,7 @@ bool WorkbenchPage::sendCurrentPayload()
         return false;
     }
     bool checksumOk = false;
-    const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
+    const QByteArray output = payloadWithOptionalChecksum(payload, selectedLineEndingKey(), &checksumOk);
     if (!checksumOk) {
         return false;
     }

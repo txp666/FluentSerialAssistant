@@ -116,6 +116,10 @@
         <translation>不支持的校验算法</translation>
     </message>
     <message>
+        <source>校验范围为空：共 %1 B，跳过开头 %2 B、末尾 %3 B</source>
+        <translation>校验范围为空：共 %1 B，跳过开头 %2 B、末尾 %3 B</translation>
+    </message>
+    <message>
         <source>无法读取字体文件。</source>
         <translation>无法读取字体文件。</translation>
     </message>
@@ -1150,10 +1154,6 @@
         <translation>发送内容无效</translation>
     </message>
     <message>
-        <source>校验码追加失败</source>
-        <translation>校验码追加失败</translation>
-    </message>
-    <message>
         <source>等待响应超时</source>
         <translation>等待响应超时</translation>
     </message>
@@ -1570,6 +1570,26 @@
     <message>
         <source>校验未计算</source>
         <translation>校验未计算</translation>
+    </message>
+    <message>
+        <source>跳过字节</source>
+        <translation>跳过字节</translation>
+    </message>
+    <message>
+        <source>开头</source>
+        <translation>开头</translation>
+    </message>
+    <message>
+        <source>末尾</source>
+        <translation>末尾</translation>
+    </message>
+    <message>
+        <source>开头和末尾跳过的字节不参与校验，校验码插在末尾跳过的字节之前；换行符始终在最后。</source>
+        <translation>开头和末尾跳过的字节不参与校验，校验码插在末尾跳过的字节之前；换行符始终在最后。</translation>
+    </message>
+    <message>
+        <source>覆盖字节 %1–%2</source>
+        <translation>覆盖字节 %1–%2</translation>
     </message>
     <message>
         <source>HEX 发送</source>
@@ -2284,6 +2304,10 @@
         <translation>帧头不匹配</translation>
     </message>
     <message>
+        <source>帧尾不匹配</source>
+        <translation>帧尾不匹配</translation>
+    </message>
+    <message>
         <source>长度字段字节数应为 0、1、2 或 4</source>
         <translation>长度字段字节数应为 0、1、2 或 4</translation>
     </message>
@@ -2310,6 +2334,10 @@
     <message>
         <source>校验字段超出帧范围</source>
         <translation>校验字段超出帧范围</translation>
+    </message>
+    <message>
+        <source>校验起始偏移应小于校验位置 %1</source>
+        <translation>校验起始偏移应小于校验位置 %1</translation>
     </message>
     <message>
         <source>%1 · CMD %2 · LEN %3 · PAYLOAD %4 B · %5</source>
@@ -2726,6 +2754,14 @@
         <translation>帧头无效：%1，位置 %2</translation>
     </message>
     <message>
+        <source>帧尾无效：%1，位置 %2</source>
+        <translation>帧尾无效：%1，位置 %2</translation>
+    </message>
+    <message>
+        <source>校验起始偏移</source>
+        <translation>校验起始偏移</translation>
+    </message>
+    <message>
         <source>%1需要输入有效的非负整数</source>
         <translation>%1需要输入有效的非负整数</translation>
     </message>
@@ -2742,8 +2778,8 @@
         <translation>编辑协议</translation>
     </message>
     <message>
-        <source>名称与帧头</source>
-        <translation>名称与帧头</translation>
+        <source>名称、帧头与帧尾</source>
+        <translation>名称、帧头与帧尾</translation>
     </message>
     <message>
         <source>未保存的协议</source>
@@ -2752,6 +2788,10 @@
     <message>
         <source>帧头 HEX，如 AA 55</source>
         <translation>帧头 HEX，如 AA 55</translation>
+    </message>
+    <message>
+        <source>帧尾 HEX，如 0D 0A，可留空</source>
+        <translation>帧尾 HEX，如 0D 0A，可留空</translation>
     </message>
     <message>
         <source>长度字段</source>
@@ -2786,8 +2826,12 @@
         <translation>算法</translation>
     </message>
     <message>
-        <source>校验位于帧末尾，计算范围为校验前的全部字节。</source>
-        <translation>校验位于帧末尾，计算范围为校验前的全部字节。</translation>
+        <source>起始偏移</source>
+        <translation>起始偏移</translation>
+    </message>
+    <message>
+        <source>校验位于载荷之后、帧尾之前，计算范围从起始偏移到校验前一字节。</source>
+        <translation>校验位于载荷之后、帧尾之前，计算范围从起始偏移到校验前一字节。</translation>
     </message>
     <message>
         <source>添加示例</source>
@@ -2864,6 +2908,14 @@
     <message>
         <source>预期 %1</source>
         <translation>预期 %1</translation>
+    </message>
+    <message>
+        <source>覆盖 %1</source>
+        <translation>覆盖 %1</translation>
+    </message>
+    <message>
+        <source>无帧尾</source>
+        <translation>无帧尾</translation>
     </message>
     <message>
         <source>整帧</source>

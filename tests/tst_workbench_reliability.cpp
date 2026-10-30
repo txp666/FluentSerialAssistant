@@ -323,6 +323,54 @@ class WorkbenchReliabilityTest : public QObject
         QVERIFY(records.at(0).timestamp <= records.at(1).timestamp);
     }
 
+    void sendChecksumSkipsBytesAndPrecedesTheLineEnding()
+    {
+        WorkbenchPage device(nullptr, false, false);
+        WorkbenchPage peer(nullptr, false, false);
+        connectVirtualPort(device);
+        connectVirtualPort(peer, VirtualSerialPair::portBName());
+        device.m_checksumAlgorithmCombo->setCurrentIndex(
+            device.m_checksumAlgorithmCombo->findData(QStringLiteral("sum8")));
+        device.m_checksumAppendCheck->setChecked(true);
+        device.m_hexSendCheck->setChecked(true);
+        device.m_lineEndingCombo->setCurrentIndex(device.m_lineEndingCombo->findData(QStringLiteral("crlf")));
+        const auto lastReceived = [&peer]() { return peer.controlRecords(1, QStringLiteral("rx")).first().bytes; };
+
+        device.m_sendEdit->setPlainText(QStringLiteral("01 02 03"));
+        QVERIFY(device.sendCurrentPayload());
+        QTRY_COMPARE(peer.controlStatus().receivedBytes, 6);
+        QCOMPARE(lastReceived(), QByteArray::fromHex("010203060D0A"));
+
+        device.m_checksumSkipLeadingEdit->setText(QStringLiteral("2"));
+        device.m_checksumSkipTrailingEdit->setText(QStringLiteral("1"));
+        device.m_sendEdit->setPlainText(QStringLiteral("AA 55 01 02 03 7E"));
+        QVERIFY(device.sendCurrentPayload());
+        QTRY_COMPARE(peer.controlStatus().receivedBytes, 15);
+        QCOMPARE(lastReceived(), QByteArray::fromHex("AA55010203067E0D0A"));
+        QVERIFY(device.m_checksumResultLabel->text().contains(AppI18n::text("覆盖字节 %1–%2").arg(2).arg(4)));
+
+        // Packets, macros and replies carry their own line ending.
+        bool ok = false;
+        QCOMPARE(device.payloadWithOptionalChecksum(QByteArray::fromHex("AA5504057E0A"), QStringLiteral("lf"), &ok),
+                 QByteArray::fromHex("AA550405097E0A"));
+        QVERIFY(ok);
+
+        const int sentRecords = device.controlRecords(1000, QStringLiteral("tx")).size();
+        device.m_sendEdit->setPlainText(QStringLiteral("AA 55 7E"));
+        QVERIFY(!device.sendCurrentPayload());
+        QCOMPARE(device.controlRecords(1000, QStringLiteral("tx")).size(), sentRecords);
+        QString error;
+        device.payloadWithOptionalChecksum(QByteArray::fromHex("AA557E"), QStringLiteral("none"), &ok, &error);
+        QVERIFY(!ok);
+        QCOMPARE(error, AppChecksum::calculate(QByteArray::fromHex("AA557E"), QStringLiteral("sum8"),
+                                               AppChecksum::ByteOrder::LittleEndian, 2, 1)
+                            .errorMessage);
+
+        WorkbenchPage restored(nullptr, true, false);
+        QCOMPARE(restored.m_checksumSkipLeadingEdit->text(), QStringLiteral("2"));
+        QCOMPARE(restored.m_checksumSkipTrailingEdit->text(), QStringLiteral("1"));
+    }
+
     void scriptLogKeepsTheLastSendError()
     {
         ScriptBridge bridge;

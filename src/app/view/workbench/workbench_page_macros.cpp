@@ -350,11 +350,12 @@ void WorkbenchPage::runMacroCurrentStep()
     }
 
     bool checksumOk = false;
-    const QByteArray output = payloadWithOptionalChecksum(payload, &checksumOk);
+    QString checksumError;
+    const QByteArray output = payloadWithOptionalChecksum(payload, step.lineEnding, &checksumOk, &checksumError);
     if (!checksumOk) {
         m_macroResults.append(result);
         m_macroActiveResult = m_macroResults.size() - 1;
-        completeMacroStep(false, AppI18n::text("校验码追加失败"));
+        completeMacroStep(false, checksumError);
         return;
     }
 

@@ -66,6 +66,7 @@ constexpr int ReconnectIntervalMs = 2000;
 constexpr int CompactControlHeight = 32;
 constexpr int FormLabelWidth = 84;
 constexpr int DefaultFileChunkSize = 256;
+constexpr int MaxChecksumSkipBytes = 65535;
 constexpr int DefaultFileChunkIntervalMs = 10;
 constexpr int FileSendDrainPollMs = 5;
 constexpr int MaxFrameBufferBytes = 1024 * 1024;

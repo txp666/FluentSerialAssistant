@@ -40,5 +40,9 @@ QString byteOrderKey(ByteOrder byteOrder);
 QString byteOrderLabel(ByteOrder byteOrder);
 
 ChecksumResult calculate(const QByteArray &data, const QString &algorithmKey, ByteOrder byteOrder);
+// Calculates the checksum over data without its first skipLeading and last
+// skipTrailing bytes. Fails when they leave no bytes to check.
+ChecksumResult calculate(const QByteArray &data, const QString &algorithmKey, ByteOrder byteOrder, int skipLeading,
+                         int skipTrailing);
 
 } // namespace AppChecksum

@@ -207,4 +207,18 @@ ChecksumResult calculate(const QByteArray &data, const QString &algorithmKey, By
     return result;
 }
 
+ChecksumResult calculate(const QByteArray &data, const QString &algorithmKey, ByteOrder byteOrder, int skipLeading,
+                         int skipTrailing)
+{
+    if (skipLeading < 0 || skipTrailing < 0 || qint64(skipLeading) + skipTrailing >= data.size()) {
+        ChecksumResult result;
+        result.errorMessage = AppI18n::text("校验范围为空：共 %1 B，跳过开头 %2 B、末尾 %3 B")
+                                  .arg(data.size())
+                                  .arg(skipLeading)
+                                  .arg(skipTrailing);
+        return result;
+    }
+    return calculate(data.mid(skipLeading, data.size() - skipLeading - skipTrailing), algorithmKey, byteOrder);
+}
+
 } // namespace AppChecksum
