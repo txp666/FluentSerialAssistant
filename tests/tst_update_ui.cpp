@@ -40,6 +40,15 @@ class UpdateUiTest : public QObject
                             &AppUpdate::UpdateManager::downloadUpdate);
     }
 
+    // The dialog is a child overlay of its parent's window, so, as over the main window in the app,
+    // the window has to be shown. (On macOS QDialog::open() makes it a sheet window of its own.)
+    static bool showHost(QWidget &host)
+    {
+        host.resize(1120, 900);
+        host.show();
+        return QTest::qWaitForWindowExposed(&host);
+    }
+
   private slots:
     void initTestCase()
     {
@@ -101,7 +110,7 @@ class UpdateUiTest : public QObject
     void availableUpdateShowsNotesAndRequiresConfirmation()
     {
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
         SettingsPage settings(&host, &manager);
@@ -136,7 +145,7 @@ class UpdateUiTest : public QObject
     void progressAndFailureRemainInTheDialog()
     {
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
         UpdateDialog dialog(&manager, &host);
@@ -181,7 +190,7 @@ class UpdateUiTest : public QObject
         QFETCH(int, state);
         QFETCH(int, action);
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
         manager.m_downloadAuthorized = true;
@@ -209,7 +218,7 @@ class UpdateUiTest : public QObject
     void installationHandoffHasNoSecondConfirmation()
     {
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
         UpdateDialog dialog(&manager, &host);
