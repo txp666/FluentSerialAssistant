@@ -11,7 +11,6 @@
 #include "app/core/text_encoding.h"
 
 #include <FluentQtWidgets/Dialogs/Dialog.h>
-#include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
 #include <FluentQtWidgets/StyleSheet.h>
 #include <FluentQtWidgets/Theme.h>

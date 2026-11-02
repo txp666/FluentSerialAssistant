@@ -8,8 +8,8 @@
 #include "app/view/fluent_tooltip_helper.h"
 #include "app/view/terminal_color_dialog.h"
 
+#include <FluentQtWidgets/ConfigItem.h>
 #include <FluentQtWidgets/Dialogs/Dialog.h>
-#include <FluentQtWidgets/Dialogs/FolderListDialog.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
 #include <FluentQtWidgets/Widgets/Button.h>
 #include <FluentQtWidgets/Widgets/ComboBox.h>
@@ -26,80 +26,6 @@
 using namespace FluentQt;
 
 namespace {
-
-int themeToIndex(Theme theme)
-{
-    switch (theme) {
-    case Theme::Light:
-        return 0;
-    case Theme::Dark:
-        return 1;
-    case Theme::Auto:
-        return 2;
-    }
-    return 0;
-}
-
-Theme indexToTheme(int index)
-{
-    if (index == 1) {
-        return Theme::Dark;
-    }
-    if (index == 2) {
-        return Theme::Auto;
-    }
-    return Theme::Light;
-}
-
-int displayModeToIndex(const QString &mode)
-{
-    if (mode == QStringLiteral("hex")) {
-        return 1;
-    }
-    if (mode == QStringLiteral("mixed")) {
-        return 2;
-    }
-    return 0;
-}
-
-QString indexToDisplayMode(int index)
-{
-    if (index == 1) {
-        return QStringLiteral("hex");
-    }
-    if (index == 2) {
-        return QStringLiteral("mixed");
-    }
-    return QStringLiteral("text");
-}
-
-int lineEndingToIndex(const QString &lineEnding)
-{
-    if (lineEnding == QStringLiteral("cr")) {
-        return 1;
-    }
-    if (lineEnding == QStringLiteral("lf")) {
-        return 2;
-    }
-    if (lineEnding == QStringLiteral("crlf")) {
-        return 3;
-    }
-    return 0;
-}
-
-QString indexToLineEnding(int index)
-{
-    if (index == 1) {
-        return QStringLiteral("cr");
-    }
-    if (index == 2) {
-        return QStringLiteral("lf");
-    }
-    if (index == 3) {
-        return QStringLiteral("crlf");
-    }
-    return QStringLiteral("none");
-}
 
 int fontIndex(const QStringList &families, const QString &family)
 {
@@ -154,15 +80,21 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     auto *personalization = new SettingCardGroup(QString(), this);
     hideGroupTitle(personalization);
 
+    auto *themeModeItem = new OptionsConfigItem(
+        QStringLiteral("Personalization"), QStringLiteral("ThemeMode"),
+        QVariant::fromValue(FluentConfig::instance()->themeMode()),
+        {QVariant::fromValue(Theme::Light), QVariant::fromValue(Theme::Dark), QVariant::fromValue(Theme::Auto)}, this);
     auto *themeModeCard = new ComboBoxSettingCard(
-        QStringList{AppI18n::text("浅色"), AppI18n::text("深色"), AppI18n::text("跟随系统")}, FluentIcon::Brush,
-        AppI18n::text("应用主题"), AppI18n::text("切换并保存应用的明暗主题模式"), personalization);
-    themeModeCard->setCurrentIndex(themeToIndex(FluentConfig::instance()->themeMode()));
+        themeModeItem, FluentIcon::Brush, AppI18n::text("应用主题"), AppI18n::text("切换并保存应用的明暗主题模式"),
+        {AppI18n::text("浅色"), AppI18n::text("深色"), AppI18n::text("跟随系统")}, personalization);
+    auto *languageItem =
+        new OptionsConfigItem(QStringLiteral("Personalization"), QStringLiteral("Language"),
+                              AppI18n::normalizedLocaleName(FluentConfig::instance()->localeName()),
+                              {QStringLiteral("Auto"), QStringLiteral("zh_CN"), QStringLiteral("en_US")}, this);
     auto *languageCard = new ComboBoxSettingCard(
-        QStringList{AppI18n::text("跟随系统"), AppI18n::text("简体中文"), QStringLiteral("English")},
-        FluentIcon::Language, AppI18n::text("界面语言"), AppI18n::text("切换 Fluent 控件和应用翻译资源的显示语言"),
-        personalization);
-    languageCard->setCurrentIndex(AppI18n::localeIndex(FluentConfig::instance()->localeName()));
+        languageItem, FluentIcon::Language, AppI18n::text("界面语言"),
+        AppI18n::text("切换 Fluent 控件和应用翻译资源的显示语言"),
+        {AppI18n::text("跟随系统"), AppI18n::text("简体中文"), QStringLiteral("English")}, personalization);
     languageCard->setContent(
         AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(FluentConfig::instance()->localeName())));
 
@@ -171,9 +103,13 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
         new CustomColorSettingCard(defaultAccent, ThemeManager::instance()->accentColor(), FluentIcon::Palette,
                                    AppI18n::text("主题色"), AppI18n::text("选择 Fluent 控件的强调色"), personalization);
     const QStringList uiFonts = AppFontPreferences::uiFontFamilies();
-    auto *uiFontCard = new ComboBoxSettingCard(uiFonts, FluentIcon::Font, AppI18n::text("界面字体"),
-                                               AppI18n::text("设置按钮、标签和页面文本的字体"), personalization);
-    uiFontCard->setCurrentIndex(fontIndex(uiFonts, AppFontPreferences::currentUiFontFamily()));
+    // The font cards have no config item: an imported font joins their lists, and an
+    // OptionsConfigItem's options are fixed.
+    auto *uiFontCard =
+        new ComboBoxSettingCard(nullptr, FluentIcon::Font, AppI18n::text("界面字体"),
+                                AppI18n::text("设置按钮、标签和页面文本的字体"), QStringList(), personalization);
+    uiFontCard->comboBox()->addItems(uiFonts);
+    uiFontCard->comboBox()->setCurrentIndex(fontIndex(uiFonts, AppFontPreferences::currentUiFontFamily()));
     auto *importFontCard =
         new PushSettingCard(AppI18n::text("选择文件"), FluentIcon::Download, AppI18n::text("导入字体"),
                             AppI18n::text("支持 TTF、OTF 和 TTC 字体文件"), personalization);
@@ -183,28 +119,21 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     m_updateManager = updateManager ? updateManager : new AppUpdate::UpdateManager(this);
     m_lastUpdateState = m_updateManager->state();
 
-    connect(themeModeCard, &ComboBoxSettingCard::currentIndexChanged, this, [](int index) {
-        const Theme theme = indexToTheme(index);
+    connect(themeModeItem, &ConfigItem::valueChanged, this, [](const QVariant &value) {
+        const Theme theme = value.value<Theme>();
         FluentConfig::instance()->setThemeMode(theme);
         FluentConfig::instance()->save();
         ThemeManager::instance()->setTheme(theme);
     });
-    connect(ThemeManager::instance(), &ThemeManager::themeChanged, this, [themeModeCard](Theme theme) {
-        const int index = themeToIndex(theme);
-        if (themeModeCard->currentIndex() != index) {
-            themeModeCard->setCurrentIndex(index);
-        }
-    });
-    connect(languageCard, &ComboBoxSettingCard::currentIndexChanged, this, [this, languageCard](int index) {
-        const QString localeName = AppI18n::applyLocale(AppI18n::localeNameForIndex(index));
+    connect(ThemeManager::instance(), &ThemeManager::themeChanged, this,
+            [themeModeItem](Theme theme) { themeModeItem->setValue(QVariant::fromValue(theme)); });
+    connect(languageItem, &ConfigItem::valueChanged, this, [languageCard](const QVariant &value) {
+        const QString localeName = AppI18n::applyLocale(value.toString());
         languageCard->setContent(AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(localeName)));
     });
     connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this,
-            [languageCard](const QString &localeName) {
-                const int index = AppI18n::localeIndex(localeName);
-                if (languageCard->currentIndex() != index) {
-                    languageCard->setCurrentIndex(index);
-                }
+            [languageItem, languageCard](const QString &localeName) {
+                languageItem->setValue(AppI18n::normalizedLocaleName(localeName));
                 languageCard->setContent(AppI18n::text("当前：%1").arg(AppI18n::localeDisplayName(localeName)));
             });
 
@@ -218,7 +147,7 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
             themeColorCard->setColor(color);
         }
     });
-    connect(uiFontCard, &ComboBoxSettingCard::currentTextChanged, this,
+    connect(uiFontCard->comboBox(), &ComboBox::currentTextChanged, this,
             [](const QString &family) { AppFontPreferences::setUiFontFamily(family); });
     connect(m_updateCard, &PushSettingCard::clicked, this, &SettingsPage::checkForUpdates);
     connect(m_updateManager, &AppUpdate::UpdateManager::stateChanged, this, &SettingsPage::handleUpdateStateChanged);
@@ -251,17 +180,21 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     auto *terminalGroup = new SettingCardGroup(QString(), this);
     hideGroupTitle(terminalGroup);
 
+    auto *displayModeItem =
+        new OptionsConfigItem(QStringLiteral("Terminal"), QStringLiteral("DisplayMode"),
+                              settings.value(QStringLiteral("terminal/displayMode"), QStringLiteral("text")).toString(),
+                              {QStringLiteral("text"), QStringLiteral("hex"), QStringLiteral("mixed")}, this);
     auto *displayModeCard = new ComboBoxSettingCard(
-        QStringList{AppI18n::text("文本"), QStringLiteral("HEX"), AppI18n::text("混合")}, FluentIcon::View,
-        AppI18n::text("默认显示模式"), AppI18n::text("设置终端记录的默认显示方式"), terminalGroup);
-    displayModeCard->setCurrentIndex(
-        displayModeToIndex(settings.value(QStringLiteral("terminal/displayMode"), QStringLiteral("text")).toString()));
+        displayModeItem, FluentIcon::View, AppI18n::text("默认显示模式"), AppI18n::text("设置终端记录的默认显示方式"),
+        {AppI18n::text("文本"), QStringLiteral("HEX"), AppI18n::text("混合")}, terminalGroup);
 
+    auto *lineEndingItem = new OptionsConfigItem(
+        QStringLiteral("Send"), QStringLiteral("LineEnding"),
+        settings.value(QStringLiteral("send/lineEnding"), QStringLiteral("none")).toString(),
+        {QStringLiteral("none"), QStringLiteral("cr"), QStringLiteral("lf"), QStringLiteral("crlf")}, this);
     auto *lineEndingCard = new ComboBoxSettingCard(
-        QStringList{QStringLiteral("None"), QStringLiteral("CR"), QStringLiteral("LF"), QStringLiteral("CRLF")},
-        FluentIcon::Return, AppI18n::text("默认换行"), AppI18n::text("设置发送数据时追加的行结束符"), terminalGroup);
-    lineEndingCard->setCurrentIndex(
-        lineEndingToIndex(settings.value(QStringLiteral("send/lineEnding"), QStringLiteral("none")).toString()));
+        lineEndingItem, FluentIcon::Return, AppI18n::text("默认换行"), AppI18n::text("设置发送数据时追加的行结束符"),
+        {QStringLiteral("None"), QStringLiteral("CR"), QStringLiteral("LF"), QStringLiteral("CRLF")}, terminalGroup);
 
     auto *maxRecordsCard = new RangeSettingCard(
         1000, 50000, qBound(1000, settings.value(QStringLiteral("terminal/maxRecords"), 20000).toInt(), 50000),
@@ -270,9 +203,11 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     maxRecordsCard->setObjectName(QStringLiteral("terminalMaxRecordsCard"));
     const QStringList terminalFonts = AppFontPreferences::terminalFontFamilies();
     auto *terminalFontCard =
-        new ComboBoxSettingCard(terminalFonts, FluentIcon::CommandPrompt, AppI18n::text("终端字体"),
-                                AppI18n::text("设置接收和发送记录的等宽字体"), terminalGroup);
-    terminalFontCard->setCurrentIndex(fontIndex(terminalFonts, AppFontPreferences::currentTerminalFontFamily()));
+        new ComboBoxSettingCard(nullptr, FluentIcon::CommandPrompt, AppI18n::text("终端字体"),
+                                AppI18n::text("设置接收和发送记录的等宽字体"), QStringList(), terminalGroup);
+    terminalFontCard->comboBox()->addItems(terminalFonts);
+    terminalFontCard->comboBox()->setCurrentIndex(
+        fontIndex(terminalFonts, AppFontPreferences::currentTerminalFontFamily()));
     auto *terminalFontSizeCard =
         new RangeSettingCard(8, 28, AppFontPreferences::currentTerminalFontPointSize(), FluentIcon::FontSize,
                              AppI18n::text("终端字号"), AppI18n::text("设置终端记录的字体大小"), terminalGroup);
@@ -285,20 +220,20 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     auto *exportFolderCard = new PushSettingCard(AppI18n::text("选择目录"), FluentIcon::Folder,
                                                  AppI18n::text("默认导出目录"), exportFolder, terminalGroup);
 
-    connect(displayModeCard, &ComboBoxSettingCard::currentIndexChanged, this, [](int index) {
+    connect(displayModeItem, &ConfigItem::valueChanged, this, [](const QVariant &value) {
         AppSettings settings;
-        settings.setValue(QStringLiteral("terminal/displayMode"), indexToDisplayMode(index));
+        settings.setValue(QStringLiteral("terminal/displayMode"), value.toString());
     });
-    connect(lineEndingCard, &ComboBoxSettingCard::currentIndexChanged, this, [](int index) {
+    connect(lineEndingItem, &ConfigItem::valueChanged, this, [](const QVariant &value) {
         AppSettings settings;
-        settings.setValue(QStringLiteral("send/lineEnding"), indexToLineEnding(index));
+        settings.setValue(QStringLiteral("send/lineEnding"), value.toString());
     });
     connect(maxRecordsCard, &RangeSettingCard::valueChanged, this, [this](int value) {
         AppSettings settings;
         settings.setValue(QStringLiteral("terminal/maxRecords"), value);
         emit terminalRecordLimitChanged(value);
     });
-    connect(terminalFontCard, &ComboBoxSettingCard::currentTextChanged, this, [this](const QString &family) {
+    connect(terminalFontCard->comboBox(), &ComboBox::currentTextChanged, this, [this](const QString &family) {
         AppFontPreferences::setTerminalFontFamily(family);
         emit terminalFontChanged(AppFontPreferences::currentTerminalFontFamily());
     });
@@ -344,11 +279,8 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     connect(exportFolderCard, &PushSettingCard::clicked, this, [exportFolderCard]() {
         AppSettings settings;
         const QString current = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
-        FolderPickerDialog dialog(current, exportFolderCard->window());
-        if (dialog.exec() != QDialog::Accepted) {
-            return;
-        }
-        const QString folder = dialog.selectedFolder();
+        const QString folder = QDir::cleanPath(
+            QFileDialog::getExistingDirectory(exportFolderCard->window(), AppI18n::text("选择目录"), current));
         if (folder.isEmpty()) {
             return;
         }

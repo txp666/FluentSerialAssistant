@@ -510,29 +510,6 @@ QString localeDisplayName(const QString &localeName)
     return AppI18n::text("跟随系统");
 }
 
-int localeIndex(const QString &localeName)
-{
-    const QString normalized = normalizedLocaleName(localeName);
-    if (normalized == QStringLiteral("zh_CN")) {
-        return 1;
-    }
-    if (normalized == QStringLiteral("en_US")) {
-        return 2;
-    }
-    return 0;
-}
-
-QString localeNameForIndex(int index)
-{
-    if (index == 1) {
-        return QStringLiteral("zh_CN");
-    }
-    if (index == 2) {
-        return QStringLiteral("en_US");
-    }
-    return QStringLiteral("Auto");
-}
-
 QString toggledChineseEnglishLocaleName(const QString &localeName)
 {
     const QString current = localeName.isEmpty() ? FluentQt::FluentConfig::instance()->localeName() : localeName;

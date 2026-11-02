@@ -305,7 +305,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
         auto *box = new SimpleCardWidget(editor);
         box->setBorderRadius(8);
         box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        auto *layout = qobject_cast<QVBoxLayout *>(box->layout());
+        auto *layout = new QVBoxLayout(box);
         layout->setContentsMargins(12, 12, 12, 12);
         layout->setSpacing(8);
         auto *heading = new BodyLabel(title, box);
