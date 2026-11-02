@@ -9,7 +9,6 @@
 #include <QtCore/QScopeGuard>
 #include <QtGui/QHelpEvent>
 #include <QtGui/QKeySequence>
-#include <QtGui/QPixmap>
 #include <QtGui/QTextBlock>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextDocument>
@@ -88,25 +87,6 @@ class TerminalViewTest : public QObject
             previousPosition = match.position;
         }
         return true;
-    }
-
-    static bool captureSearchBar(WorkbenchPage &page)
-    {
-        const QString directory = qEnvironmentVariable("FLUENT_TERMINAL_SEARCH_CAPTURE_DIR");
-        if (directory.isEmpty()) {
-            return true;
-        }
-        if (!QDir().mkpath(directory)) {
-            return false;
-        }
-        QCoreApplication::processEvents();
-        const QString theme = FluentQt::ThemeManager::instance()->effectiveTheme() == FluentQt::Theme::Dark
-                                  ? QStringLiteral("dark")
-                                  : QStringLiteral("light");
-        const QDir output(directory);
-        return page.m_terminalSearchBar->grab().save(
-                   output.filePath(QStringLiteral("terminal-search-%1.png").arg(theme))) &&
-               page.grab().save(output.filePath(QStringLiteral("terminal-search-page-%1.png").arg(theme)));
     }
 
   private slots:
@@ -313,32 +293,16 @@ class TerminalViewTest : public QObject
             }
         };
 
-        const QString directory = qEnvironmentVariable("FLUENT_TERMINAL_SEARCH_CAPTURE_DIR");
-        if (!directory.isEmpty()) {
-            QVERIFY(QDir().mkpath(directory));
-        }
         for (int width : {1440, 1120, 1040, 980, 1440}) {
             page.resize(width, 900);
             QCoreApplication::processEvents();
             restoreUsualStatistics();
             verifyVisibleHeader();
             verifyStatisticsBounds();
-            if (!directory.isEmpty()) {
-                QVERIFY(header->grab().save(QDir(directory).filePath(
-                    QStringLiteral("terminal-header-%1-%2-%3.png")
-                        .arg(width)
-                        .arg(locale, dark ? QStringLiteral("dark") : QStringLiteral("light")))));
-            }
             // Live values must never move the slots or change their presentation.
             verifyChangingStatistics();
             verifyVisibleHeader();
             QCOMPARE(page.m_connectionTimeLabel->text(), connectionText);
-            if (!directory.isEmpty()) {
-                QVERIFY(header->grab().save(QDir(directory).filePath(
-                    QStringLiteral("terminal-header-%1-%2-%3-large.png")
-                        .arg(width)
-                        .arg(locale, dark ? QStringLiteral("dark") : QStringLiteral("light")))));
-            }
         }
         restoreUsualStatistics();
         const auto labelFonts = [&page]() {
@@ -550,11 +514,6 @@ class TerminalViewTest : public QObject
         QCOMPARE(document->blockCount(), 1);
         const int narrowLines = document->firstBlock().layout()->lineCount();
         QVERIFY(narrowLines > 1);
-        const QString captureDirectory = qEnvironmentVariable("FLUENT_TERMINAL_SEARCH_CAPTURE_DIR");
-        if (!captureDirectory.isEmpty()) {
-            QVERIFY(QDir().mkpath(captureDirectory));
-            QVERIFY(page.grab().save(QDir(captureDirectory).filePath(QStringLiteral("terminal-wrap-narrow.png"))));
-        }
         page.m_terminalSearchEdit->setText(QStringLiteral("needle"));
         QCOMPARE(page.m_terminalSearchMatches.size(), 1);
         QCOMPARE(page.m_terminalView->textCursor().selectedText(), QStringLiteral("needle"));
@@ -566,9 +525,6 @@ class TerminalViewTest : public QObject
         page.resize(1920, 1050);
         QTRY_VERIFY(document->firstBlock().layout()->lineCount() < narrowLines);
         const int wideLines = document->firstBlock().layout()->lineCount();
-        if (!captureDirectory.isEmpty()) {
-            QVERIFY(page.grab().save(QDir(captureDirectory).filePath(QStringLiteral("terminal-wrap-wide.png"))));
-        }
         QCOMPARE(page.m_terminalView->toPlainText(), expected);
         QCOMPARE(document->blockCount(), 1);
         QCOMPARE(page.m_terminalSearchMatches.size(), 1);
@@ -757,7 +713,6 @@ class TerminalViewTest : public QObject
         page.activateWindow();
         page.m_terminalSearchEdit->setFocus();
         QCoreApplication::processEvents();
-        QVERIFY(captureSearchBar(page));
 
         const auto centerY = [searchBar](QWidget *widget) {
             return widget->mapTo(searchBar, widget->rect().center()).y();

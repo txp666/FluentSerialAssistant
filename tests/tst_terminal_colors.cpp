@@ -72,20 +72,6 @@ class TerminalColorsTest : public QObject
         QCoreApplication::processEvents();
     }
 
-    static bool capture(QWidget &widget, const QString &name, const QRect &region = QRect())
-    {
-        const QString directory = qEnvironmentVariable("FLUENT_TERMINAL_COLORS_CAPTURE_DIR");
-        if (directory.isEmpty()) {
-            return true;
-        }
-        if (!QDir().mkpath(directory)) {
-            return false;
-        }
-        QCoreApplication::processEvents();
-        const QPixmap pixmap = region.isValid() ? widget.grab(region) : widget.grab();
-        return pixmap.save(QDir(directory).filePath(name));
-    }
-
   private slots:
     void initTestCase()
     {
@@ -730,73 +716,23 @@ class TerminalColorsTest : public QObject
         QCOMPARE(AppTerminal::toJson(AppTerminal::loadColorConfig()), AppTerminal::toJson(accepted));
     }
 
-    void captureConfiguredTerminal_data()
+    void colorDialogFitsItsControls_data()
     {
         QTest::addColumn<QString>("locale");
-        QTest::addColumn<bool>("dark");
-        QTest::newRow("chinese-light") << QStringLiteral("zh_CN") << false;
-        QTest::newRow("english-light") << QStringLiteral("en_US") << false;
-        QTest::newRow("chinese-dark") << QStringLiteral("zh_CN") << true;
-        QTest::newRow("english-dark") << QStringLiteral("en_US") << true;
+        QTest::newRow("chinese") << QStringLiteral("zh_CN");
+        QTest::newRow("english") << QStringLiteral("en_US");
     }
 
-    void captureConfiguredTerminal()
+    void colorDialogFitsItsControls()
     {
         QFETCH(QString, locale);
-        QFETCH(bool, dark);
         const QString originalLocale = FluentQt::FluentConfig::instance()->localeName();
-        const auto originalTheme = FluentQt::FluentConfig::instance()->themeMode();
-        const auto restorePreferences = qScopeGuard([originalLocale, originalTheme]() {
-            AppI18n::applyLocale(originalLocale);
-            FluentQt::FluentConfig::instance()->setThemeMode(originalTheme);
-        });
+        const auto restoreLocale = qScopeGuard([originalLocale]() { AppI18n::applyLocale(originalLocale); });
         AppI18n::applyLocale(locale);
-        FluentQt::FluentConfig::instance()->setThemeMode(dark ? FluentQt::Theme::Dark : FluentQt::Theme::Light);
-        FluentQt::ThemeManager::instance()->setTheme(dark ? FluentQt::Theme::Dark : FluentQt::Theme::Light);
-        const QString suffix = locale + (dark ? QStringLiteral("-dark") : QStringLiteral("-light"));
-        WorkbenchPage page(nullptr, false, false);
-        preparePage(page);
         AppTerminal::ColorConfig config;
         config.enabledPresets = {QStringLiteral("log_levels"), QStringLiteral("status"), QStringLiteral("at_commands")};
         config.rules = {rule(QStringLiteral("sensor timeout"), QColor(QStringLiteral("#9347c9"))),
                         rule(QStringLiteral("temp=\\d+\\.\\d+"), QColor(QStringLiteral("#3478d4")), true)};
-        page.applyTerminalColorConfig(config);
-        page.handleReceivedData(QByteArray("INFO device connected\nWARN input voltage low\nERROR sensor timeout\n"
-                                           "sample temp=24.8 humidity=52%\nSUCCESS calibration complete\n"
-                                           "AT+VERSION?\nOK\nE (123) legacy ESP-IDF log"));
-        page.flushPendingLines();
-        QVERIFY(capture(page, QStringLiteral("terminal-content-colors-page-%1.png").arg(suffix)));
-        // Translucent settings cards need the production window backdrop for screenshots.
-        // MSFluentWindow's native frame integration cannot run with Qt's headless backends.
-        const QString platform = QGuiApplication::platformName();
-        const bool nativeWindow = platform != QStringLiteral("offscreen") && platform != QStringLiteral("minimal");
-        if (nativeWindow && !qEnvironmentVariableIsEmpty("FLUENT_TERMINAL_COLORS_CAPTURE_DIR")) {
-            FluentQt::MSFluentWindow settingsWindow;
-            SettingsPage settings(&settingsWindow);
-            settingsWindow.addSubInterface(&settings, FluentQt::icon(FluentQt::FluentIcon::Setting),
-                                           AppI18n::text("设置"));
-            settingsWindow.navigationInterface()->setVisible(false);
-            settingsWindow.navigationInterface()->setFixedWidth(0);
-            QVERIFY(settingsWindow.switchTo(&settings));
-            settingsWindow.resize(1120, 900);
-            settingsWindow.show();
-            QCoreApplication::processEvents();
-            auto *card = settings.findChild<FluentQt::PushSettingCard *>(QStringLiteral("terminalColorSettingsCard"));
-            QVERIFY(card);
-            settings.ensureWidgetVisible(card, 0, 30);
-            QCoreApplication::processEvents();
-            QTRY_VERIFY(
-                settings.viewport()->rect().contains(QRect(card->mapTo(settings.viewport(), QPoint()), card->size())));
-            settingsWindow.repaint();
-            settings.viewport()->repaint();
-            QCoreApplication::processEvents();
-            const QRect cardBounds(card->mapTo(&settingsWindow, QPoint()), card->size());
-            QVERIFY(settingsWindow.rect().contains(cardBounds));
-            QVERIFY(capture(settingsWindow, QStringLiteral("terminal-content-colors-settings-%1.png").arg(suffix),
-                            cardBounds));
-            QVERIFY(
-                capture(settingsWindow, QStringLiteral("terminal-content-colors-settings-page-%1.png").arg(suffix)));
-        }
         TerminalColorDialog dialog(config);
         dialog.show();
         QCoreApplication::processEvents();
@@ -805,7 +741,6 @@ class TerminalColorsTest : public QObject
         for (const int width : {840, 780}) {
             dialog.resize(width, 600);
             QCoreApplication::processEvents();
-            QVERIFY(capture(dialog, QStringLiteral("terminal-content-colors-dialog-%1-%2.png").arg(suffix).arg(width)));
             QCOMPARE(dialog.width(), width);
             QCOMPARE(table->horizontalScrollBar()->maximum(), 0);
             for (int row = 0; row < table->rowCount(); ++row) {
