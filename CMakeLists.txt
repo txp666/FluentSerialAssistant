@@ -260,7 +260,7 @@ set_target_properties(FluentSerialAssistant PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_BUNDLE_NAME "Fluent Serial Assistant"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "tech.zhangshu.FluentSerialAssistant"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.txp666.FluentSerialAssistant"
     MACOSX_BUNDLE_ICON_FILE "app_icon.icns"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
@@ -304,10 +304,10 @@ install(TARGETS fluentserial-cli fluentserial-mcp
 if(UNIX AND NOT APPLE)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/logo.png"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps"
-        RENAME "tech.zhangshu.FluentSerialAssistant.png"
+        RENAME "io.github.txp666.FluentSerialAssistant.png"
         COMPONENT Runtime
     )
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/tech.zhangshu.FluentSerialAssistant.desktop"
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/io.github.txp666.FluentSerialAssistant.desktop"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/applications"
         COMPONENT Runtime
     )

@@ -5,6 +5,6 @@ Name[zh_CN]=Fluent 串口助手
 Comment=Serial terminal assistant
 Comment[zh_CN]=Fluent 风格串口调试助手
 Exec=FluentSerialAssistant
-Icon=tech.zhangshu.FluentSerialAssistant
+Icon=io.github.txp666.FluentSerialAssistant
 Categories=Development;Utility;
 Terminal=false

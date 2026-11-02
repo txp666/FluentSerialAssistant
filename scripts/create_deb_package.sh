@@ -74,14 +74,14 @@ mkdir -p \
     "$package_root/usr/share/icons/hicolor/512x512/apps"
 cp -a "$source_dir/." "$install_root/"
 
-staged_icon="$source_dir/share/icons/hicolor/512x512/apps/tech.zhangshu.FluentSerialAssistant.png"
+staged_icon="$source_dir/share/icons/hicolor/512x512/apps/io.github.txp666.FluentSerialAssistant.png"
 if [[ ! -f "$staged_icon" ]]; then
     echo "Staged Linux application icon is missing: $staged_icon" >&2
     exit 2
 fi
-cp "$staged_icon" "$package_root/usr/share/icons/hicolor/512x512/apps/tech.zhangshu.FluentSerialAssistant.png"
-rm -f -- "$install_root/share/icons/hicolor/512x512/apps/tech.zhangshu.FluentSerialAssistant.png"
-rm -f -- "$install_root/share/applications/tech.zhangshu.FluentSerialAssistant.desktop"
+cp "$staged_icon" "$package_root/usr/share/icons/hicolor/512x512/apps/io.github.txp666.FluentSerialAssistant.png"
+rm -f -- "$install_root/share/icons/hicolor/512x512/apps/io.github.txp666.FluentSerialAssistant.png"
+rm -f -- "$install_root/share/applications/io.github.txp666.FluentSerialAssistant.desktop"
 
 cat > "$package_root/usr/bin/fluent-serial-assistant" <<'LAUNCHER'
 #!/bin/sh
@@ -105,7 +105,7 @@ exec /opt/FluentSerialAssistant/bin/fluentserial-mcp "$@"
 MCP_LAUNCHER
 chmod 0755 "$package_root/usr/bin/fluentserial-mcp"
 
-cat > "$package_root/usr/share/applications/tech.zhangshu.FluentSerialAssistant.desktop" <<'DESKTOP'
+cat > "$package_root/usr/share/applications/io.github.txp666.FluentSerialAssistant.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
 Name=Fluent Serial Assistant
@@ -114,11 +114,11 @@ Comment=Serial terminal assistant
 Comment[zh_CN]=Fluent 风格串口调试助手
 Exec=fluent-serial-assistant
 Terminal=false
-Icon=tech.zhangshu.FluentSerialAssistant
+Icon=io.github.txp666.FluentSerialAssistant
 StartupWMClass=FluentSerialAssistant
 Categories=Development;Utility;
 DESKTOP
-chmod 0644 "$package_root/usr/share/applications/tech.zhangshu.FluentSerialAssistant.desktop"
+chmod 0644 "$package_root/usr/share/applications/io.github.txp666.FluentSerialAssistant.desktop"
 
 installed_size="$(du -sk "$package_root/opt" | awk '{print $1}')"
 cat > "$package_root/DEBIAN/control" <<CONTROL

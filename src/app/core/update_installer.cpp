@@ -172,7 +172,7 @@ test ! -e "$backup" && test ! -L "$backup" || fail 'Backup path already exists.'
 if test -e "$target"; then
     test -d "$target" || fail 'Application destination is not a directory.'
     existing_id=$("$plistbuddy" -c 'Print :CFBundleIdentifier' "$target/Contents/Info.plist")
-    test "$existing_id" = 'tech.zhangshu.FluentSerialAssistant' || fail 'Existing application identity does not match.'
+    test "$existing_id" = 'io.github.txp666.FluentSerialAssistant' || fail 'Existing application identity does not match.'
 fi
 /bin/mkdir "$mount"
 "$hdiutil" attach "$verified" -mountpoint "$mount" -readonly -nobrowse -noautoopen -quiet
@@ -180,7 +180,7 @@ mounted=1
 source="$mount/FluentSerialAssistant.app"
 test -d "$source" && test ! -L "$source" || fail 'Disk image does not contain the expected application.'
 bundle_id=$("$plistbuddy" -c 'Print :CFBundleIdentifier' "$source/Contents/Info.plist")
-test "$bundle_id" = 'tech.zhangshu.FluentSerialAssistant' || fail 'Update application identity does not match.'
+test "$bundle_id" = 'io.github.txp666.FluentSerialAssistant' || fail 'Update application identity does not match.'
 test -x "$source/Contents/MacOS/FluentSerialAssistant" || fail 'Update executable is missing.'
 "$codesign" --verify --deep --strict "$source"
 "$ditto" "$source" "$stage"
@@ -192,7 +192,7 @@ mounted=0
 test ! -L "$target" || fail 'Application destination changed during preparation.'
 if test -e "$target"; then
     existing_id=$("$plistbuddy" -c 'Print :CFBundleIdentifier' "$target/Contents/Info.plist")
-    test "$existing_id" = 'tech.zhangshu.FluentSerialAssistant' || fail 'Existing application identity changed.'
+    test "$existing_id" = 'io.github.txp666.FluentSerialAssistant' || fail 'Existing application identity changed.'
     "$move" "$target" "$backup"
     old_moved=1
 fi

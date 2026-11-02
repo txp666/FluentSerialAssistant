@@ -54,7 +54,7 @@ QString localServerName()
     // service apart; serverRunsAsCurrentUser() keeps a pipe another user created under this
     // name from receiving the commands.
     const QString sid = processUserSid(GetCurrentProcess());
-    return sid.isEmpty() ? QString() : QStringLiteral("tech.zhangshu.FluentSerialAssistant.control.v1-") + sid;
+    return sid.isEmpty() ? QString() : QStringLiteral("io.github.txp666.FluentSerialAssistant.control.v1-") + sid;
 #endif
 }
 

@@ -46,7 +46,7 @@ class ControlServiceTest : public QObject
 #else
         // Pipe names are machine-wide: the name carries the user's SID, so each user has their own.
         const QString name = AppControl::localServerName();
-        QVERIFY(name.startsWith(QStringLiteral("tech.zhangshu.FluentSerialAssistant.control.v1-S-1-")));
+        QVERIFY(name.startsWith(QStringLiteral("io.github.txp666.FluentSerialAssistant.control.v1-S-1-")));
         QVERIFY(name.size() < 256);
 #endif
     }

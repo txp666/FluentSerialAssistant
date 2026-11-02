@@ -136,7 +136,7 @@ fi
                           true) ||
             !writeFixture(copyTool, "#!/bin/sh\nexec /bin/cp -R \"$1\" \"$2\"\n", true) ||
             !writeFixture(signTool, "#!/bin/sh\nexit 0\n", true) ||
-            !writeFixture(plistTool, "#!/bin/sh\nprintf 'tech.zhangshu.FluentSerialAssistant\\n'\n", true) ||
+            !writeFixture(plistTool, "#!/bin/sh\nprintf 'io.github.txp666.FluentSerialAssistant\\n'\n", true) ||
             !writeFixture(hashTool, digestTool, true)) {
             return false;
         }
