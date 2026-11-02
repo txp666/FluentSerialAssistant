@@ -285,6 +285,21 @@ inline void addFormRow(QVBoxLayout *root, const QString &labelText, QWidget *con
     root->addLayout(row);
 }
 
+// Edits are taller than CompactControlHeight once styled, so a wrapper
+// widget sized to them clips their bottom border; lay them out directly.
+inline void addFormRow(QVBoxLayout *root, const QString &labelText, QLayout *controls)
+{
+    auto *row = new QHBoxLayout;
+    row->setSpacing(8);
+
+    auto *label = new BodyLabel(labelText, root->parentWidget());
+    setFixedControlWidth(label, FormLabelWidth);
+    row->addWidget(label, 0, Qt::AlignVCenter);
+    row->addLayout(controls, 1);
+
+    root->addLayout(row);
+}
+
 inline QSerialPort::DataBits dataBitsFromText(const QString &text)
 {
     if (text == QStringLiteral("5")) {

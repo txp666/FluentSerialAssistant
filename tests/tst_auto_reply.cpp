@@ -59,7 +59,12 @@ class AutoReplyTest : public QObject
             addRule(page, number);
             QCOMPARE(page.m_autoReplyRules.size(), number);
             QCOMPARE(page.m_autoReplyList->count(), number);
-            QCOMPARE(page.m_autoReplyList->currentRow(), number - 1);
+            // Adding leaves a blank editor for the next rule.
+            QCOMPARE(page.m_autoReplyList->currentRow(), -1);
+            QCOMPARE(page.m_autoReplySaveButton->text(), AppI18n::text("添加"));
+            QVERIFY(page.m_autoReplyNameEdit->text().isEmpty());
+            QVERIFY(page.m_autoReplyPatternEdit->text().isEmpty());
+            QVERIFY(page.m_autoReplyPayloadEdit->toPlainText().isEmpty());
         }
 
         page.m_autoReplyList->setCurrentRow(1);
@@ -153,11 +158,96 @@ class AutoReplyTest : public QObject
         QCOMPARE(page.m_autoReplySaveButton->text(), AppI18n::text("添加"));
     }
 
+    void copyStartsANewRuleFromTheSelectedOne()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        QVERIFY(!page.m_autoReplyCopyButton->isEnabled());
+        addRule(page, 1);
+        addRule(page, 2);
+        page.m_autoReplyList->setCurrentRow(0);
+        page.m_autoReplyMatchModeCombo->setCurrentIndex(
+            page.m_autoReplyMatchModeCombo->findData(QStringLiteral("hex")));
+        fillRule(page, QStringLiteral("Rule 1"), QStringLiteral("51 31 0D"), QStringLiteral("response1"));
+        setNumberEditValue(page.m_autoReplyDelayEdit, 20, 0, 600000);
+        page.m_autoReplySaveButton->click();
+        QVERIFY(page.m_autoReplyCopyButton->isEnabled());
+
+        // Unsaved edits stay with the original; the copy starts from what was saved.
+        page.m_autoReplyPayloadEdit->setPlainText(QStringLiteral("unsaved"));
+        page.m_autoReplyCopyButton->click();
+        QCOMPARE(page.m_autoReplyRules.size(), 2);
+        QCOMPARE(page.m_autoReplyList->currentRow(), -1);
+        QCOMPARE(page.m_autoReplySaveButton->text(), AppI18n::text("添加"));
+        QVERIFY(!page.m_autoReplyCopyButton->isEnabled());
+        QCOMPARE(page.m_autoReplyNameEdit->text(), AppI18n::text("%1 副本").arg(QStringLiteral("Rule 1")));
+        QCOMPARE(page.m_autoReplyMatchModeCombo->currentData().toString(), QStringLiteral("hex"));
+        QCOMPARE(page.m_autoReplyPatternEdit->text(), QStringLiteral("51 31 0D"));
+        QCOMPARE(page.m_autoReplyPayloadEdit->toPlainText(), QStringLiteral("response1"));
+        QCOMPARE(numberEditValue(page.m_autoReplyDelayEdit, -1, 0, 600000), 20);
+
+        page.m_autoReplyPatternEdit->setText(QStringLiteral("51 32 0D"));
+        page.m_autoReplySaveButton->click();
+        QCOMPARE(page.m_autoReplyRules.size(), 3);
+        const WorkbenchPage::AutoReplyRule &copy = page.m_autoReplyRules.at(2);
+        QCOMPARE(copy.name, AppI18n::text("%1 副本").arg(QStringLiteral("Rule 1")));
+        QCOMPARE(copy.matchMode, QStringLiteral("hex"));
+        QCOMPARE(copy.pattern, QStringLiteral("51 32 0D"));
+        QCOMPARE(copy.responsePayload, QStringLiteral("response1"));
+        QCOMPARE(copy.delayMs, 20);
+        QCOMPARE(page.m_autoReplyRules.at(0).pattern, QStringLiteral("51 31 0D"));
+        QCOMPARE(page.m_autoReplyRules.at(0).responsePayload, QStringLiteral("response1"));
+    }
+
+    void wheelScrollsTheRuleListBeforeTheSidePanel()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        for (int number = 1; number <= 8; ++number) {
+            addRule(page, number);
+        }
+        page.resize(1200, 720);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        FluentQt::ExpandSettingCard *card = nullptr;
+        for (QWidget *parent = page.m_autoReplyList; !card && parent; parent = parent->parentWidget()) {
+            card = qobject_cast<FluentQt::ExpandSettingCard *>(parent);
+        }
+        QVERIFY(card);
+        card->setExpanded(true);
+        auto *animation = card->findChild<QVariantAnimation *>(QStringLiteral("expandSettingCardAnimation"));
+        QVERIFY(animation);
+        QTRY_COMPARE(animation->state(), QAbstractAnimation::Stopped);
+
+        auto *listBar = page.m_autoReplyList->verticalScrollBar();
+        auto *panelBar = page.m_sideScroll->verticalScrollBar();
+        QTRY_VERIFY(listBar->maximum() > 0);
+        listBar->setValue(0);
+        panelBar->setValue(0);
+        QTRY_VERIFY(panelBar->maximum() > 0);
+        const auto scrollDown = [&page]() {
+            QWidget *viewport = page.m_autoReplyList->viewport();
+            const QPointF position = QRectF(viewport->rect()).center();
+            QWheelEvent event(position, viewport->mapToGlobal(position), QPoint(), QPoint(0, -120), Qt::NoButton,
+                              Qt::NoModifier, Qt::NoScrollPhase, false);
+            QApplication::sendEvent(viewport, &event);
+        };
+
+        scrollDown();
+        QTRY_VERIFY(listBar->value() > 0);
+        QCOMPARE(panelBar->value(), 0);
+
+        // At the end of the list the panel takes over.
+        listBar->setValue(listBar->maximum());
+        scrollDown();
+        QTRY_VERIFY(panelBar->value() > 0);
+        QCOMPARE(listBar->value(), listBar->maximum());
+    }
+
     void copyingSessionPreservesDraftOrSelectedRule()
     {
         WorkbenchPage source(nullptr, false, false);
         addRule(source, 1);
         addRule(source, 2);
+        source.m_autoReplyList->setCurrentRow(1);
         WorkbenchPage copied(nullptr, false, false);
         copied.copySessionConfigFrom(source);
         QCOMPARE(copied.m_autoReplyList->currentRow(), 1);
@@ -256,8 +346,11 @@ class AutoReplyTest : public QObject
         QVERIFY(QCoreApplication::installTranslator(&translator));
         WorkbenchPage page(nullptr, false, false);
         QCOMPARE(page.m_autoReplyNewButton->text(), QStringLiteral("New"));
+        QCOMPARE(page.m_autoReplyCopyButton->text(), QStringLiteral("Copy"));
         QCOMPARE(page.m_autoReplySaveButton->text(), QStringLiteral("Add"));
         addRule(page, 1);
+        QCOMPARE(page.m_autoReplySaveButton->text(), QStringLiteral("Add"));
+        page.m_autoReplyList->setCurrentRow(0);
         QCOMPARE(page.m_autoReplySaveButton->text(), QStringLiteral("Save"));
         page.m_autoReplyNewButton->click();
         QCOMPARE(page.m_autoReplySaveButton->text(), QStringLiteral("Add"));

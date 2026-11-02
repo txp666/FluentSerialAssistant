@@ -846,6 +846,18 @@
         <translation>已保存自动应答</translation>
     </message>
     <message>
+        <source>复制</source>
+        <translation>复制</translation>
+    </message>
+    <message>
+        <source>以选中的应答为模板新建</source>
+        <translation>以选中的应答为模板新建</translation>
+    </message>
+    <message>
+        <source>%1 副本</source>
+        <translation>%1 副本</translation>
+    </message>
+    <message>
         <source>已删除自动应答</source>
         <translation>已删除自动应答</translation>
     </message>

@@ -95,6 +95,9 @@ void WorkbenchPage::updateAutoReplyActionState()
     if (m_autoReplySaveButton) {
         m_autoReplySaveButton->setText(hasCurrent ? AppI18n::text("保存") : AppI18n::text("添加"));
     }
+    if (m_autoReplyCopyButton) {
+        m_autoReplyCopyButton->setEnabled(hasCurrent);
+    }
     if (m_autoReplyDeleteButton) {
         m_autoReplyDeleteButton->setEnabled(hasCurrent);
     }
@@ -119,6 +122,23 @@ void WorkbenchPage::startNewAutoReplyRule()
     setNumberEditValue(m_autoReplyDelayEdit, 0, 0, 600000);
     updateAutoReplyActionState();
     m_autoReplyNameEdit->setFocus();
+}
+
+void WorkbenchPage::copySelectedAutoReplyRule()
+{
+    const int row = m_autoReplyList ? m_autoReplyList->currentRow() : -1;
+    if (row < 0 || row >= m_autoReplyRules.size()) {
+        return;
+    }
+
+    // The copy waits in the editor as a new rule, so an unchanged duplicate
+    // never answers the same data a second time.
+    applyAutoReplyRule(row);
+    m_autoReplyList->setCurrentRow(-1);
+    m_autoReplyNameEdit->setText(AppI18n::text("%1 副本").arg(autoReplyRuleName(m_autoReplyRules.at(row).name, row)));
+    updateAutoReplyActionState();
+    m_autoReplyPatternEdit->setFocus();
+    m_autoReplyPatternEdit->selectAll();
 }
 
 void WorkbenchPage::applyAutoReplyRule(int row)
@@ -199,13 +219,16 @@ void WorkbenchPage::saveCurrentAutoReplyRule()
     int row = m_autoReplyList ? m_autoReplyList->currentRow() : -1;
     if (row >= 0 && row < m_autoReplyRules.size()) {
         m_autoReplyRules[row] = rule;
+        updateAutoReplyTable(row);
+        applyAutoReplyRule(row);
     } else {
+        // An added rule leaves a blank editor for the next one.
         m_autoReplyRules.append(rule);
         row = m_autoReplyRules.size() - 1;
+        updateAutoReplyTable();
+        m_autoReplyList->scrollToItem(m_autoReplyList->item(row));
+        startNewAutoReplyRule();
     }
-
-    updateAutoReplyTable(row);
-    applyAutoReplyRule(row);
     saveAutoReplyRules();
     showSuccess(AppI18n::text("已保存自动应答"), autoReplyRuleName(rule.name, row));
 }
