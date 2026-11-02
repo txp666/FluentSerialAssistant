@@ -245,10 +245,6 @@ class VirtualSerialWorkbenchTest : public QObject
         const auto *label = englishSwitch->contentLabel();
         const QRect textBounds =
             label->fontMetrics().boundingRect(QRect(0, 0, label->width(), 1000), Qt::TextWordWrap, label->text());
-        const QString screenshot = qEnvironmentVariable("FLUENT_TEST_SETTINGS_SCREENSHOT");
-        if (!screenshot.isEmpty()) {
-            QVERIFY(englishSwitch->grab().save(screenshot));
-        }
         QVERIFY2(englishSwitch->rect().contains(englishSwitch->titleLabel()->geometry()),
                  qPrintable(QStringLiteral("Title bounds: %1,%2 %3x%4")
                                 .arg(englishSwitch->titleLabel()->x())

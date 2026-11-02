@@ -4,6 +4,9 @@
 #include "app/view/workbench/workbench_page_internal.h"
 #include "app/view/workbench_sessions_page.h"
 
+#include <FluentQtWidgets/ConfigItem.h>
+#include <FluentQtWidgets/Settings/SettingCard.h>
+
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QScopeGuard>
 #include <QtCore/QTemporaryDir>
@@ -573,6 +576,63 @@ class WorkbenchReliabilityTest : public QObject
         for (auto *page : pages) {
             QCOMPARE(page->m_records.size(), 1000);
         }
+    }
+
+    void settingsComboCardsSaveAndFollowTheirSettings()
+    {
+        AppSettings settings;
+        settings.setValue(QStringLiteral("send/lineEnding"), QStringLiteral("crlf"));
+        settings.sync();
+        const FluentQt::Theme originalTheme = FluentQt::FluentConfig::instance()->themeMode();
+        const auto restoreTheme = qScopeGuard([originalTheme]() {
+            FluentQt::FluentConfig::instance()->setThemeMode(originalTheme);
+            FluentQt::ThemeManager::instance()->setTheme(originalTheme);
+        });
+        FluentQt::ThemeManager::instance()->setTheme(FluentQt::Theme::Light);
+
+        SettingsPage settingsPage;
+        const auto card = [&settingsPage](const QString &key) -> FluentQt::ComboBoxSettingCard * {
+            for (auto *card : settingsPage.findChildren<FluentQt::ComboBoxSettingCard *>()) {
+                if (card->configItem() && card->configItem()->key() == key) {
+                    return card;
+                }
+            }
+            return nullptr;
+        };
+        auto *displayMode = card(QStringLiteral("Terminal.DisplayMode"));
+        auto *lineEnding = card(QStringLiteral("Send.LineEnding"));
+        auto *themeMode = card(QStringLiteral("Personalization.ThemeMode"));
+        auto *language = card(QStringLiteral("Personalization.Language"));
+        QVERIFY(displayMode && lineEnding && themeMode && language);
+
+        QCOMPARE(displayMode->comboBox()->currentData().toString(), QStringLiteral("text"));
+        QCOMPARE(lineEnding->comboBox()->currentData().toString(), QStringLiteral("crlf"));
+        QCOMPARE(language->comboBox()->currentData().toString(),
+                 AppI18n::normalizedLocaleName(FluentQt::FluentConfig::instance()->localeName()));
+
+        displayMode->comboBox()->setCurrentIndex(displayMode->comboBox()->findData(QStringLiteral("hex")));
+        QCOMPARE(settings.value(QStringLiteral("terminal/displayMode")).toString(), QStringLiteral("hex"));
+        lineEnding->comboBox()->setCurrentIndex(lineEnding->comboBox()->findData(QStringLiteral("none")));
+        QCOMPARE(settings.value(QStringLiteral("send/lineEnding")).toString(), QStringLiteral("none"));
+
+        // The theme card follows theme changes made elsewhere and applies its own.
+        FluentQt::ThemeManager::instance()->setTheme(FluentQt::Theme::Dark);
+        QCOMPARE(themeMode->comboBox()->currentData().value<FluentQt::Theme>(), FluentQt::Theme::Dark);
+        themeMode->comboBox()->setCurrentIndex(
+            themeMode->comboBox()->findData(QVariant::fromValue(FluentQt::Theme::Auto)));
+        QCOMPARE(FluentQt::ThemeManager::instance()->theme(), FluentQt::Theme::Auto);
+        QCOMPARE(FluentQt::FluentConfig::instance()->themeMode(), FluentQt::Theme::Auto);
+
+        // The font cards list the families themselves.
+        int fontCards = 0;
+        for (auto *fontCard : settingsPage.findChildren<FluentQt::ComboBoxSettingCard *>()) {
+            if (!fontCard->configItem()) {
+                QVERIFY(fontCard->comboBox()->count() > 0);
+                QVERIFY(fontCard->comboBox()->currentIndex() >= 0);
+                ++fontCards;
+            }
+        }
+        QCOMPARE(fontCards, 2);
     }
 };
 

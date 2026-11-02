@@ -10,8 +10,6 @@ namespace AppI18n {
 QString normalizedLocaleName(const QString &localeName);
 QString effectiveLocaleName(const QString &localeName = QString());
 QString localeDisplayName(const QString &localeName);
-int localeIndex(const QString &localeName);
-QString localeNameForIndex(int index);
 QString toggledChineseEnglishLocaleName(const QString &localeName = QString());
 QString text(const char *sourceText);
 bool installTranslators(QCoreApplication *application, const QString &localeName = QString());

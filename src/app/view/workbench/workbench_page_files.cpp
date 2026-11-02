@@ -13,12 +13,8 @@ void WorkbenchPage::exportRecords(ExportFormat format)
 
     AppSettings settings;
     const QString initialFolder = settings.value(QStringLiteral("export/folder"), defaultExportFolder()).toString();
-    FolderPickerDialog dialog(initialFolder, window());
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-
-    const QString folder = dialog.selectedFolder();
+    const QString folder =
+        QDir::cleanPath(QFileDialog::getExistingDirectory(window(), AppI18n::text("选择目录"), initialFolder));
     if (folder.isEmpty()) {
         return;
     }

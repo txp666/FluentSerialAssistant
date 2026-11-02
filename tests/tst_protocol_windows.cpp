@@ -11,7 +11,6 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QVariantAnimation>
-#include <QtGui/QPixmap>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QTest>
 #include <QtWidgets/QPlainTextEdit>
@@ -21,17 +20,6 @@
 class ProtocolWindowsTest : public QObject
 {
     Q_OBJECT
-
-    static void capture(QWidget &widget, const QString &name)
-    {
-        const QString directory = qEnvironmentVariable("FLUENT_PROTOCOL_CAPTURE_DIR");
-        if (directory.isEmpty()) {
-            return;
-        }
-        QDir().mkpath(directory);
-        QTest::qWait(80);
-        widget.grab().save(QDir(directory).filePath(name + QStringLiteral(".png")));
-    }
 
   private slots:
     void initTestCase()
@@ -159,7 +147,6 @@ class ProtocolWindowsTest : public QObject
         apply->click();
         QCOMPARE(accepted.size(), 0);
         QVERIFY(dialog.isVisible());
-        capture(dialog, QStringLiteral("plot-protocol-choice"));
 
         combo->setCurrentIndex(combo->findData(QStringLiteral("keyValue")));
         QVERIFY(apply->isEnabled());
@@ -206,7 +193,6 @@ class ProtocolWindowsTest : public QObject
         }
         QVERIFY(foundExpectedValue);
         QVERIFY(apply->isEnabled());
-        capture(dialog, QStringLiteral("plot-protocol-") + AppPlot::protocolKey(config.protocol));
         apply->click();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         QCOMPARE(dialog.parserConfig().protocol, config.protocol);
@@ -294,7 +280,6 @@ class ProtocolWindowsTest : public QObject
         QCOMPARE(preview->rowCount(), 1);
         QCOMPARE(preview->item(0, 1)->text(), QStringLiteral("value"));
         QCOMPARE(preview->item(0, 2)->text(), QStringLiteral("1"));
-        capture(dialog, QStringLiteral("plot-protocol-payload"));
 
         sample->setPlainText(QStringLiteral("AA 55 03 10 01 02 03 4D 6F"));
         QVERIFY(!apply->isEnabled());
@@ -350,11 +335,9 @@ class ProtocolWindowsTest : public QObject
         QVERIFY(status->text().contains(AppI18n::text("校验正确")));
         QVERIFY(structure->toPlainText().contains(QStringLiteral("AA")));
         QVERIFY(structure->toPlainText().contains(QStringLiteral("55")));
-        capture(*window, QStringLiteral("frame-protocol-valid"));
 
         sample->setPlainText(QStringLiteral("AA 55 03 10 01 02 03 4D 6F"));
         QVERIFY(status->text().contains(AppI18n::text("校验错误")));
-        capture(*window, QStringLiteral("frame-protocol-invalid-checksum"));
         sample->setPlainText(QStringLiteral("AA ZZ"));
         QCOMPARE(table->model()->rowCount(), 0);
         QVERIFY(status->text().contains(QStringLiteral("HEX")));
@@ -462,7 +445,6 @@ class ProtocolWindowsTest : public QObject
         QCOMPARE(cell(5, 2), QStringLiteral("0D 0A"));
         const int checksumOffset = int(frame.size()) - 4;
         QVERIFY(cell(4, 2).contains(AppI18n::text("覆盖 %1").arg(QStringLiteral("2–%1").arg(checksumOffset - 1))));
-        capture(*window, QStringLiteral("frame-protocol-trailer"));
 
         page.m_protocolChecksumAlgorithmCombo->setCurrentIndex(
             page.m_protocolChecksumAlgorithmCombo->findData(AppProtocol::checksumNoneKey()));

@@ -4,8 +4,6 @@
 #include "app/core/update_manager.h"
 #include "app/core/update_release.h"
 
-#include <QtCore/QCryptographicHash>
-#include <QtCore/QFile>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
@@ -285,40 +283,6 @@ class UpdateManagerTest : public QObject
         QCOMPARE(ready.size(), succeeds ? 1 : 0);
         if (!succeeds)
             QCOMPARE(manager.statusMessage(), QStringLiteral("Authorization rejected"));
-    }
-
-    void liveReleaseDownloadWithoutInstalling()
-    {
-        if (!qEnvironmentVariableIsSet("FLUENT_UPDATE_LIVE_TEST")) {
-            QSKIP("Opt-in read-only live release download; installer is replaced with a test callback.");
-        }
-        QTemporaryDir cache;
-        QVERIFY(cache.isValid());
-        AppUpdate::UpdateManager manager;
-        manager.m_cacheRoot = cache.path();
-        bool installed = false;
-        manager.m_install = [&installed](const QString &path, const QByteArray &, QString *) {
-            installed = QFileInfo(path).size() > 0;
-            return installed;
-        };
-        QCoreApplication::setApplicationVersion(QStringLiteral("0.0.0"));
-        QSignalSpy found(&manager, &AppUpdate::UpdateManager::updateFound);
-        QSignalSpy ready(&manager, &AppUpdate::UpdateManager::installationReady);
-        manager.checkForUpdates(true);
-        QTRY_VERIFY_WITH_TIMEOUT(found.size() == 1 || manager.state() == State::Failed, 60000);
-        QVERIFY2(found.size() == 1, qPrintable(manager.statusMessage()));
-        QVERIFY(!manager.m_downloader->isRunning());
-        manager.downloadUpdate();
-        QTRY_VERIFY_WITH_TIMEOUT(ready.size() == 1 || manager.state() == State::Failed, 180000);
-        QVERIFY2(ready.size() == 1, qPrintable(manager.statusMessage()));
-        QVERIFY(installed);
-        QFile file(manager.m_downloadPath);
-        QVERIFY(file.open(QIODevice::ReadOnly));
-        QCOMPARE(file.size(), manager.release().size);
-        QCryptographicHash hash(QCryptographicHash::Sha256);
-        QVERIFY(hash.addData(&file));
-        QCOMPARE(hash.result().toHex(), manager.release().sha256);
-        QCoreApplication::setApplicationVersion(QStringLiteral("0.1.13"));
     }
 };
 

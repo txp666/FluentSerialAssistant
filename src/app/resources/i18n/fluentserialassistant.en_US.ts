@@ -602,6 +602,18 @@ Available only in this app. Baud rate and flow control are not simulated; switch
         <translation>Switch and save the app light/dark theme mode</translation>
     </message>
     <message>
+        <source>云母效果</source>
+        <translation>Mica effect</translation>
+    </message>
+    <message>
+        <source>窗口和表面显示半透明</source>
+        <translation>Make windows and surfaces semi-transparent</translation>
+    </message>
+    <message>
+        <source>需要 Windows 11</source>
+        <translation>Requires Windows 11</translation>
+    </message>
+    <message>
         <source>界面语言</source>
         <translation>Interface language</translation>
     </message>

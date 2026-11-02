@@ -7,7 +7,6 @@
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
 #include <QtCore/QDir>
-#include <QtGui/QPixmap>
 #include <QtTest/QSignalSpy>
 #include <QtTest/QTest>
 
@@ -41,37 +40,13 @@ class UpdateUiTest : public QObject
                             &AppUpdate::UpdateManager::downloadUpdate);
     }
 
-    static void prepareCapture(QWidget &host, AppUpdate::UpdateManager &manager)
+    // The dialog is a child overlay of its parent's window, so, as over the main window in the app,
+    // the window has to be shown. (On macOS QDialog::open() makes it a sheet window of its own.)
+    static bool showHost(QWidget &host)
     {
-        if (qEnvironmentVariableIsEmpty("FLUENT_UPDATE_UI_CAPTURE_DIR")) {
-            return;
-        }
-        const QString notes = QStringLiteral(
-            "## 更新内容\n\n"
-            "- 自动应答可以连续添加多条规则，选中已有规则后可单独修改；文本、HEX 和正则匹配均可使用。\n"
-            "- 大量数据记录采用增量批量更新，持续接收数据时保持表格流畅，并保留排序、筛选和记录定位功能。\n"
-            "- 在设置中开启内置虚拟串口对，两个会话分别连接 VIRTUAL-A 和 VIRTUAL-B，即可测试双向通信。\n\n"
-            "### 安装说明\n\n"
-            "确认后开始下载安装包。下载期间可以查看进度和取消更新，安装包校验通过后，应用将保存配置并退出安装。\n\n");
-        manager.m_release.notes = notes + manager.m_release.notes + QStringLiteral("\n\n") + notes.repeated(3);
-        host.resize(1040, 700);
+        host.resize(1120, 900);
         host.show();
-        QCoreApplication::processEvents();
-    }
-
-    static bool captureDialog(UpdateDialog &dialog, const QString &fileName)
-    {
-        const QString directory = qEnvironmentVariable("FLUENT_UPDATE_UI_CAPTURE_DIR");
-        if (directory.isEmpty()) {
-            return true;
-        }
-        if (!QDir().mkpath(directory)) {
-            return false;
-        }
-        QCoreApplication::processEvents();
-        QTest::qWait(250);
-        QCoreApplication::processEvents();
-        return dialog.grab().save(QDir(directory).filePath(fileName));
+        return QTest::qWaitForWindowExposed(&host);
     }
 
   private slots:
@@ -135,10 +110,9 @@ class UpdateUiTest : public QObject
     void availableUpdateShowsNotesAndRequiresConfirmation()
     {
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
-        prepareCapture(host, manager);
         SettingsPage settings(&host, &manager);
         QSignalSpy prompts(&settings, &SettingsPage::updateDialogRequested);
         emit manager.updateFound();
@@ -158,7 +132,6 @@ class UpdateUiTest : public QObject
         QVERIFY(dialog.yesButton()->isEnabled());
         QCOMPARE(dialog.yesButton()->text(), AppI18n::text("下载并安装"));
         QVERIFY(downloads.isEmpty());
-        QVERIFY(captureDialog(dialog, QStringLiteral("confirmation.png")));
 
         dialog.yesButton()->click();
         QCOMPARE(downloads.size(), 1);
@@ -172,10 +145,9 @@ class UpdateUiTest : public QObject
     void progressAndFailureRemainInTheDialog()
     {
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
-        prepareCapture(host, manager);
         UpdateDialog dialog(&manager, &host);
         disconnectDownload(dialog, manager);
         QSignalSpy downloads(&dialog, &UpdateDialog::downloadRequested);
@@ -192,7 +164,6 @@ class UpdateUiTest : public QObject
         QCOMPARE(progress->value(), 37);
         QVERIFY(bytes->text().startsWith(QStringLiteral("37%")));
         QCOMPARE(status->text(), QStringLiteral("Downloading with four connections"));
-        QVERIFY(captureDialog(dialog, QStringLiteral("progress.png")));
         setState(manager, State::Failed, QStringLiteral("Connection interrupted"));
         QCOMPARE(status->text(), QStringLiteral("Connection interrupted"));
         QVERIFY(progress->isError());
@@ -219,7 +190,7 @@ class UpdateUiTest : public QObject
         QFETCH(int, state);
         QFETCH(int, action);
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
         manager.m_downloadAuthorized = true;
@@ -247,7 +218,7 @@ class UpdateUiTest : public QObject
     void installationHandoffHasNoSecondConfirmation()
     {
         QWidget host;
-        host.resize(1120, 900);
+        QVERIFY(showHost(host));
         AppUpdate::UpdateManager manager;
         setRelease(manager);
         UpdateDialog dialog(&manager, &host);

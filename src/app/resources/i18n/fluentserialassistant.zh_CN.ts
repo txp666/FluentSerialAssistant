@@ -602,6 +602,18 @@
         <translation>切换并保存应用的明暗主题模式</translation>
     </message>
     <message>
+        <source>云母效果</source>
+        <translation>云母效果</translation>
+    </message>
+    <message>
+        <source>窗口和表面显示半透明</source>
+        <translation>窗口和表面显示半透明</translation>
+    </message>
+    <message>
+        <source>需要 Windows 11</source>
+        <translation>需要 Windows 11</translation>
+    </message>
+    <message>
         <source>界面语言</source>
         <translation>界面语言</translation>
     </message>
