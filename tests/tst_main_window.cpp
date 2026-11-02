@@ -1,5 +1,12 @@
+#include "app/core/app_settings.h"
 #include "app/view/main_window.h"
 
+#include <FluentQtWidgets/Config.h>
+#include <FluentQtWidgets/Settings/SettingCard.h>
+#include <FluentQtWidgets/Window/FluentWindow.h>
+
+#include <QtCore/QDir>
+#include <QtCore/QScopeGuard>
 #include <QtGui/QScreen>
 #include <QtTest/QTest>
 
@@ -8,6 +15,42 @@ class MainWindowTest : public QObject
     Q_OBJECT
 
   private slots:
+    void initTestCase()
+    {
+        FluentQt::FluentConfig::instance()->setFileName(
+            QDir(AppSettings::directoryPath()).filePath(QStringLiteral("fluent.json")));
+    }
+
+    // The window follows the saved Mica setting, which the settings page switches on Windows only.
+    // Mica needs Windows 11; elsewhere the window stays without it and the switch is disabled.
+    void micaFollowsTheSetting()
+    {
+        auto *config = FluentQt::FluentConfig::instance();
+        const bool original = config->isMicaEnabled();
+        const auto restore = qScopeGuard([config, original]() { config->setMicaEnabled(original); });
+        const bool available = FluentQt::isMicaEffectAvailable();
+
+        config->setMicaEnabled(true);
+        MainWindow window;
+        QCOMPARE(window.isMicaEffectEnabled(), available);
+        config->setMicaEnabled(false);
+        QVERIFY(!window.isMicaEffectEnabled());
+
+        auto *card = window.findChild<FluentQt::SwitchSettingCard *>(QStringLiteral("micaEffectCard"));
+#ifdef Q_OS_WIN
+        QVERIFY(card);
+        QCOMPARE(card->isEnabled(), available);
+        QVERIFY(!card->isChecked());
+        if (available) {
+            card->setChecked(true);
+            QVERIFY(config->isMicaEnabled());
+            QVERIFY(window.isMicaEffectEnabled());
+        }
+#else
+        QVERIFY(!card);
+#endif
+    }
+
     // The offscreen screen is 800 pixels wide, narrower than the window's preferred minimum size.
     void sizeStaysWithinTheScreen()
     {

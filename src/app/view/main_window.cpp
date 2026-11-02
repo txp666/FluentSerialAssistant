@@ -9,6 +9,8 @@
 #include "app/view/update_dialog.h"
 #include "app/view/workbench_sessions_page.h"
 
+#include <FluentQtWidgets/Config.h>
+
 #include <QtCore/QCoreApplication>
 #include <QtGui/QCloseEvent>
 #include <QtGui/QGuiApplication>
@@ -37,6 +39,9 @@ MainWindow::MainWindow(QWidget *parent) : MSFluentWindow(parent)
     }
     setWindowTitle(AppI18n::text("Fluent 串口助手"));
     setWindowIcon(QIcon(QStringLiteral(":/app/logo.png")));
+    // Mica (Windows 11 only) is a setting, switched on the settings page.
+    setMicaEffectEnabled(FluentConfig::instance()->isMicaEnabled());
+    connect(FluentConfig::instance(), &FluentConfig::micaEnabledChanged, this, &MainWindow::setMicaEffectEnabled);
     QScreen *targetScreen = screen();
     if (!targetScreen) {
         targetScreen = QGuiApplication::primaryScreen();

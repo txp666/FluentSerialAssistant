@@ -91,6 +91,7 @@ The macOS build is not notarized by Apple. If macOS blocks it on first launch, c
 ### Appearance and settings
 
 - Light, dark, or system theme with an accent color; UI font, monospace terminal font, font size, and custom font import.
+- Mica effect on Windows 11.
 - Simplified Chinese and English, switchable without restarting.
 - Restores the last serial settings, send text, packets, macros, auto-reply rules, and file-send settings, with optional connection at startup; side cards remember whether they are collapsed.
 - Settings are stored in the standard per-user configuration directory and never in the Windows registry; settings from older installations are migrated automatically.

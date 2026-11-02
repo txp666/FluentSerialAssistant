@@ -14,6 +14,7 @@
 #include <FluentQtWidgets/Widgets/Button.h>
 #include <FluentQtWidgets/Widgets/ComboBox.h>
 #include <FluentQtWidgets/Widgets/InfoBar.h>
+#include <FluentQtWidgets/Window/FluentWindow.h>
 
 #include "app/core/app_settings.h"
 #include <QtCore/QCoreApplication>
@@ -64,6 +65,32 @@ QString currentVersionText()
     const QString version = QCoreApplication::applicationVersion();
     return AppI18n::text("当前版本 %1").arg(version.isEmpty() ? AppI18n::text("未知") : version);
 }
+
+#ifdef Q_OS_WIN
+// As in the Gallery. Mica needs Windows 11, so on Windows 10 the switch stays off and disabled.
+SwitchSettingCard *createMicaCard(QWidget *parent)
+{
+    const bool available = isMicaEffectAvailable();
+    auto *card = new SwitchSettingCard(
+        FluentIcon::Transparent, AppI18n::text("云母效果"),
+        available ? AppI18n::text("窗口和表面显示半透明") : AppI18n::text("需要 Windows 11"), parent);
+    card->setObjectName(QStringLiteral("micaEffectCard"));
+    card->setEnabled(available);
+    if (!available) {
+        return card;
+    }
+
+    // The main window follows the setting.
+    auto *config = FluentConfig::instance();
+    card->setChecked(config->isMicaEnabled());
+    QObject::connect(card, &SwitchSettingCard::checkedChanged, card, [config](bool checked) {
+        config->setMicaEnabled(checked);
+        config->save();
+    });
+    QObject::connect(config, &FluentConfig::micaEnabledChanged, card, &SwitchSettingCard::setChecked);
+    return card;
+}
+#endif
 
 } // namespace
 
@@ -155,6 +182,9 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
     connect(FluentConfig::instance(), &FluentConfig::localeNameChanged, this, &SettingsPage::refreshUpdateCard);
     refreshUpdateCard();
 
+#ifdef Q_OS_WIN
+    personalization->addSettingCard(createMicaCard(personalization));
+#endif
     personalization->addSettingCards(
         {themeModeCard, languageCard, themeColorCard, uiFontCard, importFontCard, m_updateCard});
     addSection(QString(), personalization);
