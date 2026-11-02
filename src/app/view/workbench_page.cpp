@@ -317,6 +317,20 @@ bool WorkbenchPage::forwardSidePanelWheelEvent(QObject *watched, QWheelEvent *ev
         return false;
     }
 
+    // Lists and editors in the panel scroll themselves until they reach an
+    // end, then the panel takes the wheel. Cards are scroll areas only for
+    // their expand animation.
+    const int delta = event->angleDelta().y() != 0 ? event->angleDelta().y() : event->pixelDelta().y();
+    for (QWidget *ancestor = widget; delta != 0 && ancestor != m_sidePanel; ancestor = ancestor->parentWidget()) {
+        const auto *area = qobject_cast<QAbstractScrollArea *>(ancestor);
+        const QScrollBar *scrollBar =
+            area && !qobject_cast<const ExpandSettingCard *>(area) ? area->verticalScrollBar() : nullptr;
+        if (scrollBar &&
+            (delta > 0 ? scrollBar->value() > scrollBar->minimum() : scrollBar->value() < scrollBar->maximum())) {
+            return false;
+        }
+    }
+
     const QPointF viewportPosition = viewport->mapFromGlobal(event->globalPosition().toPoint());
     QWheelEvent forwarded(viewportPosition, event->globalPosition(), event->pixelDelta(), event->angleDelta(),
                           event->buttons(), event->modifiers(), event->phase(), event->inverted(), event->source(),

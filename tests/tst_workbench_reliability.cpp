@@ -371,6 +371,40 @@ class WorkbenchReliabilityTest : public QObject
         QCOMPARE(restored.m_checksumSkipTrailingEdit->text(), QStringLiteral("1"));
     }
 
+    void sidePanelEditsKeepTheirBottomBorder()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        const auto cards = page.m_sidePanel->findChildren<FluentQt::ExpandSettingCard *>();
+        for (auto *card : cards) {
+            card->setExpanded(true);
+        }
+        for (auto *card : cards) {
+            auto *animation = card->findChild<QVariantAnimation *>(QStringLiteral("expandSettingCardAnimation"));
+            QVERIFY(animation);
+            QTRY_COMPARE(animation->state(), QAbstractAnimation::Stopped);
+        }
+        QCoreApplication::processEvents();
+
+        // The style sheet makes edits taller than their fixed height, so a
+        // wrapper sized to the controls clips the bottom border and leaves
+        // only its rounded ends.
+        const auto edits = page.m_sidePanel->findChildren<LineEdit *>();
+        QVERIFY(edits.contains(page.m_checksumSkipLeadingEdit));
+        for (const LineEdit *edit : edits) {
+            if (edit->isVisibleTo(page.m_sidePanel)) {
+                const QRect geometry = edit->geometry();
+                const QRect parentRect = edit->parentWidget()->rect();
+                QVERIFY2(parentRect.contains(geometry), qPrintable(QStringLiteral("%1 spans y %2–%3, parent ends at %4")
+                                                                       .arg(edit->objectName())
+                                                                       .arg(geometry.top())
+                                                                       .arg(geometry.bottom())
+                                                                       .arg(parentRect.bottom())));
+            }
+        }
+    }
+
     void scriptLogKeepsTheLastSendError()
     {
         ScriptBridge bridge;

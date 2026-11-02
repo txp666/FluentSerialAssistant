@@ -846,6 +846,18 @@ Reply: %2</translation>
         <translation>Auto reply saved</translation>
     </message>
     <message>
+        <source>复制</source>
+        <translation>Copy</translation>
+    </message>
+    <message>
+        <source>以选中的应答为模板新建</source>
+        <translation>Start a new reply from the selected one</translation>
+    </message>
+    <message>
+        <source>%1 副本</source>
+        <translation>%1 copy</translation>
+    </message>
+    <message>
         <source>已删除自动应答</source>
         <translation>Auto reply deleted</translation>
     </message>

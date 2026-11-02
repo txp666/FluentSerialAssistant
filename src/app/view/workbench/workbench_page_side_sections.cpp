@@ -554,29 +554,27 @@ QWidget *WorkbenchPage::createSendSettingsSection()
 
     // Bytes skipped at the end follow the checksum, and the line ending
     // follows them.
-    auto *checksumRange = new QWidget(section);
-    auto *checksumRangeLayout = new QHBoxLayout(checksumRange);
-    checksumRangeLayout->setContentsMargins(0, 0, 0, 0);
+    auto *checksumRangeLayout = new QHBoxLayout;
     checksumRangeLayout->setSpacing(6);
-    m_checksumSkipLeadingEdit = createNumberEdit(checksumRange, 0, 0, MaxChecksumSkipBytes);
+    m_checksumSkipLeadingEdit = createNumberEdit(section, 0, 0, MaxChecksumSkipBytes);
     m_checksumSkipLeadingEdit->setObjectName(QStringLiteral("checksumSkipLeadingEdit"));
-    m_checksumSkipTrailingEdit = createNumberEdit(checksumRange, 0, 0, MaxChecksumSkipBytes);
+    m_checksumSkipTrailingEdit = createNumberEdit(section, 0, 0, MaxChecksumSkipBytes);
     m_checksumSkipTrailingEdit->setObjectName(QStringLiteral("checksumSkipTrailingEdit"));
     const QString checksumRangeTip =
         AppI18n::text("开头和末尾跳过的字节不参与校验，校验码插在末尾跳过的字节之前；换行符始终在最后。");
-    const auto checksumRangeLabel = [checksumRange](const QString &text) {
-        auto *label = new CaptionLabel(text, checksumRange);
+    const auto checksumRangeLabel = [section, &checksumRangeTip](const QString &text) {
+        auto *label = new CaptionLabel(text, section);
         label->setFixedHeight(CompactControlHeight);
+        label->setToolTip(checksumRangeTip);
         return label;
     };
     checksumRangeLayout->addWidget(checksumRangeLabel(AppI18n::text("开头")));
     checksumRangeLayout->addWidget(m_checksumSkipLeadingEdit, 1);
     checksumRangeLayout->addWidget(checksumRangeLabel(AppI18n::text("末尾")));
     checksumRangeLayout->addWidget(m_checksumSkipTrailingEdit, 1);
-    checksumRange->setToolTip(checksumRangeTip);
     m_checksumSkipLeadingEdit->setToolTip(checksumRangeTip);
     m_checksumSkipTrailingEdit->setToolTip(checksumRangeTip);
-    addFormRow(root, AppI18n::text("跳过字节"), checksumRange);
+    addFormRow(root, AppI18n::text("跳过字节"), checksumRangeLayout);
 
     m_checksumResultLabel = new CaptionLabel(AppI18n::text("校验未计算"), section);
     m_checksumResultLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
@@ -1061,10 +1059,14 @@ QWidget *WorkbenchPage::createAutoReplySection()
     auto *editRow = new QHBoxLayout;
     editRow->setSpacing(8);
     m_autoReplyNewButton = new PushButton(icon(FluentIcon::Add), AppI18n::text("新建"), section);
+    m_autoReplyCopyButton = new PushButton(icon(FluentIcon::Copy), AppI18n::text("复制"), section);
+    AppUi::setFluentToolTip(m_autoReplyCopyButton, AppI18n::text("以选中的应答为模板新建"));
     m_autoReplyDeleteButton = new PushButton(icon(FluentIcon::Delete), AppI18n::text("删除"), section);
     setButtonRowControlPolicy(m_autoReplyNewButton);
+    setButtonRowControlPolicy(m_autoReplyCopyButton);
     setButtonRowControlPolicy(m_autoReplyDeleteButton);
     editRow->addWidget(m_autoReplyNewButton);
+    editRow->addWidget(m_autoReplyCopyButton);
     editRow->addWidget(m_autoReplyDeleteButton);
     root->addLayout(editRow);
 
@@ -1079,6 +1081,7 @@ QWidget *WorkbenchPage::createAutoReplySection()
     });
     connect(m_autoReplySaveButton, &PushButton::clicked, this, &WorkbenchPage::saveCurrentAutoReplyRule);
     connect(m_autoReplyNewButton, &PushButton::clicked, this, &WorkbenchPage::startNewAutoReplyRule);
+    connect(m_autoReplyCopyButton, &PushButton::clicked, this, &WorkbenchPage::copySelectedAutoReplyRule);
     connect(m_autoReplyDeleteButton, &PushButton::clicked, this, &WorkbenchPage::removeSelectedAutoReplyRule);
     connect(m_autoReplyUpButton, &ToolButton::clicked, this, [this]() { moveSelectedAutoReplyRule(-1); });
     connect(m_autoReplyDownButton, &ToolButton::clicked, this, [this]() { moveSelectedAutoReplyRule(1); });

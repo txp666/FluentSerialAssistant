@@ -367,6 +367,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void updateAutoReplyTable(int selectedRow = -1);
     void updateAutoReplyActionState();
     void startNewAutoReplyRule();
+    void copySelectedAutoReplyRule();
     void applyAutoReplyRule(int row);
     void saveCurrentAutoReplyRule();
     void removeSelectedAutoReplyRule();
@@ -601,6 +602,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     FluentQt::PushButton *m_scriptClearLogButton = nullptr;
     FluentQt::PushButton *m_autoReplySaveButton = nullptr;
     FluentQt::PushButton *m_autoReplyNewButton = nullptr;
+    FluentQt::PushButton *m_autoReplyCopyButton = nullptr;
     FluentQt::PushButton *m_autoReplyDeleteButton = nullptr;
     FluentQt::PushButton *m_checksumCalcButton = nullptr;
     FluentQt::PushButton *m_modbusFillButton = nullptr;
