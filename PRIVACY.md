@@ -1,21 +1,23 @@
 # Privacy policy
 
-Fluent Serial Assistant does not include telemetry, analytics, advertising, or
-automatic background update checks.
+Fluent Serial Assistant does not include telemetry, analytics, or advertising.
 
 The application stores its settings and user-created data locally. Serial-port
 traffic, logs, exported files, protocol templates, macros, scripts, and session
 data are not uploaded by the application.
 
-The application transfers information to a networked system only after an
-explicit user action:
+The application contacts a networked system only in these cases:
 
-- Selecting **Check for updates** sends an HTTPS request to the public GitHub
-  Releases API for `txp666/FluentSerialAssistant`. GitHub receives the network
-  information normally associated with an HTTPS request, including the user's
-  IP address and the `FluentSerialAssistant` user-agent string. GitHub's
+- When it starts, and when **Check for updates** is selected, it sends one HTTPS
+  request to the public GitHub Releases API for `txp666/FluentSerialAssistant`
+  to look for a newer version. GitHub receives the network information normally
+  associated with an HTTPS request, including the user's IP address and the
+  `FluentSerialAssistant` user-agent string. GitHub's
   [privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement)
   applies.
+- A newer version is downloaded from GitHub, with the
+  `FluentSerialAssistant-Updater` user-agent string, only after the user
+  confirms it in the update dialog.
 - Selecting a release or project link opens that URL in the user's default web
   browser. The destination site's privacy policy then applies.
 

@@ -45,7 +45,7 @@ Fluent 串口助手提供现代 Fluent 风格的串口终端，覆盖连接、�
 | macOS（Apple 芯片） | `FluentSerialAssistant-X.Y.Z-macos-arm64.dmg` | 打开后把应用拖到“应用程序”文件夹 |
 | Linux x64 / arm64 | `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb` | `sudo apt install ./FluentSerialAssistant-X.Y.Z-linux-x64.deb` |
 
-macOS 版本未经 Apple 公证，首次打开被系统阻止时，请在“系统设置 → 隐私与安全性”中点击“仍要打开”。v0.1.14 及更新版本可在应用内检查更新，确认后自动下载、校验并安装。
+macOS 版本未经 Apple 公证，首次打开被系统阻止时，请在“系统设置 → 隐私与安全性”中点击“仍要打开”。安装后的更新可在应用内完成，见[应用内更新](#应用内更新)。
 
 ## 功能特性
 
@@ -159,12 +159,12 @@ git submodule update --init --recursive
 ### 环境要求
 
 - CMake 3.21+ 和 Ninja
-- Qt 6.5+，包含 Widgets、SerialPort、Svg、Network、Qml 和 Core5Compat 模块（Qt 安装器中勾选 Qt Serial Port 和 Qt 5 Compatibility Module）
+- Qt 6.12，包含 Widgets、SerialPort、Svg、Network、Qml 和 Core5Compat 模块（Qt 安装器中勾选 Qt Serial Port 和 Qt 5 Compatibility Module）；与发布工作流 `.github/workflows/release.yml` 中的 `QT_VERSION` 一致
 - Linux 另需 `libgl1-mesa-dev`、`libxcb-cursor0` 和 `libxkbcommon-x11-0`
 
 ### Windows（MinGW）
 
-`CMakePresets.json` 默认使用 `C:/Qt/6.11.1/mingw_64` 和 `C:/Qt/Tools/mingw1310_64`，路径不同时请修改预设。
+`CMakePresets.json` 默认使用 `C:/Qt/6.12.0/mingw_64` 和 `C:/Qt/Tools/mingw1310_64`，路径不同时请修改预设。
 
 ```powershell
 cmake --preset mingw-release
@@ -176,12 +176,16 @@ Debug 构建使用 `mingw-debug` 预设。链接时提示 `cannot open output fi
 
 ### macOS 和 Linux
 
+可以用 [aqtinstall](https://github.com/miurahr/aqtinstall) 安装 Qt，以 macOS 为例：
+
 ```bash
-cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<平台目录>
+pip install aqtinstall
+aqt install-qt mac desktop 6.12.0 clang_64 -O ~/Qt -m qtserialport qt5compat
+cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build/release --parallel
 ```
 
-Qt 已在默认搜索路径中时可省略 `CMAKE_PREFIX_PATH`。
+Linux 把 `mac desktop 6.12.0 clang_64` 换成 `linux desktop 6.12.0 linux_gcc_64`。Qt 装在 Qt 安装器或 aqtinstall 的默认位置（`~/Qt`、`C:\Qt`）时，CMake 会自动使用其中最新的 Qt 6.12 及以上版本；装在其他位置时，用 `-DCMAKE_PREFIX_PATH=<Qt 目录>` 指定。
 
 ### 运行测试
 
@@ -217,7 +221,9 @@ GitHub Actions 只在 GitHub Release 发布时运行。
 │   ├── images/          # README 截图
 │   ├── release-notes/   # 各版本发布说明
 │   └── signing/         # 代码签名配置说明
-├── packaging/windows/   # Inno Setup 安装程序定义和翻译
+├── packaging/
+│   ├── linux/           # Linux 桌面入口
+│   └── windows/         # Inno Setup 安装程序定义和翻译
 ├── scripts/             # 打包脚本
 ├── signing/signpath/    # SignPath 签名产物配置
 ├── src/

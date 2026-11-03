@@ -18,8 +18,8 @@ cd FluentSerialAssistant
 git submodule update --init --recursive
 ```
 
-3. 安装 Qt 6.5+，确保包含 `SerialPort` 和 `Svg` 模块。
-4. 使用 CMake 构建：
+3. 安装 Qt 6.12 及所需模块，见 README 的“从源码构建 → 环境要求”。
+4. 使用 CMake 构建（Windows 示例；macOS 和 Linux 的命令见 README）：
 
 ```powershell
 cmake --preset mingw-debug
@@ -32,7 +32,7 @@ cmake --build --preset mingw-debug --parallel
 - UI 改动请尽量附截图或录屏。
 - 串口行为改动请说明测试设备、波特率和复现步骤。
 - 新功能需要同步更新 README 或相关文档。
-- 构建前请至少执行一次本地 Debug 构建。
+- 提交前请在本地构建并运行测试：`ctest --test-dir <构建目录> --output-on-failure`。
 
 ## 代码风格
 
@@ -44,13 +44,13 @@ cmake --build --preset mingw-debug --parallel
 - 提交前建议运行格式化检查：
 
 ```powershell
-cmake --build build/codex-release --target format-check
+cmake --build <构建目录> --target format-check
 ```
 
 如需自动格式化：
 
 ```powershell
-cmake --build build/codex-release --target format
+cmake --build <构建目录> --target format
 ```
 
 ## Issue 建议

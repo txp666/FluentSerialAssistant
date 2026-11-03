@@ -2,7 +2,7 @@
 
 ## 支持范围
 
-当前项目处于早期开发阶段，默认只维护主分支上的最新代码。正式发布版本后，可以在本文件中补充具体受支持版本。
+安全修复只发布在最新版本中。使用旧版本时，请先通过应用内更新或 [Releases](https://github.com/txp666/FluentSerialAssistant/releases/latest) 升级到最新版本。
 
 ## 报告安全问题
 
