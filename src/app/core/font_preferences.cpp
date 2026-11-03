@@ -367,4 +367,13 @@ QFont terminalFont(const QString &family)
     return font;
 }
 
+// For HEX samples and byte views among other inputs: the terminal's family at the inputs' 14 px. The system fixed
+// font alone is 11 pt Menlo on macOS, smaller than everything around it.
+QFont inputMonospaceFont()
+{
+    QFont font = terminalFont();
+    font.setPixelSize(14);
+    return font;
+}
+
 } // namespace AppFontPreferences

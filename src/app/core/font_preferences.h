@@ -29,5 +29,6 @@ void setTerminalFontPointSize(int pointSize);
 void applyConfiguredUiFont();
 
 QFont terminalFont(const QString &family = QString());
+QFont inputMonospaceFont();
 
 } // namespace AppFontPreferences

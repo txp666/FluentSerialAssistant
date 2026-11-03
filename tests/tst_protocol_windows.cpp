@@ -1,5 +1,6 @@
 #include "app/core/app_i18n.h"
 #include "app/core/app_settings.h"
+#include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
 #include "app/view/plot_parser_dialog.h"
 #include "app/view/protocol_template_window.h"
@@ -315,6 +316,27 @@ class ProtocolWindowsTest : public QObject
         QVERIFY(apply->isEnabled());
         fields->item(0, 4)->setText(QStringLiteral("not a number"));
         QVERIFY(!apply->isEnabled());
+    }
+
+    // FluentQtWidgets no longer replaces a font set on an input with its style sheet's, so the bare system fixed font
+    // (11 pt Menlo on macOS) made the HEX samples and the byte view smaller than the inputs around them.
+    void hexInputsUseTheTerminalFamilyAtTheInputSize()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.showProtocolTemplateWindow();
+        auto *window = page.m_protocolTemplateWindow;
+        QVERIFY(window);
+        PlotParserDialog dialog(AppPlot::ParserConfig{});
+        const QList<QWidget *> inputs{
+            window->findChild<QPlainTextEdit *>(QStringLiteral("protocolTemplateSampleEdit")),
+            window->findChild<FluentQt::TextBrowser *>(QStringLiteral("protocolTemplateStructureView")),
+            dialog.findChild<QPlainTextEdit *>(QStringLiteral("plotSampleEdit"))};
+        const QString family = AppFontPreferences::terminalFont().family();
+        for (QWidget *input : inputs) {
+            QVERIFY(input);
+            QCOMPARE(input->font().pixelSize(), 14);
+            QCOMPARE(input->font().family(), family);
+        }
     }
 
     void frameWindowVisualizesProtocolAndReportsMalformedSamples()
