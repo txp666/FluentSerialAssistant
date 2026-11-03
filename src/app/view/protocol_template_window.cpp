@@ -1,11 +1,11 @@
 #include "app/view/protocol_template_window.h"
 
 #include "app/core/app_i18n.h"
+#include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 #include <QtCore/QSignalBlocker>
-#include <QtGui/QFontDatabase>
 #include <QtGui/QShowEvent>
 #include <QtGui/QStandardItemModel>
 #include <QtWidgets/QHeaderView>
@@ -99,7 +99,7 @@ ProtocolTemplateWindow::ProtocolTemplateWindow(QWidget *editor, QWidget *parent)
     m_sampleEdit = new PlainTextEdit(preview);
     m_sampleEdit->setObjectName(QStringLiteral("protocolTemplateSampleEdit"));
     m_sampleEdit->setPlaceholderText(QStringLiteral("AA 55 03 10 01 02 03 4D 6E"));
-    m_sampleEdit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_sampleEdit->setFont(AppFontPreferences::inputMonospaceFont());
     m_sampleEdit->setMaximumHeight(88);
     m_sampleEdit->setMinimumHeight(70);
     previewLayout->addWidget(m_sampleEdit);
@@ -120,7 +120,7 @@ ProtocolTemplateWindow::ProtocolTemplateWindow(QWidget *editor, QWidget *parent)
 
     m_structureView = new TextBrowser(preview);
     m_structureView->setObjectName(QStringLiteral("protocolTemplateStructureView"));
-    m_structureView->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_structureView->setFont(AppFontPreferences::inputMonospaceFont());
     m_structureView->setOpenExternalLinks(false);
     m_structureView->setMinimumHeight(96);
     m_structureView->setMaximumHeight(136);

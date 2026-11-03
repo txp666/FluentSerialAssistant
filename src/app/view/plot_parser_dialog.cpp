@@ -1,13 +1,13 @@
 #include "app/view/plot_parser_dialog.h"
 
 #include "app/core/app_i18n.h"
+#include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSignalBlocker>
-#include <QtGui/QFontDatabase>
 #include <QtGui/QIcon>
 #include <QtWidgets/QAbstractItemView>
 #include <QtWidgets/QFormLayout>
@@ -247,7 +247,7 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     inputLayout->addLayout(inputToolbar);
     m_sampleEdit = new PlainTextEdit(this);
     m_sampleEdit->setObjectName(QStringLiteral("plotSampleEdit"));
-    m_sampleEdit->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_sampleEdit->setFont(AppFontPreferences::inputMonospaceFont());
     m_sampleEdit->setPlaceholderText(AppI18n::text("粘贴设备数据，实时查看字段和值"));
     m_sampleEdit->setMinimumHeight(150);
     inputLayout->addWidget(m_sampleEdit, 1);

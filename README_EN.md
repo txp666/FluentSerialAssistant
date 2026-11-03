@@ -47,7 +47,7 @@ Download the package for your platform from [Releases](https://github.com/txp666
 | macOS (Apple silicon) | `FluentSerialAssistant-X.Y.Z-macos-arm64.dmg` | Open it and drag the app to the Applications folder |
 | Linux x64 / arm64 | `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb` | `sudo apt install ./FluentSerialAssistant-X.Y.Z-linux-x64.deb` |
 
-The macOS build is not notarized by Apple. If macOS blocks it on first launch, click **Open Anyway** in **System Settings → Privacy & Security**. From v0.1.14 on, the app checks for updates itself and downloads, verifies, and installs them after you confirm.
+The macOS build is not notarized by Apple. If macOS blocks it on first launch, click **Open Anyway** in **System Settings → Privacy & Security**. Later updates install from inside the app; see [In-app updates](#in-app-updates).
 
 ## Features
 
@@ -161,12 +161,12 @@ git submodule update --init --recursive
 ### Requirements
 
 - CMake 3.21+ and Ninja
-- Qt 6.5+ with the Widgets, SerialPort, Svg, Network, Qml, and Core5Compat modules (select Qt Serial Port and Qt 5 Compatibility Module in the Qt installer)
+- Qt 6.12 with the Widgets, SerialPort, Svg, Network, Qml, and Core5Compat modules (select Qt Serial Port and Qt 5 Compatibility Module in the Qt installer), the `QT_VERSION` of the release workflow `.github/workflows/release.yml`
 - On Linux, also `libgl1-mesa-dev`, `libxcb-cursor0`, and `libxkbcommon-x11-0`
 
 ### Windows (MinGW)
 
-`CMakePresets.json` expects `C:/Qt/6.11.1/mingw_64` and `C:/Qt/Tools/mingw1310_64`; adjust the presets if yours differ.
+`CMakePresets.json` expects `C:/Qt/6.12.0/mingw_64` and `C:/Qt/Tools/mingw1310_64`; adjust the presets if yours differ.
 
 ```powershell
 cmake --preset mingw-release
@@ -179,11 +179,13 @@ Use the `mingw-debug` preset for a debug build. If linking reports `cannot open 
 ### macOS and Linux
 
 ```bash
-cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<platform>
+pip install aqtinstall
+aqt install-qt mac desktop 6.12.0 clang_64 -O ~/Qt -m qtserialport qt5compat
+cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build/release --parallel
 ```
 
-Leave out `CMAKE_PREFIX_PATH` when Qt is already on the default search path.
+The example installs Qt with [aqtinstall](https://github.com/miurahr/aqtinstall) on macOS; on Linux, use `linux desktop 6.12.0 linux_gcc_64`. CMake uses the newest Qt 6.12 or later from the default folder of the Qt installer or aqtinstall (`~/Qt`, `C:\Qt`) by itself. For a Qt anywhere else, add `-DCMAKE_PREFIX_PATH=<qt-dir>`.
 
 ### Running the tests
 
@@ -219,7 +221,9 @@ For local packaging, `scripts/package_release.ps1` builds a portable Windows pac
 │   ├── images/          # README screenshots
 │   ├── release-notes/   # Release notes for each version
 │   └── signing/         # Code signing setup
-├── packaging/windows/   # Inno Setup definition and translations
+├── packaging/
+│   ├── linux/           # Linux desktop entry
+│   └── windows/         # Inno Setup definition and translations
 ├── scripts/             # Packaging scripts
 ├── signing/signpath/    # SignPath artifact configurations
 ├── src/

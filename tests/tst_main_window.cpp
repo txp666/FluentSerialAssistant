@@ -3,10 +3,12 @@
 
 #include <FluentQtWidgets/Config.h>
 #include <FluentQtWidgets/Settings/SettingCard.h>
+#include <FluentQtWidgets/Widgets/ScrollArea.h>
 #include <FluentQtWidgets/Window/FluentWindow.h>
 
 #include <QtCore/QDir>
 #include <QtCore/QScopeGuard>
+#include <QtGui/QImage>
 #include <QtGui/QScreen>
 #include <QtTest/QTest>
 
@@ -17,8 +19,43 @@ class MainWindowTest : public QObject
   private slots:
     void initTestCase()
     {
+        Q_INIT_RESOURCE(app);
+        Q_INIT_RESOURCE(fluentqtwidgets);
         FluentQt::FluentConfig::instance()->setFileName(
             QDir(AppSettings::directoryPath()).filePath(QStringLiteral("fluent.json")));
+    }
+
+    // As in the Gallery, the window's background (Mica on Windows 11) shows through the title bar
+    // and, under the page layer's translucent white, between the cards. A transparent window colour
+    // stands in for Mica, which the test platforms do not have.
+    void windowBackgroundShowsBetweenTheCards()
+    {
+        MainWindow window;
+        window.setCustomBackgroundColor(Qt::transparent, Qt::transparent);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+        for (auto *area : window.findChildren<FluentQt::ScrollArea *>()) {
+            QVERIFY2(!area->viewport()->autoFillBackground(), area->metaObject()->className());
+            QVERIFY2(!area->widget() || !area->widget()->autoFillBackground(), area->metaObject()->className());
+        }
+
+        const QImage image = window.grab().toImage();
+        const qreal ratio = image.devicePixelRatio();
+        const auto alphaAt = [&image, ratio](const QPoint &point) {
+            return image.pixelColor((QPointF(point) * ratio).toPoint()).alpha();
+        };
+        QCOMPARE(alphaAt(QPoint(window.width() / 2, 2)), 0);
+        QWidget *page = nullptr;
+        for (auto *view : window.findChildren<QWidget *>(QStringLiteral("appPageView"))) {
+            if (view->isVisible()) {
+                page = view;
+            }
+        }
+        QVERIFY(page != nullptr);
+        // The page's bottom margin, below its cards.
+        const int margin = alphaAt(page->mapTo(&window, QPoint(page->width() / 2, page->height() - 4)));
+        QVERIFY2(margin > 0 && margin < 255, qPrintable(QString::number(margin)));
     }
 
     // The window follows the saved Mica setting, which the settings page switches on Windows only.

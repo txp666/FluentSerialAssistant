@@ -5,6 +5,10 @@ on:
     types: [published]
 
 env:
+  # One Qt for every job and for the local builds. aqtinstall comes from GitHub until a release reads
+  # the Windows x64 repository layout of Qt 6.11 and later (miurahr/aqtinstall#1000).
+  QT_VERSION: "6.12.0"
+  AQT_SOURCE: "git+https://github.com/miurahr/aqtinstall.git"
   RELEASE_TAG: ${{ github.event.release.tag_name }}
 
 permissions:
@@ -48,7 +52,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.10.3"
+          version: ${{ env.QT_VERSION }}
+          aqtsource: ${{ env.AQT_SOURCE }}
           modules: "qt5compat qtserialport"
           cache: true
 
@@ -248,7 +253,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.10.3"
+          version: ${{ env.QT_VERSION }}
+          aqtsource: ${{ env.AQT_SOURCE }}
           modules: "qt5compat qtserialport"
           cache: true
 
@@ -333,7 +339,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.10.3"
+          version: ${{ env.QT_VERSION }}
+          aqtsource: ${{ env.AQT_SOURCE }}
           host: ${{ matrix.qt_host }}
           modules: "qt5compat qtserialport"
           cache: true
