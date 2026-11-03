@@ -52,6 +52,8 @@ AppPage::AppPage(const QString &title, const QString &subtitle, QWidget *parent,
 
     setWidget(m_view);
     setWidgetResizable(true);
+    // As the Gallery's pages: the window's background (Mica on Windows 11) shows between the cards.
+    enableTransparentBackground();
 }
 
 QVBoxLayout *AppPage::contentLayout() const { return m_viewLayout; }

@@ -36,6 +36,7 @@ QWidget *WorkbenchPage::createWorkbench()
     sideLayout->addStretch(1);
     m_sideScroll->setWidget(m_sidePanel);
     m_sideScroll->setWidgetResizable(true);
+    m_sideScroll->enableTransparentBackground();
     installSidePanelWheelFilters(m_sidePanel);
 
     auto *terminalPanel = new QWidget(workbench);
