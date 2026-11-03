@@ -41,12 +41,15 @@ if(MINGW)
     string(APPEND CMAKE_EXE_LINKER_FLAGS_MINSIZEREL " -Wl,--gc-sections -s")
 endif()
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg Network Core5Compat Qml)
-
 set(FLUENTQTWIDGETS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/FluentQtWidgets" CACHE PATH "Path to FluentQtWidgets checkout")
 if(NOT EXISTS "${FLUENTQTWIDGETS_ROOT}/CMakeLists.txt")
     message(FATAL_ERROR "FLUENTQTWIDGETS_ROOT does not point to a FluentQtWidgets checkout: ${FLUENTQTWIDGETS_ROOT}")
 endif()
+
+# Finds a Qt from the Qt installer or aqtinstall in ~/Qt or C:/Qt when CMAKE_PREFIX_PATH names none.
+include("${FLUENTQTWIDGETS_ROOT}/cmake/FqwLocateQt.cmake")
+fqw_locate_qt(6.12)
+find_package(Qt6 6.12 REQUIRED COMPONENTS Core Gui Widgets SerialPort Svg Network Core5Compat Qml)
 
 set(CMAKE_DISABLE_FIND_PACKAGE_Qt6Multimedia ON CACHE BOOL "" FORCE)
 set(CMAKE_DISABLE_FIND_PACKAGE_Qt6MultimediaWidgets ON CACHE BOOL "" FORCE)
