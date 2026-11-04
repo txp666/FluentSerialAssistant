@@ -746,6 +746,18 @@ Available only in this app. Baud rate and flow control are not simulated; switch
         <translation>Font files (*.ttf *.otf *.ttc);;All files (*)</translation>
     </message>
     <message>
+        <source>字体已导入</source>
+        <translation>Font imported</translation>
+    </message>
+    <message>
+        <source>%1 已用于界面和终端。</source>
+        <translation>%1 is in use in the interface and the terminal.</translation>
+    </message>
+    <message>
+        <source>%1 已用于终端，界面字体重启后生效。</source>
+        <translation>%1 is in use in the terminal; the interface font takes effect after a restart.</translation>
+    </message>
+    <message>
         <source>导入字体失败</source>
         <translation>Font import failed</translation>
     </message>

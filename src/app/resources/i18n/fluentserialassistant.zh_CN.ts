@@ -746,6 +746,18 @@
         <translation>字体文件 (*.ttf *.otf *.ttc);;所有文件 (*)</translation>
     </message>
     <message>
+        <source>字体已导入</source>
+        <translation>字体已导入</translation>
+    </message>
+    <message>
+        <source>%1 已用于界面和终端。</source>
+        <translation>%1 已用于界面和终端。</translation>
+    </message>
+    <message>
+        <source>%1 已用于终端，界面字体重启后生效。</source>
+        <translation>%1 已用于终端，界面字体重启后生效。</translation>
+    </message>
+    <message>
         <source>导入字体失败</source>
         <translation>导入字体失败</translation>
     </message>

@@ -23,7 +23,11 @@ int currentTerminalFontPointSize();
 
 void loadCustomFonts();
 FontImportResult importFontFile(const QString &filePath);
-void setUiFontFamily(const QString &family);
+// False when the interface can use the family only after a restart (a font imported since start-up): the
+// choice is kept and applyPendingUiFont() applies it at the next start.
+bool setUiFontFamily(const QString &family);
+void applyPendingUiFont();
+bool isUiFontInUse(const QString &family);
 void setTerminalFontFamily(const QString &family);
 void setTerminalFontPointSize(int pointSize);
 void applyConfiguredUiFont();

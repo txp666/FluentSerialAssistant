@@ -1,6 +1,7 @@
 #include "app/view/data_table_window.h"
 
 #include "app/core/app_i18n.h"
+#include "app/view/muted_text.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
@@ -53,6 +54,7 @@ DataTableWindow::DataTableWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     m_locateButton->setFixedHeight(32);
 
     m_statusLabel = new CaptionLabel(QString(), this);
+    AppUi::setMutedTextColor(m_statusLabel);
     m_statusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_statusLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 

@@ -1,4 +1,5 @@
 #include "app/core/app_i18n.h"
+#include "app/view/muted_text.h"
 #include "app/view/protocol_template_window.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
@@ -178,12 +179,12 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
     root->addLayout(exportRow);
 
     m_receiveCaptureLabel = new CaptionLabel(AppI18n::text("接收保存未启用"), section);
-    m_receiveCaptureLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_receiveCaptureLabel);
     m_receiveCaptureLabel->setWordWrap(true);
     root->addWidget(m_receiveCaptureLabel);
 
     m_autoLogStatusLabel = new CaptionLabel(AppI18n::text("自动日志未启用"), section);
-    m_autoLogStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_autoLogStatusLabel);
     m_autoLogStatusLabel->setWordWrap(true);
     root->addWidget(m_autoLogStatusLabel);
 
@@ -292,7 +293,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     connect(editProtocolButton, &PushButton::clicked, this, &WorkbenchPage::showProtocolTemplateWindow);
 
     m_protocolStatusLabel = new CaptionLabel(AppI18n::text("协议模板未启用"), section);
-    m_protocolStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_protocolStatusLabel);
     m_protocolStatusLabel->setWordWrap(true);
     root->addWidget(m_protocolStatusLabel);
 
@@ -323,8 +324,13 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
         fields->setVerticalSpacing(4);
         fields->setColumnStretch(0, 1);
         fields->setColumnStretch(1, 1);
-        fields->addWidget(new CaptionLabel(firstLabel, layout->parentWidget()), 0, 0);
-        fields->addWidget(new CaptionLabel(secondLabel, layout->parentWidget()), 0, 1);
+        const auto caption = [layout](const QString &text) {
+            auto *label = new CaptionLabel(text, layout->parentWidget());
+            AppUi::setMutedTextColor(label);
+            return label;
+        };
+        fields->addWidget(caption(firstLabel), 0, 0);
+        fields->addWidget(caption(secondLabel), 0, 1);
         fields->addWidget(first, 1, 0);
         fields->addWidget(second, 1, 1);
         layout->addLayout(fields);
@@ -393,6 +399,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     makeCompactControl(m_protocolLengthByteOrderCombo);
     addFormRow(lengthGroup, AppI18n::text("字节序"), m_protocolLengthByteOrderCombo);
     auto *lengthHint = new CaptionLabel(AppI18n::text("没有长度字段时选择 0 B。"), editor);
+    AppUi::setMutedTextColor(lengthHint);
     lengthHint->setWordWrap(true);
     lengthGroup->addWidget(lengthHint);
 
@@ -413,6 +420,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     pairedFields(payloadGroup, AppI18n::text("字节偏移"), m_protocolPayloadOffsetEdit,
                  AppI18n::text("固定长度"), m_protocolPayloadLengthEdit);
     auto *payloadHint = new CaptionLabel(AppI18n::text("固定长度填 0，按长度字段或剩余字节自动计算。"), editor);
+    AppUi::setMutedTextColor(payloadHint);
     payloadHint->setWordWrap(true);
     payloadGroup->addWidget(payloadHint);
 
@@ -435,6 +443,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     addFormRow(checksumGroup, AppI18n::text("起始偏移"), m_protocolChecksumStartEdit);
     auto *checksumHint =
         new CaptionLabel(AppI18n::text("校验位于载荷之后、帧尾之前，计算范围从起始偏移到校验前一字节。"), editor);
+    AppUi::setMutedTextColor(checksumHint);
     checksumHint->setWordWrap(true);
     checksumGroup->addWidget(checksumHint);
 
@@ -564,6 +573,7 @@ QWidget *WorkbenchPage::createSendSettingsSection()
         AppI18n::text("开头和末尾跳过的字节不参与校验，校验码插在末尾跳过的字节之前；换行符始终在最后。");
     const auto checksumRangeLabel = [section, &checksumRangeTip](const QString &text) {
         auto *label = new CaptionLabel(text, section);
+        AppUi::setMutedTextColor(label);
         label->setFixedHeight(CompactControlHeight);
         label->setToolTip(checksumRangeTip);
         return label;
@@ -577,7 +587,7 @@ QWidget *WorkbenchPage::createSendSettingsSection()
     addFormRow(root, AppI18n::text("跳过字节"), checksumRangeLayout);
 
     m_checksumResultLabel = new CaptionLabel(AppI18n::text("校验未计算"), section);
-    m_checksumResultLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_checksumResultLabel);
     m_checksumResultLabel->setWordWrap(true);
     root->addWidget(m_checksumResultLabel);
 
@@ -894,7 +904,7 @@ QWidget *WorkbenchPage::createMacroSection()
     root->addLayout(actionRow);
 
     m_macroStatusLabel = new CaptionLabel(AppI18n::text("未运行"), section);
-    m_macroStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_macroStatusLabel);
     m_macroStatusLabel->setWordWrap(true);
     root->addWidget(m_macroStatusLabel);
 
@@ -963,7 +973,7 @@ QWidget *WorkbenchPage::createScriptSection()
     root->addWidget(m_scriptLogEdit);
 
     m_scriptStatusLabel = new CaptionLabel(AppI18n::text("未运行"), section);
-    m_scriptStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_scriptStatusLabel);
     m_scriptStatusLabel->setWordWrap(true);
     root->addWidget(m_scriptStatusLabel);
 
@@ -1071,7 +1081,7 @@ QWidget *WorkbenchPage::createAutoReplySection()
     root->addLayout(editRow);
 
     m_autoReplyStatusLabel = new CaptionLabel(AppI18n::text("未触发"), section);
-    m_autoReplyStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_autoReplyStatusLabel);
     m_autoReplyStatusLabel->setWordWrap(true);
     root->addWidget(m_autoReplyStatusLabel);
 
@@ -1127,7 +1137,7 @@ QWidget *WorkbenchPage::createFileSendSection()
     root->addLayout(actionRow);
 
     m_fileStatusLabel = new CaptionLabel(AppI18n::text("未选择文件"), section);
-    m_fileStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_fileStatusLabel);
     m_fileStatusLabel->setWordWrap(true);
     root->addWidget(m_fileStatusLabel);
 

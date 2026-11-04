@@ -132,4 +132,25 @@ bool parseRelease(const QByteArray &json, const QString &platformKey, const QStr
     return true;
 }
 
+QString notesFor(const QString &notes, bool english)
+{
+    QStringList lines = notes.split(QLatin1Char('\n'));
+    // The dialog has its own title, so a leading "# Fluent 串口助手 vX.Y.Z" heading would only repeat it.
+    qsizetype first = 0;
+    while (first < lines.size() && lines.at(first).trimmed().isEmpty()) {
+        ++first;
+    }
+    if (first < lines.size() && lines.at(first).trimmed().startsWith(QStringLiteral("# "))) {
+        lines = lines.mid(first + 1);
+    }
+    // Notes are written in Chinese, then in English after a "## English" line.
+    for (qsizetype i = 0; i < lines.size(); ++i) {
+        if (lines.at(i).trimmed() == QStringLiteral("## English")) {
+            lines = english ? lines.mid(i + 1) : lines.mid(0, i);
+            break;
+        }
+    }
+    return lines.join(QLatin1Char('\n')).trimmed();
+}
+
 } // namespace AppUpdate

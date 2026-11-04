@@ -6,6 +6,7 @@
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
 #include "app/core/app_settings.h"
+#include "app/view/muted_text.h"
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
@@ -108,6 +109,7 @@ QuickPlotWindow::QuickPlotWindow(QWidget *parent) : QWidget(parent, Qt::Window)
     // Below the chart the status has the full width, so a long field list wraps
     // instead of pushing the buttons out of view.
     m_statusLabel = new CaptionLabel(QString(), this);
+    AppUi::setMutedTextColor(m_statusLabel);
     m_statusLabel->setObjectName(QStringLiteral("quickPlotStatus"));
     m_statusLabel->setWordWrap(true);
 

@@ -1,4 +1,5 @@
 #include "app/core/app_i18n.h"
+#include "app/view/muted_text.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 using namespace FluentQt;
@@ -46,7 +47,7 @@ QWidget *WorkbenchPage::createModbusSection()
     root->addLayout(actionRow);
 
     m_modbusStatusLabel = new CaptionLabel(AppI18n::text("生成帧会自动附加 CRC16-Modbus"), section);
-    m_modbusStatusLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_modbusStatusLabel);
     m_modbusStatusLabel->setWordWrap(true);
     root->addWidget(m_modbusStatusLabel);
 

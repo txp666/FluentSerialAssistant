@@ -3,6 +3,7 @@
 #include "app/core/app_i18n.h"
 #include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
+#include "app/view/muted_text.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
@@ -147,6 +148,7 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     form->addRow(AppI18n::text("字段筛选"), m_fieldsEdit);
     root->addLayout(form);
     m_protocolHint = new CaptionLabel(QString(), this);
+    AppUi::setMutedTextColor(m_protocolHint);
     m_protocolHint->setWordWrap(true);
     root->addWidget(m_protocolHint);
 
@@ -178,6 +180,7 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
 
     auto *binaryHint = new CaptionLabel(
         AppI18n::text("字段留空时按字节生成通道。协议载荷使用本窗口选择的帧模板，并验证帧校验。"), m_binaryContainer);
+    AppUi::setMutedTextColor(binaryHint);
     binaryHint->setWordWrap(true);
     binaryLayout->addWidget(binaryHint);
 
@@ -280,6 +283,7 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     root->addLayout(previewLayout, 1);
     m_previewStatus = new CaptionLabel(QString(), this);
     m_previewStatus->setObjectName(QStringLiteral("plotPreviewStatus"));
+    AppUi::setMutedTextColor(m_previewStatus);
     m_previewStatus->setWordWrap(true);
     root->addWidget(m_previewStatus);
 

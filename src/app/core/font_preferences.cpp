@@ -13,6 +13,7 @@
 #include <QtCore/QtGlobal>
 #include <QtGui/QFontDatabase>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QWidget>
 
 #include <algorithm>
 
@@ -326,12 +327,61 @@ FontImportResult importFontFile(const QString &filePath)
     return result;
 }
 
-void setUiFontFamily(const QString &family)
+bool isUiFontInUse(const QString &family)
+{
+    return qApp && hasFontFamily(qApp->font().families(), family.trimmed());
+}
+
+bool setUiFontFamily(const QString &family)
 {
     const QString resolved = resolvedFontFamily(family, defaultUiFontFamily());
-    FluentQt::FluentConfig::instance()->setFontFamilies(uiFallbackFamilies(resolved));
-    FluentQt::FluentConfig::instance()->save();
+    auto *config = FluentQt::FluentConfig::instance();
+    const QStringList previousConfig = config->fontFamilies();
+    // The application font carries FluentQtWidgets' resolved families, before and after.
+    const QStringList previousFamilies = qApp ? qApp->font().families() : QStringList();
+    config->setFontFamilies(uiFallbackFamilies(resolved));
     applyConfiguredUiFont();
+
+    // FluentQtWidgets reads the installed fonts once at start-up, so it drops a font imported since and would show a
+    // fallback. The interface keeps its current font instead, and the choice applies at the next start.
+    if (qApp && !isUiFontInUse(resolved)) {
+        config->setFontFamilies(previousConfig);
+        applyConfiguredUiFont();
+        AppSettings().setValue(QStringLiteral("ui/pendingFontFamily"), resolved);
+        return false;
+    }
+    AppSettings().remove(QStringLiteral("ui/pendingFontFamily"));
+    config->save();
+
+    // FluentQtWidgets gives a widget the configured families when it creates it, as Python does, so the widgets
+    // that already exist keep the previous ones. Move them over, keeping each widget's size and weight.
+    const QStringList families = qApp ? qApp->font().families() : QStringList();
+    if (previousFamilies.isEmpty() || families == previousFamilies) {
+        return true;
+    }
+    const auto widgets = QApplication::allWidgets();
+    for (QWidget *widget : widgets) {
+        if (!widget->testAttribute(Qt::WA_SetFont) || widget->font().families() != previousFamilies) {
+            continue;
+        }
+        QFont font = widget->font();
+        font.setFamilies(families);
+        widget->setFont(font);
+    }
+    return true;
+}
+
+void applyPendingUiFont()
+{
+    AppSettings settings;
+    const QString pending = settings.value(QStringLiteral("ui/pendingFontFamily")).toString();
+    if (pending.isEmpty()) {
+        return;
+    }
+    settings.remove(QStringLiteral("ui/pendingFontFamily"));
+    FluentQt::FluentConfig::instance()->setFontFamilies(
+        uiFallbackFamilies(resolvedFontFamily(pending, defaultUiFontFamily())));
+    FluentQt::FluentConfig::instance()->save();
 }
 
 void setTerminalFontFamily(const QString &family)

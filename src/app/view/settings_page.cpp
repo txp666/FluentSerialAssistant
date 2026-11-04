@@ -305,6 +305,13 @@ SettingsPage::SettingsPage(QWidget *parent, AppUpdate::UpdateManager *updateMana
         selectFont(uiFontCard, family);
         selectFont(terminalFontCard, family);
         emit terminalFontChanged(family);
+        // The terminal uses the font at once. The interface does too, unless the font was not installed when the
+        // app started: FluentQtWidgets reads the fonts once then, so it gets the font at the next start.
+        const QString message = AppFontPreferences::isUiFontInUse(family)
+                                    ? AppI18n::text("%1 已用于界面和终端。").arg(family)
+                                    : AppI18n::text("%1 已用于终端，界面字体重启后生效。").arg(family);
+        InfoBar::success(AppI18n::text("字体已导入"), message, Qt::Horizontal, true, 4000, InfoBarPosition::Top,
+                         window());
     });
     connect(exportFolderCard, &PushSettingCard::clicked, this, [exportFolderCard]() {
         AppSettings settings;
