@@ -42,7 +42,7 @@ Fluent 串口助手提供现代 Fluent 风格的串口终端，覆盖连接、�
 | 平台 | 安装包 | 说明 |
 | --- | --- | --- |
 | Windows x64 | `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe` | 安装程序，需要管理员权限，默认安装到 Program Files |
-| macOS（Apple 芯片） | `FluentSerialAssistant-X.Y.Z-macos-arm64.dmg` | 打开后把应用拖到“应用程序”文件夹 |
+| macOS（Apple 芯片和 Intel） | `FluentSerialAssistant-X.Y.Z-macos-universal.dmg` | 打开后把应用拖到“应用程序”文件夹 |
 | Linux x64 / arm64 | `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb` | `sudo apt install ./FluentSerialAssistant-X.Y.Z-linux-x64.deb` |
 
 macOS 版本未经 Apple 公证，首次打开被系统阻止时，请在“系统设置 → 隐私与安全性”中点击“仍要打开”。安装后的更新可在应用内完成，见[应用内更新](#应用内更新)。
@@ -205,9 +205,9 @@ GitHub Actions 只在 GitHub Release 发布时运行。
 
 1. 更新 `CMakeLists.txt` 中的版本号、`CHANGELOG.md` 和 `docs/release-notes/vX.Y.Z.md`，并推送到 main。
 2. 在 GitHub 上以 `vX.Y.Z` 为标签和标题发布 Release。
-3. 工作流先把该 Release 标为预发布，在三个平台上运行测试并构建安装包；全部校验通过并上传后，再转为正式版并标记为最新。构建失败时它保持预发布，应用内更新不会看到它。
+3. 工作流先把该 Release 标为预发布，在三个平台上运行测试并构建安装包，并在 Intel Mac 上启动一次 macOS 安装包里的应用；全部校验通过并上传后，再转为正式版并标记为最新。构建失败时它保持预发布，应用内更新不会看到它。
 
-产物包括 Windows x64 安装程序、macOS arm64 DMG、Linux x64/arm64 DEB 及各自的 `.sha256` 文件。Windows 发布支持 SignPath Foundation 的免费开源 Authenticode 签名：配置后先签名 `FluentSerialAssistant.exe`，再构建并签名安装程序，见 [SignPath 设置说明](docs/signing/SIGNPATH_SETUP.md)。
+产物包括 Windows x64 安装程序、macOS 通用 DMG（同时含 Apple 芯片和 Intel 版本）、Linux x64/arm64 DEB 及各自的 `.sha256` 文件。同一个 DMG 还以 `macos-arm64.dmg` 的名字再发布一份，0.1.24 及更早版本的应用内更新只认这个名字。Windows 发布支持 SignPath Foundation 的免费开源 Authenticode 签名：配置后先签名 `FluentSerialAssistant.exe`，再构建并签名安装程序，见 [SignPath 设置说明](docs/signing/SIGNPATH_SETUP.md)。
 
 本地打包可使用 `scripts/package_release.ps1`（Windows 便携包），三平台安装包的底层脚本为 `scripts/package_windows.ps1`、`scripts/package_unix.sh` 和 `scripts/create_deb_package.sh`。
 

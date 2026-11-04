@@ -44,7 +44,7 @@ Download the package for your platform from [Releases](https://github.com/txp666
 | Platform | Package | Notes |
 | --- | --- | --- |
 | Windows x64 | `FluentSerialAssistant-X.Y.Z-windows-x64-setup.exe` | Installer; needs administrator rights and installs to Program Files by default |
-| macOS (Apple silicon) | `FluentSerialAssistant-X.Y.Z-macos-arm64.dmg` | Open it and drag the app to the Applications folder |
+| macOS (Apple silicon and Intel) | `FluentSerialAssistant-X.Y.Z-macos-universal.dmg` | Open it and drag the app to the Applications folder |
 | Linux x64 / arm64 | `FluentSerialAssistant-X.Y.Z-linux-{x64,arm64}.deb` | `sudo apt install ./FluentSerialAssistant-X.Y.Z-linux-x64.deb` |
 
 The macOS build is not notarized by Apple. If macOS blocks it on first launch, click **Open Anyway** in **System Settings → Privacy & Security**. Later updates install from inside the app; see [In-app updates](#in-app-updates).
@@ -205,9 +205,9 @@ GitHub Actions runs only when a GitHub Release is published.
 
 1. Update the version in `CMakeLists.txt`, `CHANGELOG.md`, and `docs/release-notes/vX.Y.Z.md`, and push them to main.
 2. Publish a GitHub Release with `vX.Y.Z` as both tag and title.
-3. The workflow first marks the release as a prerelease, then runs the tests and builds the packages on all three platforms. Once everything is verified and uploaded, it becomes a full release and is marked as the latest. If a build fails, it stays a prerelease and in-app updates never see it.
+3. The workflow first marks the release as a prerelease, then runs the tests and builds the packages on all three platforms, and starts the app from the macOS package once on an Intel Mac. Once everything is verified and uploaded, it becomes a full release and is marked as the latest. If a build fails, it stays a prerelease and in-app updates never see it.
 
-The assets are the Windows x64 installer, the macOS arm64 DMG, the Linux x64/arm64 DEB packages, and a `.sha256` file for each. Windows releases support free open-source Authenticode signing from SignPath Foundation: once configured, `FluentSerialAssistant.exe` is signed first, then the installer is built and signed. See the [SignPath setup guide](docs/signing/SIGNPATH_SETUP.md).
+The assets are the Windows x64 installer, the universal macOS DMG (Apple silicon and Intel in one app), the Linux x64/arm64 DEB packages, and a `.sha256` file for each. The same DMG is also published as `macos-arm64.dmg`, the only name that in-app updates of 0.1.24 and earlier look for. Windows releases support free open-source Authenticode signing from SignPath Foundation: once configured, `FluentSerialAssistant.exe` is signed first, then the installer is built and signed. See the [SignPath setup guide](docs/signing/SIGNPATH_SETUP.md).
 
 For local packaging, `scripts/package_release.ps1` builds a portable Windows package; the platform installers come from `scripts/package_windows.ps1`, `scripts/package_unix.sh`, and `scripts/create_deb_package.sh`.
 
