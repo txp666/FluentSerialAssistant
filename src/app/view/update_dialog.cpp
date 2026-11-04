@@ -2,6 +2,7 @@
 
 #include "app/core/app_i18n.h"
 #include "app/core/update_manager.h"
+#include "app/core/update_release.h"
 
 #include <FluentQtWidgets/Config.h>
 #include <FluentQtWidgets/Widgets/Label.h>
@@ -68,8 +69,10 @@ UpdateDialog::UpdateDialog(AppUpdate::UpdateManager *manager, QWidget *parent)
     viewLayout()->addWidget(m_statusLabel);
     viewLayout()->addWidget(m_progressBar);
     viewLayout()->addWidget(m_progressLabel);
-    yesButton()->setObjectName(QStringLiteral("updateDownloadButton"));
-    cancelButton()->setObjectName(QStringLiteral("updateCancelButton"));
+    // The startup check opens this dialog by itself, with the focus on "Download and install", maybe while the user
+    // is typing in the send box: Return must not start a download that ends by quitting the app.
+    yesButton()->setAutoDefault(false);
+    cancelButton()->setAutoDefault(false);
 
     if (m_manager) {
         connect(m_manager, &AppUpdate::UpdateManager::stateChanged, this, &UpdateDialog::refreshState);
@@ -128,10 +131,11 @@ void UpdateDialog::refreshState()
                                                        : AppI18n::text("发现新版本 %1").arg(release.version));
     m_versionLabel->setText(
         AppI18n::text("当前 %1，最新 %2").arg(QCoreApplication::applicationVersion(), release.version));
-    if (m_releaseNotes->property("releaseNotes").toString() != release.notes) {
-        m_releaseNotes->setProperty("releaseNotes", release.notes);
-        m_releaseNotes->setMarkdown(release.notes.isEmpty() ? AppI18n::text("此版本未提供更新说明。") : release.notes);
-    } else if (release.notes.isEmpty()) {
+    const QString notes = AppUpdate::notesFor(release.notes, AppI18n::effectiveLocaleName() != QStringLiteral("zh_CN"));
+    if (m_releaseNotes->property("releaseNotes").toString() != notes) {
+        m_releaseNotes->setProperty("releaseNotes", notes);
+        m_releaseNotes->setMarkdown(notes.isEmpty() ? AppI18n::text("此版本未提供更新说明。") : notes);
+    } else if (notes.isEmpty()) {
         m_releaseNotes->setPlainText(AppI18n::text("此版本未提供更新说明。"));
     }
 

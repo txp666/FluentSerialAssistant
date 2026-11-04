@@ -21,6 +21,8 @@ struct ReleaseInfo
 QString currentPlatformKey();
 bool parseRelease(const QByteArray &json, const QString &platformKey, const QString &currentVersion,
                   ReleaseInfo *release, bool *updateAvailable, QString *error);
+// The part of the release notes in the interface language, without a leading level-1 heading.
+QString notesFor(const QString &notes, bool english);
 
 } // namespace AppUpdate
 
