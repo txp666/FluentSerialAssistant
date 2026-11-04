@@ -96,6 +96,29 @@ if [[ "$platform" == "macos" ]]; then
         exit 2
     fi
 
+    # Every executable, framework and plugin must carry each slice the package name promises,
+    # or the app fails to load on the Macs that lack one.
+    case "$architecture" in
+        universal) required_slices="arm64 x86_64" ;;
+        *) required_slices="$architecture" ;;
+    esac
+    macho_count=0
+    while IFS= read -r -d '' file; do
+        slices="$(lipo -archs "$file" 2>/dev/null)" || continue
+        macho_count=$((macho_count + 1))
+        for slice in $required_slices; do
+            if [[ " $slices " != *" $slice "* ]]; then
+                echo "${file#"$stage_dir"/} lacks the $slice slice (has: $slices)." >&2
+                exit 2
+            fi
+        done
+    done < <(find "$app_bundle" -type f -print0)
+    if [[ "$macho_count" -lt 4 ]]; then
+        echo "Found only $macho_count Mach-O files in the bundle." >&2
+        exit 2
+    fi
+    echo "All $macho_count Mach-O files contain: $required_slices"
+
     echo "Applying an ad-hoc signature to the macOS bundle..."
     codesign --force --deep --sign - "$app_bundle"
     codesign --verify --deep --strict "$app_bundle"

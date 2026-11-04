@@ -239,7 +239,7 @@ jobs:
           compression-level: 0
 
   macos-release:
-    name: macOS arm64 / DMG
+    name: macOS universal / DMG
     runs-on: macos-15
 
     steps:
@@ -263,7 +263,7 @@ jobs:
           cmake -S . -B build/release
           -G Ninja
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_OSX_ARCHITECTURES=arm64
+          "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
           -DBUILD_TESTING=ON
 
       - name: Build
@@ -272,34 +272,99 @@ jobs:
       - name: Test
         run: ctest --test-dir build/release --output-on-failure --no-tests=error
 
-      - name: Validate release tag and architecture
+      - name: Validate release tag
         shell: bash
         run: |
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           version="${RELEASE_TAG#v}"
           configured_version="$(tr -d '[:space:]' < build/release/FluentSerialAssistant-version.txt)"
           test "$version" = "$configured_version"
-          test "$(uname -m)" = "arm64"
           echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Deploy, ad-hoc sign, and build DMG
+      # package_unix.sh fails unless every Mach-O file in the bundle has both slices.
+      - name: Deploy, check slices, ad-hoc sign, and build DMG
         run: >-
           ./scripts/package_unix.sh
           --build-dir build/release
           --output-dir dist
           --platform macos
-          --architecture arm64
+          --architecture universal
           --version "$RELEASE_VERSION"
+
+      # Apple-silicon installs of 0.1.24 and earlier look for -macos-arm64.dmg when they check
+      # for updates, and stay silent when it is missing. The same image under that name keeps
+      # them updating; once on the new version they pick -macos-universal.dmg.
+      - name: Publish the image under the old arm64 name too
+        shell: bash
+        working-directory: dist
+        run: |
+          legacy="FluentSerialAssistant-$RELEASE_VERSION-macos-arm64.dmg"
+          cp "FluentSerialAssistant-$RELEASE_VERSION-macos-universal.dmg" "$legacy"
+          printf '%s  %s\n' "$(shasum -a 256 "$legacy" | awk '{print $1}')" "$legacy" > "$legacy.sha256"
 
       - name: Upload macOS release artifact
         uses: actions/upload-artifact@v7
         with:
-          name: FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-arm64
+          name: FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-universal
           path: |
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-universal.dmg
+            dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-universal.dmg.sha256
             dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-arm64.dmg
             dist/FluentSerialAssistant-${{ env.RELEASE_VERSION }}-macos-arm64.dmg.sha256
           if-no-files-found: error
           compression-level: 0
+
+  macos-intel-check:
+    name: macOS Intel / start the DMG's app
+    needs: macos-release
+    runs-on: macos-15-intel
+
+    steps:
+      - name: Download macOS release artifact
+        uses: actions/download-artifact@v8
+        with:
+          pattern: FluentSerialAssistant-*-macos-universal
+          path: dist
+          merge-multiple: true
+
+      # The tests ran on the Apple-silicon runner, so only the arm64 slice has run so far.
+      # Starting the app here loads the x86_64 slice of it, Qt and the plugins, and the
+      # CLI's ping proves the window and the control service came up.
+      - name: Start the app from the DMG and ping it
+        shell: bash
+        working-directory: dist
+        run: |
+          test "$(uname -m)" = "x86_64"
+          version="${RELEASE_TAG#v}"
+          dmg="FluentSerialAssistant-$version-macos-universal.dmg"
+          shasum -a 256 --check "$dmg.sha256"
+          mount="$RUNNER_TEMP/dmg"
+          app="$RUNNER_TEMP/FluentSerialAssistant.app"
+          mkdir "$mount"
+          hdiutil attach "$dmg" -mountpoint "$mount" -readonly -nobrowse -noautoopen
+          ditto "$mount/FluentSerialAssistant.app" "$app"
+          hdiutil detach "$mount"
+          codesign --verify --deep --strict "$app"
+          "$app/Contents/MacOS/FluentSerialAssistant" > "$RUNNER_TEMP/app.log" 2>&1 &
+          pid=$!
+          reply=""
+          for _ in $(seq 60); do
+            if reply="$("$app/Contents/MacOS/fluentserial-cli" ping)"; then
+              break
+            fi
+            reply=""
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          kill "$pid" 2>/dev/null || true
+          echo "$reply"
+          if ! grep -F "\"version\":\"$version\"" <<< "$reply"; then
+            echo "The app did not answer a ping within 60 seconds." >&2
+            cat "$RUNNER_TEMP/app.log"
+            exit 1
+          fi
 
   linux-release:
     name: Linux ${{ matrix.architecture }} / DEB
@@ -406,6 +471,7 @@ jobs:
       - hold-release
       - windows-release
       - macos-release
+      - macos-intel-check
       - linux-release
     runs-on: ubuntu-24.04
 
@@ -429,6 +495,8 @@ jobs:
           expected=(
             "dist/FluentSerialAssistant-$version-windows-x64-setup.exe"
             "dist/FluentSerialAssistant-$version-windows-x64-setup.exe.sha256"
+            "dist/FluentSerialAssistant-$version-macos-universal.dmg"
+            "dist/FluentSerialAssistant-$version-macos-universal.dmg.sha256"
             "dist/FluentSerialAssistant-$version-macos-arm64.dmg"
             "dist/FluentSerialAssistant-$version-macos-arm64.dmg.sha256"
             "dist/FluentSerialAssistant-$version-linux-x64.deb"

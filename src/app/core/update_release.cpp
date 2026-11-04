@@ -18,7 +18,8 @@ QString currentPlatformKey()
 #if defined(Q_OS_WIN)
     return x64 ? QStringLiteral("windows-x64") : QString();
 #elif defined(Q_OS_MACOS)
-    return arm64 ? QStringLiteral("macos-arm64") : QString();
+    // One universal DMG serves Apple silicon and Intel Macs.
+    return arm64 || x64 ? QStringLiteral("macos-universal") : QString();
 #elif defined(Q_OS_LINUX)
     return arm64 ? QStringLiteral("linux-arm64") : (x64 ? QStringLiteral("linux-x64") : QString());
 #else
@@ -83,8 +84,8 @@ bool parseRelease(const QByteArray &json, const QString &platformKey, const QStr
     QString suffixName;
     if (platformKey == QStringLiteral("windows-x64")) {
         suffixName = QStringLiteral("windows-x64-setup.exe");
-    } else if (platformKey == QStringLiteral("macos-arm64")) {
-        suffixName = QStringLiteral("macos-arm64.dmg");
+    } else if (platformKey == QStringLiteral("macos-universal")) {
+        suffixName = QStringLiteral("macos-universal.dmg");
     } else if (platformKey == QStringLiteral("linux-x64") || platformKey == QStringLiteral("linux-arm64")) {
         suffixName = platformKey + QStringLiteral(".deb");
     } else {
