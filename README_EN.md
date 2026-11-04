@@ -123,7 +123,7 @@ The pair exists only inside one running app and does not affect physical ports. 
 ### In-app updates
 
 1. The app checks for updates at startup and stays quiet when there is nothing new or no network. **Settings → App Updates** checks on demand.
-2. A new version first shows its number and release notes; downloading starts only after **Download and install**.
+2. A new version first shows its number and its release notes in the interface language; downloading starts only after **Download and install**.
 3. Downloads use four parallel connections, show progress, and can be cancelled; servers without range support fall back to one connection.
 4. After the size and SHA-256 check, the installer takes over, asking for permission if needed, and the app saves its settings and quits.
 
@@ -204,6 +204,7 @@ The repository includes `.vscode/tasks.json`: `Ctrl+Shift+B` / `Cmd+Shift+B` run
 GitHub Actions runs only when a GitHub Release is published.
 
 1. Update the version in `CMakeLists.txt`, `CHANGELOG.md`, and `docs/release-notes/vX.Y.Z.md`, and push them to main.
+   The release notes start with their text, without a level-1 heading (the release page and the in-app update dialog already show the version). Chinese comes first and English follows a `## English` line; the app shows only the part in the interface language.
 2. Publish a GitHub Release with `vX.Y.Z` as both tag and title.
 3. The workflow first marks the release as a prerelease, then runs the tests and builds the packages on all three platforms, and starts the app from the macOS package once on an Intel Mac. Once everything is verified and uploaded, it becomes a full release and is marked as the latest. If a build fails, it stays a prerelease and in-app updates never see it.
 
