@@ -3,6 +3,7 @@
 #include "app/core/app_i18n.h"
 #include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
+#include "app/view/muted_text.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 #include <QtCore/QSignalBlocker>
@@ -105,6 +106,7 @@ ProtocolTemplateWindow::ProtocolTemplateWindow(QWidget *editor, QWidget *parent)
     previewLayout->addWidget(m_sampleEdit);
 
     auto *hint = new CaptionLabel(AppI18n::text("编辑字段或样例即可更新解析；字节位置从 0 开始。"), preview);
+    AppUi::setMutedTextColor(hint);
     hint->setWordWrap(true);
     previewLayout->addWidget(hint);
 

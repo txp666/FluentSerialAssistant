@@ -1,6 +1,7 @@
 #include "app/view/terminal_color_dialog.h"
 
 #include "app/core/app_i18n.h"
+#include "app/view/muted_text.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
@@ -104,6 +105,7 @@ TerminalColorDialog::TerminalColorDialog(const AppTerminal::ColorConfig &config,
         }
         auto *sample = new CaptionLabel(preset.example, presetsContainer);
         sample->setObjectName(QStringLiteral("terminalColorPresetExample_") + preset.id);
+        AppUi::setMutedTextColor(sample);
         sample->setTextFormat(Qt::PlainText);
         sample->setWordWrap(true);
         sample->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
@@ -151,6 +153,7 @@ TerminalColorDialog::TerminalColorDialog(const AppTerminal::ColorConfig &config,
 
     auto *hint = new CaptionLabel(
         AppI18n::text("按行匹配正文；自定义规则优先于预设，上方规则优先。双击匹配内容可编辑。"), rulesContainer);
+    AppUi::setMutedTextColor(hint);
     hint->setWordWrap(true);
     rulesLayout->addWidget(hint);
 

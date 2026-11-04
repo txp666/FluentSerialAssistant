@@ -1,6 +1,7 @@
 #include "app/view/workbench/workbench_page_internal.h"
 
 #include "app/core/app_i18n.h"
+#include "app/view/muted_text.h"
 
 #include <QtGui/QFontDatabase>
 #include <QtGui/QPainter>
@@ -84,6 +85,7 @@ QWidget *WorkbenchPage::createTerminalSection()
     m_txRateLabel = new TerminalStatLabel<StrongBodyLabel>(QStringLiteral("0 B/s"), sendGroup);
     m_connectionStatusLabel = new TerminalStatLabel<CaptionLabel>(AppI18n::text("未连接"), connectionGroup);
     m_connectionTimeLabel = new TerminalStatLabel<CaptionLabel>(QStringLiteral("—"), connectionGroup);
+    m_connectionStatusLabel->setTextColor(QColor(100, 100, 100), QColor(170, 170, 170));
     m_connectionTimeLabel->setAccessibleName(AppI18n::text("连接时长"));
     auto *receiveTotal = new CaptionLabel(AppI18n::text("累计"), receiveGroup);
     auto *sendTotal = new CaptionLabel(AppI18n::text("累计"), sendGroup);
@@ -230,7 +232,7 @@ QWidget *WorkbenchPage::createTerminalSection()
 
     m_terminalSummaryLabel = new CaptionLabel(searchPanel);
     m_terminalSummaryLabel->setObjectName(QStringLiteral("terminalSearchSummary"));
-    m_terminalSummaryLabel->setTextColor(QColor(96, 96, 96), QColor(180, 180, 180));
+    AppUi::setMutedTextColor(m_terminalSummaryLabel);
     m_terminalSummaryLabel->setFixedSize(104, CompactControlHeight);
     m_terminalSummaryLabel->setAlignment(Qt::AlignCenter);
     m_terminalSearchPrevButton = new TransparentToolButton(icon(FluentIcon::Up), searchPanel);

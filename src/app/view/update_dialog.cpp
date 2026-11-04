@@ -3,6 +3,7 @@
 #include "app/core/app_i18n.h"
 #include "app/core/update_manager.h"
 #include "app/core/update_release.h"
+#include "app/view/muted_text.h"
 
 #include <FluentQtWidgets/Config.h>
 #include <FluentQtWidgets/Widgets/Label.h>
@@ -59,6 +60,7 @@ UpdateDialog::UpdateDialog(AppUpdate::UpdateManager *manager, QWidget *parent)
     m_progressBar->setObjectName(QStringLiteral("updateDownloadProgress"));
     m_progressBar->setRange(0, 100);
     m_progressLabel = new CaptionLabel(view());
+    AppUi::setMutedTextColor(m_progressLabel);
     m_progressLabel->setObjectName(QStringLiteral("updateDownloadBytes"));
     m_progressLabel->setWordWrap(true);
 
