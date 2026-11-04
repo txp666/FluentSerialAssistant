@@ -49,6 +49,7 @@ int main(int argc, char *argv[])
 
     AppFontPreferences::loadCustomFonts();
     FluentQt::FluentConfig::instance()->load();
+    AppFontPreferences::applyPendingUiFont();
     AppI18n::installTranslators(&app, FluentQt::FluentConfig::instance()->localeName());
     FluentQt::ThemeManager::instance()->setTheme(FluentQt::FluentConfig::instance()->themeMode());
     FluentQt::ThemeManager::instance()->setAccentColor(FluentQt::FluentConfig::instance()->themeColor());
