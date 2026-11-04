@@ -21,7 +21,7 @@ namespace {
 QJsonObject releaseJson(const QString &version = QStringLiteral("0.1.14"))
 {
     QJsonArray assets;
-    const QStringList suffixes{QStringLiteral("windows-x64-setup.exe"), QStringLiteral("macos-arm64.dmg"),
+    const QStringList suffixes{QStringLiteral("windows-x64-setup.exe"), QStringLiteral("macos-universal.dmg"),
                                QStringLiteral("linux-x64.deb"), QStringLiteral("linux-arm64.deb")};
     for (const QString &suffix : suffixes) {
         const QString name = QStringLiteral("FluentSerialAssistant-%1-%2").arg(version, suffix);
@@ -86,7 +86,7 @@ class UpdateManagerTest : public QObject
         QTest::addColumn<QString>("platform");
         QTest::addColumn<QString>("suffix");
         QTest::newRow("windows") << QStringLiteral("windows-x64") << QStringLiteral("windows-x64-setup.exe");
-        QTest::newRow("mac") << QStringLiteral("macos-arm64") << QStringLiteral("macos-arm64.dmg");
+        QTest::newRow("mac") << QStringLiteral("macos-universal") << QStringLiteral("macos-universal.dmg");
         QTest::newRow("linux-x64") << QStringLiteral("linux-x64") << QStringLiteral("linux-x64.deb");
         QTest::newRow("linux-arm64") << QStringLiteral("linux-arm64") << QStringLiteral("linux-arm64.deb");
     }
