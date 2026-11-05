@@ -9,6 +9,7 @@
   </p>
   <p>
     <a href="README_EN.md">English</a> · 简体中文 ·
+    <a href="https://serial.modusignal.cn/">官网</a> ·
     <a href="https://github.com/txp666/FluentSerialAssistant/releases/latest">下载</a> ·
     <a href="CHANGELOG.md">变更记录</a> ·
     <a href="CONTRIBUTING.md">贡献指南</a> ·

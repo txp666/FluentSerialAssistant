@@ -10,6 +10,7 @@
 #define AppPublisher "txp"
 #define AppExeName "FluentSerialAssistant.exe"
 #define AppRepositoryUrl "https://github.com/txp666/FluentSerialAssistant"
+#define AppWebsiteUrl "https://serial.modusignal.cn/"
 
 [Setup]
 AppId={{BC52BA1C-1B46-4340-BA04-3F7D33D87FE6}
@@ -17,7 +18,7 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
-AppPublisherURL={#AppRepositoryUrl}
+AppPublisherURL={#AppWebsiteUrl}
 AppSupportURL={#AppRepositoryUrl}/issues
 AppUpdatesURL={#AppRepositoryUrl}/releases
 DefaultDirName={autopf}\Fluent Serial Assistant
