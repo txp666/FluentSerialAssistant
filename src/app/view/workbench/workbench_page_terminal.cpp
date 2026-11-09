@@ -235,10 +235,6 @@ QString WorkbenchPage::formatRecordLine(const SessionRecord &record, int *conten
     if (contentStart) {
         *contentStart = 0;
     }
-    if (record.direction == RecordDirection::FrameBreak) {
-        return {};
-    }
-
     const QString mode = currentDisplayMode();
     QString payload;
     if (mode == QStringLiteral("hex")) {
@@ -285,10 +281,6 @@ QColor WorkbenchPage::selectedTxColor() const
 
 bool WorkbenchPage::recordMatchesTerminalFilter(const SessionRecord &record) const
 {
-    if (record.direction == RecordDirection::FrameBreak) {
-        return terminalDirectionFilter() == QStringLiteral("all");
-    }
-
     const QString directionFilter = terminalDirectionFilter();
     if (directionFilter == QStringLiteral("rx") && record.direction != RecordDirection::Rx) {
         return false;
@@ -308,10 +300,8 @@ void WorkbenchPage::handleReceivedData(const QByteArray &data)
 
     // Record the data before reacting to it, so a reply sent by a macro step or
     // an auto-reply rule is logged after the request that triggered it.
-    if (!m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked() ||
-        frameBreakModeKey() == QStringLiteral("timeout")) {
-        appendRecord(RecordDirection::Rx, data, true, QString(),
-                     !m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked());
+    if (!m_autoFrameBreakCheck || !m_autoFrameBreakCheck->isChecked()) {
+        appendRecord(RecordDirection::Rx, data, true, QString(), true);
     } else {
         recordReceivedBytes(data);
         processBufferedFrameData(data);
@@ -343,6 +333,17 @@ void WorkbenchPage::recordReceivedBytes(const QByteArray &data)
 void WorkbenchPage::processBufferedFrameData(const QByteArray &data)
 {
     const QString mode = frameBreakModeKey();
+    if (mode == QStringLiteral("timeout")) {
+        // A read is only a slice of the stream, often a single byte at low baud
+        // rates. The frame ends once the line stays quiet for the timeout.
+        m_rxFrameBuffer.append(data);
+        if (m_rxFrameBuffer.size() > MaxFrameBufferBytes) {
+            flushRxFrameBuffer();
+        } else {
+            m_rxFrameIdleTimer.start(numberEditValue(m_frameBreakIntervalEdit, 20, 1, 60000));
+        }
+        return;
+    }
     if (mode == QStringLiteral("length")) {
         const int frameLength = numberEditValue(m_frameFixedLengthEdit, 1, 1, 65536);
         m_rxFrameBuffer.append(data);
@@ -443,20 +444,14 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     if (data.isEmpty()) {
         return;
     }
-
-    const QDateTime now = QDateTime::currentDateTime();
-    if (direction == RecordDirection::Rx && m_autoFrameBreakCheck && m_autoFrameBreakCheck->isChecked() &&
-        frameBreakModeKey() == QStringLiteral("timeout") && m_lastRxTimestamp.isValid()) {
-        const int thresholdMs = numberEditValue(m_frameBreakIntervalEdit, 20, 1, 60000);
-        if (m_lastRxTimestamp.msecsTo(now) >= thresholdMs) {
-            SessionRecord separator;
-            separator.timestamp = now;
-            separator.direction = RecordDirection::FrameBreak;
-            m_records.append(separator);
-            m_pendingRecordIndexes.append(m_firstRecordIndex + m_records.size() - 1);
-        }
+    // Sending ends the frame being received by timeout, so an auto-reply or a
+    // macro step is logged after the request it answers.
+    if (direction == RecordDirection::Tx && !m_rxFrameBuffer.isEmpty() && m_autoFrameBreakCheck &&
+        m_autoFrameBreakCheck->isChecked() && frameBreakModeKey() == QStringLiteral("timeout")) {
+        flushRxFrameBuffer();
     }
 
+    const QDateTime now = QDateTime::currentDateTime();
     SessionRecord record;
     record.timestamp = now;
     record.direction = direction;
@@ -490,7 +485,6 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     }
 
     if (direction == RecordDirection::Rx && updateStats) {
-        m_lastRxTimestamp = now;
         m_rxCount += data.size();
         if (m_saveReceiveCheck && m_saveReceiveCheck->isChecked()) {
             if (!m_receiveCaptureFile.isOpen()) {
@@ -693,14 +687,6 @@ bool WorkbenchPage::appendRecordToTerminal(QTextCursor &cursor, const SessionRec
         return appendStreamRecordToTerminal(cursor, record, recordId, hasPrevious, query);
     }
     resetTerminalStream();
-    if (record.direction == RecordDirection::FrameBreak) {
-        if (hasPrevious) {
-            cursor.insertBlock();
-            return true;
-        }
-        return false;
-    }
-
     if (hasPrevious) {
         cursor.insertBlock();
     }

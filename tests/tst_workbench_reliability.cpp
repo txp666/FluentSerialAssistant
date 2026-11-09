@@ -300,6 +300,31 @@ class WorkbenchReliabilityTest : public QObject
         QCOMPARE(page.m_records.last().bytes, QByteArray::fromHex("AA550304"));
     }
 
+    void timeoutFramesJoinReadsUntilTheLineGoesQuiet()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        page.m_autoFrameBreakCheck->setChecked(true);
+        page.m_frameModeCombo->setCurrentIndex(page.m_frameModeCombo->findData(QStringLiteral("timeout")));
+        setNumberEditValue(page.m_frameBreakIntervalEdit, 30, 1, 60000);
+
+        // At low baud rates each read can be a single byte (issue #15).
+        const QByteArray frame = QByteArray::fromHex("01040001004CA03F");
+        for (const char byte : frame) {
+            page.handleReceivedData(QByteArray(1, byte));
+        }
+        QVERIFY(page.m_records.isEmpty());
+        QCOMPARE(page.m_rxCount, qint64(frame.size()));
+        QTRY_COMPARE(page.m_records.size(), 1);
+        QCOMPARE(page.m_records.first().bytes, frame);
+
+        // Sending ends the frame, so the request is logged before its reply.
+        page.handleReceivedData(QByteArray::fromHex("0102"));
+        page.appendRecord(WorkbenchPage::RecordDirection::Tx, QByteArray::fromHex("AA"));
+        QCOMPARE(page.m_records.size(), 3);
+        QCOMPARE(page.m_records.at(1).bytes, QByteArray::fromHex("0102"));
+        QCOMPARE(page.m_records.at(2).direction, WorkbenchPage::RecordDirection::Tx);
+    }
+
     void autoReplyIsRecordedAfterItsRequest()
     {
         WorkbenchPage device(nullptr, false, false);

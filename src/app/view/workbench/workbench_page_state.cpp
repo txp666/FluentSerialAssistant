@@ -13,7 +13,6 @@ void WorkbenchPage::setupSerialSignals()
         m_autoReplyBuffer.clear();
         m_reconnectTimer.stop();
         m_manualDisconnect = false;
-        m_lastRxTimestamp = QDateTime();
         m_rxFrameBuffer.clear();
         m_rxStreamDecoder.reset();
         m_connectionStartedAt = QDateTime::currentDateTime();
@@ -47,7 +46,6 @@ void WorkbenchPage::setupSerialSignals()
         m_statsTimer.stop();
         closeAutoLog();
         closeReceiveCapture();
-        m_lastRxTimestamp = QDateTime();
         updateConnectionUi(false);
         updateRateStats();
         if (!m_manualDisconnect && m_autoReconnectCheck && m_autoReconnectCheck->isChecked()) {
