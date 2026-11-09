@@ -22,17 +22,17 @@ Fluent 串口助手提供现代 Fluent 风格的串口终端，覆盖连接、�
 ## 界面预览
 
 <p align="center">
-  <img src="docs/images/show.gif" alt="Fluent 串口助手操作演示" width="860">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/show-zh-dark.gif"><img src="docs/images/show-zh-light.gif" alt="Fluent 串口助手操作演示" width="860"></picture>
 </p>
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/main-window.png" alt="终端工作台"><p align="center">终端工作台：多标签会话、日志着色和流量统计</p></td>
-    <td width="50%"><img src="docs/images/plot-window.png" alt="曲线窗口"><p align="center">曲线窗口：按协议提取字段并实时绘图</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-window-zh-dark.png"><img src="docs/images/main-window-zh-light.png" alt="终端工作台"></picture><p align="center">终端工作台：多标签会话、日志着色和流量统计</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/plot-window-zh-dark.png"><img src="docs/images/plot-window-zh-light.png" alt="曲线窗口"></picture><p align="center">曲线窗口：按协议提取字段并实时绘图</p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/protocol-editor.png" alt="帧协议编辑器"><p align="center">帧协议编辑器：字节结构、字段和校验一目了然</p></td>
-    <td width="50%"><img src="docs/images/data-table.png" alt="数据表格"><p align="center">数据表格：按帧查看 HEX、文本和校验结果</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/protocol-editor-zh-dark.png"><img src="docs/images/protocol-editor-zh-light.png" alt="帧协议编辑器"></picture><p align="center">帧协议编辑器：字节结构、字段和校验一目了然</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/data-table-zh-dark.png"><img src="docs/images/data-table-zh-light.png" alt="数据表格"></picture><p align="center">数据表格：按帧查看 HEX、文本和校验结果</p></td>
   </tr>
 </table>
 

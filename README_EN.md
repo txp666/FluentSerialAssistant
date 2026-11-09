@@ -22,17 +22,17 @@ Fluent Serial Assistant is a modern Fluent-style serial terminal for Windows, ma
 ## Preview
 
 <p align="center">
-  <img src="docs/images/show.gif" alt="Fluent Serial Assistant in use" width="860">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/show-en-dark.gif"><img src="docs/images/show-en-light.gif" alt="Fluent Serial Assistant in use" width="860"></picture>
 </p>
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/main-window.png" alt="Terminal workspace"><p align="center">Terminal workspace with tabbed sessions, log coloring, and traffic statistics</p></td>
-    <td width="50%"><img src="docs/images/plot-window.png" alt="Plot window"><p align="center">Plot window that extracts fields by protocol and plots them live</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-window-en-dark.png"><img src="docs/images/main-window-en-light.png" alt="Terminal workspace"></picture><p align="center">Terminal workspace with tabbed sessions, log coloring, and traffic statistics</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/plot-window-en-dark.png"><img src="docs/images/plot-window-en-light.png" alt="Plot window"></picture><p align="center">Plot window that extracts fields by protocol and plots them live</p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/protocol-editor.png" alt="Frame protocol editor"><p align="center">Frame protocol editor showing byte layout, fields, and checksum</p></td>
-    <td width="50%"><img src="docs/images/data-table.png" alt="Frame table"><p align="center">Frame table with HEX, text, and checksum results</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/protocol-editor-en-dark.png"><img src="docs/images/protocol-editor-en-light.png" alt="Frame protocol editor"></picture><p align="center">Frame protocol editor showing byte layout, fields, and checksum</p></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/data-table-en-dark.png"><img src="docs/images/data-table-en-light.png" alt="Frame table"></picture><p align="center">Frame table with HEX, text, and checksum results</p></td>
   </tr>
 </table>
 
