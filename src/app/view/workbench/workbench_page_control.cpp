@@ -137,9 +137,6 @@ QList<AppControl::RecordSnapshot> WorkbenchPage::controlRecords(int limit, const
 
     for (int index = m_records.size() - 1; index >= 0 && snapshots.size() < boundedLimit; --index) {
         const SessionRecord &record = m_records.at(index);
-        if (record.direction == RecordDirection::FrameBreak) {
-            continue;
-        }
         const QString recordDirection =
             record.direction == RecordDirection::Tx ? QStringLiteral("tx") : QStringLiteral("rx");
         if (direction != QStringLiteral("all") && direction != recordDirection) {

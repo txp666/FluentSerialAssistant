@@ -32,18 +32,12 @@ void WorkbenchPage::exportRecords(ExportFormat format)
 
     if (format == ExportFormat::Bin) {
         for (const SessionRecord &record : m_records) {
-            if (record.direction == RecordDirection::FrameBreak) {
-                continue;
-            }
             file.write(record.bytes);
         }
     } else if (format == ExportFormat::Csv) {
         QByteArray output("\xEF\xBB\xBF", 3);
         output.append("timestamp,direction,source,length,hex,text\n");
         for (const SessionRecord &record : m_records) {
-            if (record.direction == RecordDirection::FrameBreak) {
-                continue;
-            }
             const QString line = QStringLiteral("%1,%2,%3,%4,%5,%6\n")
                                      .arg(csvEscape(record.timestamp.toString(Qt::ISODateWithMs)),
                                           csvEscape(directionText(record.direction)), csvEscape(record.sourceLabel))
@@ -215,7 +209,7 @@ bool WorkbenchPage::ensureAutoLogFile(ExportFormat format, qint64 nextBytes)
 
 void WorkbenchPage::writeAutoLogRecord(const SessionRecord &record)
 {
-    if (record.direction == RecordDirection::FrameBreak || !m_autoLogCheck || !m_autoLogCheck->isChecked()) {
+    if (!m_autoLogCheck || !m_autoLogCheck->isChecked()) {
         return;
     }
 

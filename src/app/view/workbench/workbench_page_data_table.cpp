@@ -55,10 +55,7 @@ void WorkbenchPage::flushDataTableWindow()
     QVector<DataTableRecord> rows;
     rows.reserve(m_records.size() - first);
     for (int i = first; i < m_records.size(); ++i) {
-        const SessionRecord &record = m_records.at(i);
-        if (record.direction != RecordDirection::FrameBreak) {
-            rows.append(dataTableRecord(i, record));
-        }
+        rows.append(dataTableRecord(i, m_records.at(i)));
     }
     m_dataTableWindow->appendRecords(rows, m_firstRecordIndex);
     m_dataTableNextRecordIndex = nextRecordIndex;
@@ -69,11 +66,7 @@ QVector<DataTableRecord> WorkbenchPage::dataTableRecords() const
     QVector<DataTableRecord> rows;
     rows.reserve(m_records.size());
     for (int i = 0; i < m_records.size(); ++i) {
-        const SessionRecord &record = m_records.at(i);
-        if (record.direction == RecordDirection::FrameBreak) {
-            continue;
-        }
-        rows.append(dataTableRecord(i, record));
+        rows.append(dataTableRecord(i, m_records.at(i)));
     }
     return rows;
 }
@@ -100,8 +93,7 @@ DataTableRecord WorkbenchPage::dataTableRecord(int recordIndex, const SessionRec
 void WorkbenchPage::locateRecordInTerminal(qint64 recordId)
 {
     const qint64 offset = recordId - m_firstRecordIndex;
-    if (!m_terminalView || offset < 0 || offset >= m_records.size() ||
-        m_records.at(static_cast<int>(offset)).direction == RecordDirection::FrameBreak) {
+    if (!m_terminalView || offset < 0 || offset >= m_records.size()) {
         showWarning(AppI18n::text("无法定位"), AppI18n::text("记录已被清理或不存在"));
         return;
     }

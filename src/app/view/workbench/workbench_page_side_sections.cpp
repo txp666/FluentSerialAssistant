@@ -253,9 +253,6 @@ QWidget *WorkbenchPage::createReceiveSettingsSection()
         flushRxFrameBuffer();
         AppSettings settings;
         settings.setValue(QStringLiteral("receive/autoFrameBreak"), checked);
-        if (!checked) {
-            m_lastRxTimestamp = QDateTime();
-        }
         updateFrameControlState();
     });
     connect(m_frameBreakIntervalEdit, &LineEdit::textChanged, this, [this](const QString &) {
