@@ -94,8 +94,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     enum class RecordDirection
     {
         Rx,
-        Tx,
-        FrameBreak
+        Tx
     };
 
     enum class ExportFormat
@@ -461,7 +460,6 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     qint64 m_fileSendSent = 0;
     int m_terminalStartRecord = 0;
     int m_terminalCurrentSearchMatch = -1;
-    QDateTime m_lastRxTimestamp;
     QDateTime m_connectionStartedAt;
     QTimer m_flushTimer;
     QTimer m_dataTableTimer;

@@ -111,22 +111,21 @@ class WorkbenchDataTableTest : public QObject
         QVERIFY(!page.m_terminalView->toPlainText().contains(QStringLiteral("payload-199")));
     }
 
-    void trimsFrameBreaksAndKeepsStableSelection()
+    void trimsRecordsAndKeepsStableSelection()
     {
         WorkbenchPage page(nullptr, false, false);
         page.m_pauseCheck->setChecked(true);
         for (int i = 0; i < 1000; ++i) {
             WorkbenchPage::SessionRecord record;
             record.timestamp = QDateTime::fromMSecsSinceEpoch(1000 + i);
-            record.direction =
-                (i % 2 == 0) ? WorkbenchPage::RecordDirection::FrameBreak : WorkbenchPage::RecordDirection::Rx;
+            record.direction = WorkbenchPage::RecordDirection::Rx;
             record.bytes = QByteArray::number(i);
             record.displayText = record.terminalText = QString::number(i);
             page.m_records.append(record);
         }
         page.showDataTableWindow();
         auto *window = page.m_dataTableWindow;
-        QCOMPARE(window->m_model->rowCount(), 500);
+        QCOMPARE(window->m_model->rowCount(), 1000);
         window->m_table->sortByColumn(DataTableModel::LengthColumn, Qt::DescendingOrder);
         const QModelIndex selected =
             window->m_proxy->mapFromSource(window->m_model->index(window->m_model->rowForRecordIndex(999), 0));
@@ -145,7 +144,7 @@ class WorkbenchDataTableTest : public QObject
         window->m_table->selectRow(selected.row());
         page.flushDataTableWindow();
         QCOMPARE(page.m_firstRecordIndex, 5);
-        QCOMPARE(window->m_model->rowCount(), 503);
+        QCOMPARE(window->m_model->rowCount(), 1000);
         QCOMPARE(window->m_model->index(0, 0).data(DataTableModel::RecordIndexRole).toLongLong(), 5);
         QCOMPARE(window->selectedRecordIndex(), 999);
         QCOMPARE(resets.size(), 0);

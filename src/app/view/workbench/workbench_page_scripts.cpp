@@ -440,10 +440,6 @@ QVariantList WorkbenchPage::scriptRecordSnapshot() const
     QVariantList records;
     records.reserve(m_records.size());
     for (const SessionRecord &record : m_records) {
-        if (record.direction == RecordDirection::FrameBreak) {
-            continue;
-        }
-
         QVariantMap item;
         item.insert(QStringLiteral("time"), record.timestamp.toString(Qt::ISODateWithMs));
         item.insert(QStringLiteral("direction"),
