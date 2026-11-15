@@ -4,6 +4,58 @@
 <context>
     <name>AppText</name>
     <message>
+        <source>展开通道设置</source>
+        <translation>展开通道设置</translation>
+    </message>
+    <message>
+        <source>隐藏通道设置</source>
+        <translation>隐藏通道设置</translation>
+    </message>
+    <message>
+        <source>展开通道数据</source>
+        <translation>展开通道数据</translation>
+    </message>
+    <message>
+        <source>隐藏通道数据</source>
+        <translation>隐藏通道数据</translation>
+    </message>
+    <message>
+        <source>通道数据</source>
+        <translation>通道数据</translation>
+    </message>
+    <message>
+        <source>通道</source>
+        <translation>通道</translation>
+    </message>
+    <message>
+        <source>当前值</source>
+        <translation>当前值</translation>
+    </message>
+    <message>
+        <source>通道设置</source>
+        <translation>通道设置</translation>
+    </message>
+    <message>
+        <source>倍率</source>
+        <translation>倍率</translation>
+    </message>
+    <message>
+        <source>偏移</source>
+        <translation>偏移</translation>
+    </message>
+    <message>
+        <source>显示值 = 解析值 × 倍率 + 偏移</source>
+        <translation>显示值 = 解析值 × 倍率 + 偏移</translation>
+    </message>
+    <message>
+        <source>重置当前通道</source>
+        <translation>重置当前通道</translation>
+    </message>
+    <message>
+        <source>解析值：%1</source>
+        <translation>解析值：%1</translation>
+    </message>
+    <message>
         <source>ESP-IDF 日志</source>
         <translation>ESP-IDF 日志</translation>
     </message>
