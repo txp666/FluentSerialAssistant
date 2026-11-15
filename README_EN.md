@@ -66,7 +66,7 @@ The macOS build is not notarized by Apple. If macOS blocks it on first launch, c
 - Frame splitting by receive interval, header, trailer, or fixed length.
 - Terminal search by keyword or regular expression, with case sensitivity, highlighted matches, and RX/TX filtering.
 - Content coloring with ESP-IDF, log level, success/failure, and AT response presets, plus your own keyword or regex rules.
-- Plot windows: open several independent windows for numbers, delimited values, key-value pairs, JSON, or binary fields; preview samples, filter fields, and pause, clear, or export CSV.
+- Plot windows: open several independent windows for numbers, delimited values, key-value pairs, JSON, or binary fields; preview samples, filter fields, and pause, clear, or export CSV. A channel list shows the latest values with independent scale, offset, and visibility controls.
 - A frame table showing time, direction, source, length, HEX, text, and checksum, with sorting, filtering, copying, and navigation back to the terminal.
 
 ### Protocols and tools
@@ -111,6 +111,9 @@ The macOS build is not notarized by Apple. If macOS blocks it on first launch, c
 
 - Every confirmation opens a new window, so several fields can be plotted side by side. The button at the top left shows the current protocol and opens the parser settings.
 - Preview a text or HEX sample before plotting. Binary fields take a type, byte offset, byte order, scale, and offset, read from the whole frame or from the payload of a protocol template.
+- Click **Channel data** in the toolbar to show or hide the right panel. Hiding it gives the chart the full width while data and channel settings are retained. The list shows each channel's color and latest value; use the checkboxes to show or hide curves, and drag the divider to resize the list.
+- **Channel settings** is collapsed by default; click it to expand or hide it independently. Select a channel to adjust its scale and offset using `displayed = parsed × scale + offset`. Changes apply to retained curves, incoming data, and CSV exports. Parsed values are kept, so **Reset selected channel** restores them. Binary fields apply their parser scale and add value before these channel adjustments.
+- Channel settings belong to each window and are kept by channel name when data is cleared. Changing the parser configuration or payload template resets them; closing the window discards them.
 - A window plots only data received while it is open; nothing is backfilled after it was hidden, minimized, or closed. A plot shows up to 32 channels.
 
 ### Built-in virtual serial pair

@@ -4,6 +4,58 @@
 <context>
     <name>AppText</name>
     <message>
+        <source>展开通道设置</source>
+        <translation>Show channel settings</translation>
+    </message>
+    <message>
+        <source>隐藏通道设置</source>
+        <translation>Hide channel settings</translation>
+    </message>
+    <message>
+        <source>展开通道数据</source>
+        <translation>Show channel data</translation>
+    </message>
+    <message>
+        <source>隐藏通道数据</source>
+        <translation>Hide channel data</translation>
+    </message>
+    <message>
+        <source>通道数据</source>
+        <translation>Channel data</translation>
+    </message>
+    <message>
+        <source>通道</source>
+        <translation>Channel</translation>
+    </message>
+    <message>
+        <source>当前值</source>
+        <translation>Current value</translation>
+    </message>
+    <message>
+        <source>通道设置</source>
+        <translation>Channel settings</translation>
+    </message>
+    <message>
+        <source>倍率</source>
+        <translation>Scale</translation>
+    </message>
+    <message>
+        <source>偏移</source>
+        <translation>Offset</translation>
+    </message>
+    <message>
+        <source>显示值 = 解析值 × 倍率 + 偏移</source>
+        <translation>Displayed = parsed × scale + offset</translation>
+    </message>
+    <message>
+        <source>重置当前通道</source>
+        <translation>Reset selected channel</translation>
+    </message>
+    <message>
+        <source>解析值：%1</source>
+        <translation>Parsed value: %1</translation>
+    </message>
+    <message>
         <source>ESP-IDF 日志</source>
         <translation>ESP-IDF logs</translation>
     </message>
