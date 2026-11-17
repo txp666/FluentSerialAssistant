@@ -78,10 +78,10 @@ class ProtocolWindowsTest : public QObject
         QVERIFY(protocolCard && target);
         QVERIFY(!cards.isEmpty());
         QVERIFY(cards.first()->isExpanded());
-        auto *connectionAnimation = cards.first()->findChild<QVariantAnimation *>(
-            QStringLiteral("expandSettingCardAnimation"));
-        auto *protocolAnimation = protocolCard->findChild<QVariantAnimation *>(
-            QStringLiteral("expandSettingCardAnimation"));
+        auto *connectionAnimation =
+            cards.first()->findChild<QVariantAnimation *>(QStringLiteral("expandSettingCardAnimation"));
+        auto *protocolAnimation =
+            protocolCard->findChild<QVariantAnimation *>(QStringLiteral("expandSettingCardAnimation"));
         QVERIFY(connectionAnimation && protocolAnimation);
         QTRY_COMPARE(connectionAnimation->state(), QAbstractAnimation::Stopped);
         if (target != protocolCard) {
@@ -247,8 +247,7 @@ class ProtocolWindowsTest : public QObject
         QVERIFY(apply->isEnabled());
         QCOMPARE(preview->item(0, 2)->text(), QStringLiteral("0"));
         // Only whole lines from the start are previewed, and the status says so.
-        const QRegularExpressionMatch match =
-            QRegularExpression(QStringLiteral("^(\\d+) ")).match(status->text());
+        const QRegularExpressionMatch match = QRegularExpression(QStringLiteral("^(\\d+) ")).match(status->text());
         QVERIFY(match.hasMatch());
         const int previewed = match.captured(1).toInt();
         QVERIFY(previewed > 0 && previewed < lines.size());
@@ -299,12 +298,51 @@ class ProtocolWindowsTest : public QObject
         QCOMPARE(dialog.parserConfig().binarySource, AppPlot::BinarySource::Payload);
     }
 
+    void templateFieldsDrivePlotPreviewAndTemplateSwitching()
+    {
+        auto first = AppProtocol::defaultTemplate();
+        first.payloadFields = {
+            {QStringLiteral("angle"), 0, AppPlot::BinaryType::Int16, AppPlot::ByteOrder::LittleEndian, 0.01, -1}};
+        auto second = first;
+        second.name = QStringLiteral("second");
+        second.header = QByteArray::fromHex("BB66");
+        second.payloadFields = {
+            {QStringLiteral("speed"), 1, AppPlot::BinaryType::UInt16, AppPlot::ByteOrder::BigEndian, 2, 3}};
+        auto config = AppProtocol::payloadParserConfig(first);
+        config.binaryFields[0].name = QStringLiteral("stale field");
+        PlotParserDialog dialog(config);
+        dialog.setProtocolTemplates({first, second});
+        dialog.setProtocolTemplate(first);
+        dialog.show();
+        auto *fields = dialog.findChild<FluentQt::TableWidget *>(QStringLiteral("plotBinaryFieldsTable"));
+        auto *preview = dialog.findChild<FluentQt::TableWidget *>(QStringLiteral("plotPreviewTable"));
+        auto *templates = dialog.findChild<FluentQt::ComboBox *>(QStringLiteral("plotFrameTemplateCombo"));
+        auto *filter = dialog.findChild<FluentQt::LineEdit *>(QStringLiteral("plotFieldsEdit"));
+        auto *apply = dialog.findChild<FluentQt::PushButton *>(QStringLiteral("plotApplyButton"));
+        QVERIFY(!fields->isVisible());
+        QCOMPARE(preview->item(0, 1)->text(), QStringLiteral("angle"));
+        QCOMPARE(preview->item(0, 2)->text().toDouble(), 11.34);
+        filter->setText(QStringLiteral("angle"));
+        templates->setCurrentIndex(templates->findData(1));
+        QVERIFY(filter->text().isEmpty());
+        QVERIFY(apply->isEnabled());
+        QCOMPARE(preview->item(0, 1)->text(), QStringLiteral("speed"));
+        QCOMPARE(preview->item(0, 2)->text().toDouble(), 203.0);
+        apply->click();
+        QCOMPARE(dialog.parserConfig().binaryFields, second.payloadFields);
+
+        PlotParserDialog edit(config);
+        edit.setProtocolTemplate(first);
+        edit.findChild<FluentQt::PushButton *>(QStringLiteral("plotEditTemplateButton"))->click();
+        QCOMPARE(edit.result(), PlotParserDialog::EditTemplate);
+        QCOMPARE(edit.protocolTemplate(), first);
+    }
+
     void invalidBinaryFieldPreventsConfirmation()
     {
         AppPlot::ParserConfig config;
         config.protocol = AppPlot::Protocol::Binary;
-        config.binaryFields = {AppPlot::BinaryField{QStringLiteral("temperature"), 0,
-                                                  AppPlot::BinaryType::UInt16}};
+        config.binaryFields = {AppPlot::BinaryField{QStringLiteral("temperature"), 0, AppPlot::BinaryType::UInt16}};
         PlotParserDialog dialog(config);
         auto *fields = dialog.findChild<FluentQt::TableWidget *>(QStringLiteral("plotBinaryFieldsTable"));
         auto *apply = dialog.findChild<FluentQt::PushButton *>(QStringLiteral("plotApplyButton"));
@@ -345,15 +383,17 @@ class ProtocolWindowsTest : public QObject
         page.showProtocolTemplateWindow();
         auto *window = page.m_protocolTemplateWindow;
         QVERIFY(window && window->isWindow() && window->isVisible());
+        window->setSampleHex(QStringLiteral("AA 55 03 10 01 02 03 4D 6E"));
         auto *structure = window->findChild<FluentQt::TextBrowser *>(QStringLiteral("protocolTemplateStructureView"));
         auto *table = window->findChild<FluentQt::TableView *>(QStringLiteral("protocolTemplateResultsTable"));
-        auto *status = window->findChild<FluentQt::FluentLabelBase *>(QStringLiteral("protocolTemplateParseStatusLabel"));
+        auto *status =
+            window->findChild<FluentQt::FluentLabelBase *>(QStringLiteral("protocolTemplateParseStatusLabel"));
         auto *sample = window->findChild<QPlainTextEdit *>(QStringLiteral("protocolTemplateSampleEdit"));
         QVERIFY(structure && table && status && sample);
-        QCOMPARE(table->model()->rowCount(), 7);
-        QCOMPARE(table->model()->data(table->model()->index(0, 2)).toString(), QStringLiteral("AA 55"));
-        QCOMPARE(table->model()->data(table->model()->index(2, 2)).toString(), QStringLiteral("10"));
-        QCOMPARE(table->model()->data(table->model()->index(3, 2)).toString(), QStringLiteral("01 02 03"));
+        QCOMPARE(table->model()->rowCount(), 5);
+        QCOMPARE(table->model()->data(table->model()->index(0, 3)).toString(), QStringLiteral("AA 55"));
+        QCOMPARE(table->model()->data(table->model()->index(2, 3)).toString(), QStringLiteral("10"));
+        QCOMPARE(table->model()->data(table->model()->index(3, 3)).toString(), QStringLiteral("01 02 03"));
         QVERIFY(status->text().contains(AppI18n::text("校验正确")));
         QVERIFY(structure->toPlainText().contains(QStringLiteral("AA")));
         QVERIFY(structure->toPlainText().contains(QStringLiteral("55")));
@@ -365,8 +405,9 @@ class ProtocolWindowsTest : public QObject
         QVERIFY(status->text().contains(QStringLiteral("HEX")));
         QVERIFY(structure->toPlainText().isEmpty());
         sample->setPlainText(QStringLiteral("AA 55 03 10 01"));
-        QCOMPARE(status->text(), AppProtocol::parseFrame(QByteArray::fromHex("AA55031001"),
-                                                        AppProtocol::defaultTemplate()).errorMessage);
+        QCOMPARE(
+            status->text(),
+            AppProtocol::parseFrame(QByteArray::fromHex("AA55031001"), AppProtocol::defaultTemplate()).errorMessage);
     }
 
     void frameWindowEditsSavesAndRestoresTemplateAndSample()
@@ -402,8 +443,8 @@ class ProtocolWindowsTest : public QObject
         page.m_protocolTemplateCombo->setCurrentIndex(selected);
         QCOMPARE(window->sampleHex(), QStringLiteral("AA BB 01 02"));
         AppSettings settings;
-        const QJsonDocument templates = QJsonDocument::fromJson(
-            settings.value(QStringLiteral("protocolTemplate/templates")).toString().toUtf8());
+        const QJsonDocument templates =
+            QJsonDocument::fromJson(settings.value(QStringLiteral("protocolTemplate/templates")).toString().toUtf8());
         QCOMPARE(AppProtocol::listFromJson(templates.array()).last().name, QStringLiteral("Saved visual protocol"));
         const QJsonDocument examples = QJsonDocument::fromJson(
             settings.value(QStringLiteral("protocolTemplate/exampleFrames")).toString().toUtf8());
@@ -464,9 +505,13 @@ class ProtocolWindowsTest : public QObject
             return table->model()->data(table->model()->index(row, column)).toString();
         };
         QCOMPARE(cell(5, 0), AppI18n::text("帧尾"));
-        QCOMPARE(cell(5, 2), QStringLiteral("0D 0A"));
+        QCOMPARE(cell(5, 3), QStringLiteral("0D 0A"));
         const int checksumOffset = int(frame.size()) - 4;
-        QVERIFY(cell(4, 2).contains(AppI18n::text("覆盖 %1").arg(QStringLiteral("2–%1").arg(checksumOffset - 1))));
+        QVERIFY(table->model()
+                    ->index(4, 4)
+                    .data(Qt::ToolTipRole)
+                    .toString()
+                    .contains(AppI18n::text("覆盖 %1").arg(QStringLiteral("2–%1").arg(checksumOffset - 1))));
 
         page.m_protocolChecksumAlgorithmCombo->setCurrentIndex(
             page.m_protocolChecksumAlgorithmCombo->findData(AppProtocol::checksumNoneKey()));
@@ -498,7 +543,8 @@ class ProtocolWindowsTest : public QObject
         window.setProtocolTemplate(protocol);
         window.setSampleHex(bytesToHex(frame));
         window.show();
-        auto *status = window.findChild<FluentQt::FluentLabelBase *>(QStringLiteral("protocolTemplateParseStatusLabel"));
+        auto *status =
+            window.findChild<FluentQt::FluentLabelBase *>(QStringLiteral("protocolTemplateParseStatusLabel"));
         QVERIFY(status);
         QCOMPARE(status->text(), parsed.errorMessage);
 
@@ -583,12 +629,14 @@ class ProtocolWindowsTest : public QObject
         const auto parsed = AppProtocol::parseFrame(parseHexPayload(window->sampleHex()).bytes, second);
         QVERIFY2(parsed.ok && parsed.checksumValid, qPrintable(parsed.errorMessage));
         page.saveCurrentProtocolTemplate();
-        const QJsonObject examples = QJsonDocument::fromJson(
-            AppSettings().value(QStringLiteral("protocolTemplate/exampleFrames")).toString().toUtf8()).object();
+        const QJsonObject examples =
+            QJsonDocument::fromJson(
+                AppSettings().value(QStringLiteral("protocolTemplate/exampleFrames")).toString().toUtf8())
+                .object();
         QCOMPARE(examples.value(second.name).toString(), window->sampleHex());
         QVERIFY(examples.value(second.name).toString() != firstSample);
 
-        // A sample that is already valid for the next template is kept.
+        // Templates with the same layout generate the same sample.
         page.m_protocolTemplateCombo->setCurrentIndex(0);
         const QString validSample = window->sampleHex();
         QVERIFY(AppProtocol::parseFrame(parseHexPayload(validSample).bytes, first).checksumValid);
@@ -596,18 +644,19 @@ class ProtocolWindowsTest : public QObject
         QCOMPARE(window->sampleHex(), validSample);
     }
 
-    void exampleButtonFollowsTheTemplate()
+    void sampleFollowsProtocolEditsAutomatically()
     {
-        ProtocolTemplateWindow window(new QWidget);
-        auto protocol = AppProtocol::defaultTemplate();
-        protocol.header = QByteArray::fromHex("BB66");
-        protocol.checksumAlgorithm = QStringLiteral("crc32");
-        window.setProtocolTemplate(protocol);
-        auto *example =
-            window.findChild<FluentQt::PushButton *>(QStringLiteral("protocolTemplateSampleExampleButton"));
-        QVERIFY(example);
-        example->click();
-        const auto parsed = AppProtocol::parseFrame(parseHexPayload(window.sampleHex()).bytes, protocol);
+        WorkbenchPage page(nullptr, false, false);
+        page.showProtocolTemplateWindow();
+        page.m_protocolHeaderEdit->setText(QStringLiteral("BB 66"));
+        page.m_protocolChecksumAlgorithmCombo->setCurrentIndex(
+            page.m_protocolChecksumAlgorithmCombo->findData(QStringLiteral("crc32")));
+        page.saveCurrentProtocolTemplate();
+        page.m_protocolHeaderEdit->setText(QStringLiteral("BB 67"));
+        const auto protocol = page.currentProtocolTemplateFromUi();
+        const auto frame = parseHexPayload(page.m_protocolTemplateWindow->sampleHex()).bytes;
+        QVERIFY(frame.startsWith(QByteArray::fromHex("BB67")));
+        const auto parsed = AppProtocol::parseFrame(frame, protocol);
         QVERIFY2(parsed.ok && parsed.checksumValid, qPrintable(parsed.errorMessage));
     }
 
@@ -623,8 +672,8 @@ class ProtocolWindowsTest : public QObject
         QCOMPARE(page.currentProtocolTemplateFromUi().lengthMode, AppProtocol::LengthMode::FrameLength);
 
         page.showProtocolTemplateWindow();
-        auto *newButton =
-            page.m_protocolTemplateWindow->findChild<FluentQt::PushButton *>(QStringLiteral("protocolTemplateNewButton"));
+        auto *newButton = page.m_protocolTemplateWindow->findChild<FluentQt::PushButton *>(
+            QStringLiteral("protocolTemplateNewButton"));
         QVERIFY(newButton);
         newButton->click();
         const AppProtocol::ProtocolTemplate draft = page.currentProtocolTemplateFromUi();
@@ -641,8 +690,8 @@ class ProtocolWindowsTest : public QObject
         WorkbenchPage page(nullptr, false, false);
         page.m_protocolEnabledCheck->setChecked(true);
         page.showProtocolTemplateWindow();
-        auto *newButton =
-            page.m_protocolTemplateWindow->findChild<FluentQt::PushButton *>(QStringLiteral("protocolTemplateNewButton"));
+        auto *newButton = page.m_protocolTemplateWindow->findChild<FluentQt::PushButton *>(
+            QStringLiteral("protocolTemplateNewButton"));
         QVERIFY(newButton);
         newButton->click();
         page.m_protocolHeaderEdit->setText(QStringLiteral("CC DD"));
@@ -667,6 +716,8 @@ class ProtocolWindowsTest : public QObject
         page.showProtocolTemplateWindow();
         QVERIFY(latest->isEnabled());
         latest->click();
+        QCOMPARE(window->sampleHex(), bytesToHex(frame));
+        page.m_protocolNameEdit->setText(QStringLiteral("Renamed captured sample"));
         QCOMPARE(window->sampleHex(), bytesToHex(frame));
     }
 

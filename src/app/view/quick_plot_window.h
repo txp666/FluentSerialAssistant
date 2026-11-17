@@ -33,20 +33,18 @@ class QuickPlotWindow : public QWidget
     // The parser configuration a window last applied, used to prefill new windows.
     static AppPlot::ParserConfig savedParserConfig();
 
-    // parsed: the frame already parsed with payloadTemplate(), so windows that
-    // share a template parse each frame once. Without it the window parses.
-    void appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
-                      const AppProtocol::ParseResult *parsed = nullptr);
-    // The template frames are parsed with before plotting, or nullptr when the
-    // window plots records as they are.
-    const AppProtocol::ProtocolTemplate *payloadTemplate() const;
+    void appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame, bool stream = false);
     void clearData();
+    void resetStream();
     bool configureParser(const AppPlot::ParserConfig &config);
     void setProtocolTemplates(const QList<AppProtocol::ProtocolTemplate> &protocolTemplates);
     void setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate);
     bool requiresProtocolPayload() const;
     bool isPlottingActive() const;
     bool isPaused() const;
+
+  signals:
+    void editTemplateRequested(const QString &name);
 
   protected:
     void showEvent(QShowEvent *event) override;
@@ -69,6 +67,8 @@ class QuickPlotWindow : public QWidget
     };
 
     void appendValues(const QDateTime &timestamp, const AppPlot::PlotSample &values);
+    void appendParsedValues(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
+                            const QByteArray &payload = {});
     // The channel for a value, or -1 when it would exceed AppPlot::MaximumChannels.
     int channelIndexFor(const QString &name, int position);
     void ensureSeriesCount(int count);
@@ -108,6 +108,7 @@ class QuickPlotWindow : public QWidget
     AppPlot::ParserConfig m_parserConfig;
     QList<AppProtocol::ProtocolTemplate> m_protocolTemplates;
     AppProtocol::ProtocolTemplate m_protocolTemplate;
+    QByteArray m_frameBuffer;
     int m_channelCount = 0;
     int m_nextSample = 0;
     int m_plotRefreshRate = 0;
@@ -115,4 +116,5 @@ class QuickPlotWindow : public QWidget
     bool m_plottingActive = false;
     bool m_channelsLimited = false;
     bool m_hasProtocolTemplate = false;
+    bool m_followTemplateFields = false;
 };

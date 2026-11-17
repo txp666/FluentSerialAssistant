@@ -220,7 +220,7 @@ bool extractJsonDocument(const QString &text, AppPlot::PlotSample *values)
     return true;
 }
 
-int binaryTypeSize(AppPlot::BinaryType type)
+int binaryTypeBytes(AppPlot::BinaryType type)
 {
     switch (type) {
     case AppPlot::BinaryType::UInt8:
@@ -266,7 +266,7 @@ qint64 signedValue(quint64 value, int bits)
 
 bool decodeBinaryValue(const QByteArray &data, const AppPlot::BinaryField &field, double *value)
 {
-    const int size = binaryTypeSize(field.type);
+    const int size = AppPlot::binaryTypeSize(field.type);
     if (field.byteOffset < 0 || size <= 0 || field.byteOffset > data.size() - size) {
         return false;
     }
@@ -356,6 +356,14 @@ bool jsonStringList(const QJsonValue &value, QStringList *result, QString *error
 } // namespace
 
 namespace AppPlot {
+
+bool operator==(const BinaryField &left, const BinaryField &right)
+{
+    return left.name == right.name && left.byteOffset == right.byteOffset && left.type == right.type &&
+           left.byteOrder == right.byteOrder && left.scale == right.scale && left.add == right.add;
+}
+
+int binaryTypeSize(BinaryType type) { return binaryTypeBytes(type); }
 
 QStringList supportedProtocolKeys()
 {

@@ -1,5 +1,6 @@
 #include "app/core/app_i18n.h"
 #include "app/serial/virtual_serial_pair.h"
+#include "app/view/protocol_analysis_window.h"
 #include "app/view/quick_plot_window.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
@@ -15,6 +16,7 @@ void WorkbenchPage::setupSerialSignals()
         m_manualDisconnect = false;
         m_rxFrameBuffer.clear();
         m_rxStreamDecoder.reset();
+        resetProtocolStreams();
         m_connectionStartedAt = QDateTime::currentDateTime();
         m_lastStatsRxCount = m_rxCount;
         m_lastStatsTxCount = m_txCount;
@@ -37,6 +39,7 @@ void WorkbenchPage::setupSerialSignals()
             stopScript();
         }
         flushRxFrameBuffer();
+        resetProtocolStreams();
         if (m_fileSendFile.isOpen()) {
             m_fileSendTimer.stop();
             m_fileSendFile.close();
@@ -71,6 +74,14 @@ void WorkbenchPage::setupSerialSignals()
         }
         refreshPorts();
     });
+}
+
+void WorkbenchPage::resetProtocolStreams()
+{
+    for (auto *plot : m_quickPlotWindows)
+        plot->resetStream();
+    if (m_protocolAnalysisWindow)
+        m_protocolAnalysisWindow->resetStream();
 }
 
 void WorkbenchPage::refreshPorts()

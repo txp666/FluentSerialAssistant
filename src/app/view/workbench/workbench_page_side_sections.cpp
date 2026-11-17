@@ -1,5 +1,7 @@
 #include "app/core/app_i18n.h"
 #include "app/view/muted_text.h"
+#include "app/view/protocol_analysis_window.h"
+#include "app/view/protocol_payload_editor.h"
 #include "app/view/protocol_template_window.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
@@ -289,6 +291,17 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     root->addWidget(editProtocolButton);
     connect(editProtocolButton, &PushButton::clicked, this, &WorkbenchPage::showProtocolTemplateWindow);
 
+    auto *analysisButton = new PushButton(icon(FluentIcon::View), AppI18n::text("解析数据与曲线"), section);
+    analysisButton->setObjectName(QStringLiteral("protocolAnalysisButton"));
+    root->addWidget(analysisButton);
+    connect(analysisButton, &PushButton::clicked, this, [this]() {
+        if (!m_protocolEnabledCheck->isChecked()) {
+            m_protocolEnabledCheck->setChecked(true);
+        } else {
+            showProtocolAnalysisWindow();
+        }
+    });
+
     m_protocolStatusLabel = new CaptionLabel(AppI18n::text("协议模板未启用"), section);
     AppUi::setMutedTextColor(m_protocolStatusLabel);
     m_protocolStatusLabel->setWordWrap(true);
@@ -299,8 +312,9 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     auto *editorRoot = new QVBoxLayout(editor);
     editorRoot->setContentsMargins(0, 0, 12, 0);
     editorRoot->setSpacing(10);
-    const auto group = [editor, editorRoot](const QString &title) {
+    const auto group = [editor, editorRoot](const QString &title, const QString &kind) {
         auto *box = new SimpleCardWidget(editor);
+        box->setObjectName(QStringLiteral("protocolGroup-") + kind);
         box->setBorderRadius(8);
         box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         auto *layout = new QVBoxLayout(box);
@@ -333,7 +347,7 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
         layout->addLayout(fields);
     };
 
-    auto *basicGroup = group(AppI18n::text("名称、帧头与帧尾"));
+    auto *basicGroup = group(AppI18n::text("模板设置"), QStringLiteral("metadata"));
     auto *editorTemplateCombo = new ComboBox(editor);
     editorTemplateCombo->setObjectName(QStringLiteral("protocolEditorTemplateCombo"));
     editorTemplateCombo->setPlaceholderText(AppI18n::text("未保存的协议"));
@@ -358,19 +372,21 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     makeCompactControl(m_protocolNameEdit);
     addFormRow(basicGroup, AppI18n::text("名称"), m_protocolNameEdit);
 
+    auto *headerGroup = group(AppI18n::text("帧头"), QStringLiteral("header"));
     m_protocolHeaderEdit = new LineEdit(editor);
     m_protocolHeaderEdit->setObjectName(QStringLiteral("protocolTemplateHeaderEdit"));
     m_protocolHeaderEdit->setPlaceholderText(AppI18n::text("帧头 HEX，如 AA 55"));
     makeCompactControl(m_protocolHeaderEdit);
-    addFormRow(basicGroup, AppI18n::text("帧头"), m_protocolHeaderEdit);
+    addFormRow(headerGroup, AppI18n::text("帧头"), m_protocolHeaderEdit);
 
+    auto *trailerGroup = group(AppI18n::text("帧尾"), QStringLiteral("trailer"));
     m_protocolTrailerEdit = new LineEdit(editor);
     m_protocolTrailerEdit->setObjectName(QStringLiteral("protocolTemplateTrailerEdit"));
     m_protocolTrailerEdit->setPlaceholderText(AppI18n::text("帧尾 HEX，如 0D 0A，可留空"));
     makeCompactControl(m_protocolTrailerEdit);
-    addFormRow(basicGroup, AppI18n::text("帧尾"), m_protocolTrailerEdit);
+    addFormRow(trailerGroup, AppI18n::text("帧尾"), m_protocolTrailerEdit);
 
-    auto *lengthGroup = group(AppI18n::text("长度字段"));
+    auto *lengthGroup = group(AppI18n::text("长度字段"), QStringLiteral("length"));
     m_protocolLengthOffsetEdit = createNumberEdit(editor, 2, 0, 65535);
     m_protocolLengthOffsetEdit->setObjectName(QStringLiteral("protocolTemplateLengthOffsetEdit"));
     m_protocolLengthSizeCombo = new ComboBox(editor);
@@ -400,28 +416,30 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     lengthHint->setWordWrap(true);
     lengthGroup->addWidget(lengthHint);
 
-    auto *commandGroup = group(AppI18n::text("命令字段"));
+    auto *commandGroup = group(AppI18n::text("命令字段"), QStringLiteral("command"));
     m_protocolCommandOffsetEdit = createNumberEdit(editor, 3, 0, 65535);
     m_protocolCommandOffsetEdit->setObjectName(QStringLiteral("protocolTemplateCommandOffsetEdit"));
     m_protocolCommandSizeEdit = createNumberEdit(editor, 1, 0, 256);
     m_protocolCommandSizeEdit->setObjectName(QStringLiteral("protocolTemplateCommandSizeEdit"));
-    pairedFields(commandGroup, AppI18n::text("字节偏移"), m_protocolCommandOffsetEdit,
-                 AppI18n::text("字节数"), m_protocolCommandSizeEdit);
+    pairedFields(commandGroup, AppI18n::text("字节偏移"), m_protocolCommandOffsetEdit, AppI18n::text("字节数"),
+                 m_protocolCommandSizeEdit);
 
-    auto *payloadGroup = group(AppI18n::text("载荷字段"));
+    auto *payloadGroup = group(AppI18n::text("载荷范围"), QStringLiteral("payload"));
     m_protocolPayloadOffsetEdit = createNumberEdit(editor, 4, 0, 65535);
     m_protocolPayloadOffsetEdit->setObjectName(QStringLiteral("protocolTemplatePayloadOffsetEdit"));
     m_protocolPayloadLengthEdit = createNumberEdit(editor, 0, 0, 65535);
     m_protocolPayloadLengthEdit->setObjectName(QStringLiteral("protocolTemplatePayloadLengthEdit"));
     m_protocolPayloadLengthEdit->setAccessibleDescription(AppI18n::text("0 表示按长度字段自动计算"));
-    pairedFields(payloadGroup, AppI18n::text("字节偏移"), m_protocolPayloadOffsetEdit,
-                 AppI18n::text("固定长度"), m_protocolPayloadLengthEdit);
+    pairedFields(payloadGroup, AppI18n::text("字节偏移"), m_protocolPayloadOffsetEdit, AppI18n::text("固定长度"),
+                 m_protocolPayloadLengthEdit);
     auto *payloadHint = new CaptionLabel(AppI18n::text("固定长度填 0，按长度字段或剩余字节自动计算。"), editor);
     AppUi::setMutedTextColor(payloadHint);
     payloadHint->setWordWrap(true);
     payloadGroup->addWidget(payloadHint);
 
-    auto *checksumGroup = group(AppI18n::text("校验字段"));
+    m_protocolPayloadEditor = new ProtocolPayloadEditor;
+
+    auto *checksumGroup = group(AppI18n::text("校验字段"), QStringLiteral("checksum"));
     m_protocolChecksumAlgorithmCombo = new ComboBox(editor);
     m_protocolChecksumAlgorithmCombo->setObjectName(QStringLiteral("protocolTemplateChecksumAlgorithmCombo"));
     m_protocolChecksumAlgorithmCombo->addItem(AppI18n::text("无校验"), QIcon(), AppProtocol::checksumNoneKey());
@@ -464,7 +482,9 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
     buttonRow->addWidget(m_protocolSaveButton);
     editorRoot->addWidget(actionBar);
     editorRoot->addStretch();
-    m_protocolTemplateWindow = new ProtocolTemplateWindow(editor, this);
+    m_protocolTemplateWindow = new ProtocolTemplateWindow(editor, this, m_protocolPayloadEditor);
+    connect(m_protocolTemplateWindow, &ProtocolTemplateWindow::createPlotRequested, this,
+            &WorkbenchPage::showQuickPlotWindow);
 
     connect(newTemplateButton, &PushButton::clicked, this, [this]() {
         QString name = AppI18n::text("新协议");
@@ -488,19 +508,30 @@ QWidget *WorkbenchPage::createProtocolTemplateSection()
         blank.commandSize = 0;
         blank.payloadOffset = 0;
         fillProtocolTemplateEditor(blank);
-        m_protocolTemplateWindow->setSampleHex(QString());
         updateProtocolTemplateActionState();
+        m_protocolTemplateWindow->generateMatchingSample();
         m_protocolNameEdit->setFocus();
         m_protocolNameEdit->selectAll();
     });
 
-    const auto markDirty = [this]() { updateProtocolTemplateActionState(); };
+    const auto markDirty = [this]() {
+        updateProtocolTemplateActionState();
+        if (!m_updatingProtocolTemplateUi && protocolTemplateInputError().isEmpty())
+            m_protocolTemplateWindow->refreshGeneratedSample();
+    };
     connect(m_protocolTemplateCombo, &ComboBox::currentIndexChanged, this, &WorkbenchPage::applyProtocolTemplate);
     connect(m_protocolEnabledCheck, &CheckBox::toggled, this, [this](bool) {
         AppSettings settings;
         settings.setValue(QStringLiteral("protocolTemplate/enabled"), m_protocolEnabledCheck->isChecked());
         updateProtocolTemplateActionState();
+        if (m_protocolAnalysisWindow) {
+            m_protocolAnalysisWindow->setParsingEnabled(m_protocolEnabledCheck->isChecked());
+        }
+        if (m_protocolEnabledCheck->isChecked()) {
+            showProtocolAnalysisWindow();
+        }
     });
+    connect(m_protocolPayloadEditor, &ProtocolPayloadEditor::changed, this, markDirty);
     connect(m_protocolNameEdit, &LineEdit::textChanged, this, markDirty);
     connect(m_protocolHeaderEdit, &LineEdit::textChanged, this, markDirty);
     connect(m_protocolTrailerEdit, &LineEdit::textChanged, this, markDirty);

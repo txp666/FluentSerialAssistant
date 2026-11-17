@@ -6,6 +6,7 @@
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
 #include "app/core/app_settings.h"
+#include "app/core/hex_utils.h"
 #include "app/view/muted_text.h"
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -25,6 +26,7 @@
 #include <QtWidgets/QSplitter>
 #include <QtWidgets/QVBoxLayout>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -392,37 +394,46 @@ void QuickPlotWindow::rebuildPlot(int channel)
 }
 
 void QuickPlotWindow::appendRecord(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
-                                   const AppProtocol::ParseResult *parsed)
+                                   bool stream)
 {
     if (!isPlottingActive() || m_paused) {
         return;
     }
 
-    QByteArray payload;
     if (requiresProtocolPayload()) {
         if (!m_hasProtocolTemplate) {
             return;
         }
-        const AppProtocol::ParseResult result = parsed ? *parsed : AppProtocol::parseFrame(frame, m_protocolTemplate);
-        if (!result.ok || (result.checksumChecked && !result.checksumValid)) {
-            return;
+        for (const auto &decoded : AppProtocol::takeFrames(m_frameBuffer, frame, m_protocolTemplate, stream)) {
+            appendParsedValues(timestamp, {}, decoded.bytes, decoded.parsed.payload);
         }
-        payload = result.payload;
+    } else {
+        appendParsedValues(timestamp, text, frame);
     }
+}
+
+void QuickPlotWindow::appendParsedValues(const QDateTime &timestamp, const QString &text, const QByteArray &frame,
+                                         const QByteArray &payload)
+{
     // Without fields, binary data plots a channel per byte, up to the limit.
     if (m_parserConfig.protocol == AppPlot::Protocol::Binary && m_parserConfig.binaryFields.isEmpty()) {
         const QByteArray &data = m_parserConfig.binarySource == AppPlot::BinarySource::Payload ? payload : frame;
         m_channelsLimited = m_channelsLimited || data.size() > AppPlot::MaximumChannels;
     }
-    const QVector<AppPlot::PlotSample> samples = AppPlot::extractSamples(m_parserConfig, text, frame, payload);
-    for (const AppPlot::PlotSample &values : samples) {
+    QString address;
+    if (requiresProtocolPayload() && m_protocolTemplate.addressSize > 0) {
+        if (m_protocolTemplate.addressOffset > frame.size() - m_protocolTemplate.addressSize)
+            return;
+        address = bytesToHex(frame.mid(m_protocolTemplate.addressOffset, m_protocolTemplate.addressSize));
+    }
+    auto samples = AppPlot::extractSamples(m_parserConfig, text, frame, payload);
+    for (auto &values : samples) {
+        if (!address.isEmpty()) {
+            for (auto &value : values)
+                value.name = address + QStringLiteral(" / ") + value.name;
+        }
         appendValues(timestamp, values);
     }
-}
-
-const AppProtocol::ProtocolTemplate *QuickPlotWindow::payloadTemplate() const
-{
-    return requiresProtocolPayload() && m_hasProtocolTemplate ? &m_protocolTemplate : nullptr;
 }
 
 bool QuickPlotWindow::isPlottingActive() const { return m_plottingActive; }
@@ -456,6 +467,7 @@ void QuickPlotWindow::setPlottingActive(bool active)
     }
     m_plottingActive = active;
     if (!active) {
+        m_frameBuffer.clear();
         m_channelValueTimer->stop();
         updateChannelValues();
         m_plot->setUpdatesEnabled(false);
@@ -516,6 +528,7 @@ void QuickPlotWindow::appendValues(const QDateTime &timestamp, const AppPlot::Pl
 
 void QuickPlotWindow::clearData()
 {
+    m_frameBuffer.clear();
     m_channelValueTimer->stop();
     m_channelTable->setRowCount(0);
     m_rows.clear();
@@ -535,6 +548,8 @@ void QuickPlotWindow::clearData()
     updateChannelSelection();
     updateStatus();
 }
+
+void QuickPlotWindow::resetStream() { m_frameBuffer.clear(); }
 
 AppPlot::ParserConfig QuickPlotWindow::savedParserConfig()
 {
@@ -560,6 +575,11 @@ bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)
         return false;
     }
     AppPlot::ParserConfig normalized = config;
+    m_followTemplateFields = config.protocol == AppPlot::Protocol::Binary &&
+                             config.binarySource == AppPlot::BinarySource::Payload && m_hasProtocolTemplate &&
+                             (m_followTemplateFields || !m_protocolTemplate.payloadFields.isEmpty());
+    if (m_followTemplateFields)
+        normalized.binaryFields = m_protocolTemplate.payloadFields;
     for (QString &field : normalized.fields) {
         field = field.simplified();
     }
@@ -581,6 +601,17 @@ bool QuickPlotWindow::configureParser(const AppPlot::ParserConfig &config)
 
 void QuickPlotWindow::setProtocolTemplates(const QList<AppProtocol::ProtocolTemplate> &protocolTemplates)
 {
+    if (m_followTemplateFields) {
+        const auto matches = [this](const auto &item) { return item.name == m_protocolTemplate.name; };
+        const auto previous = std::find_if(m_protocolTemplates.cbegin(), m_protocolTemplates.cend(), matches);
+        const auto updated = std::find_if(protocolTemplates.cbegin(), protocolTemplates.cend(), matches);
+        // A plot may use an unsaved draft. Only a change to its saved template
+        // should replace it; publishing another template must leave it alone.
+        if (updated != protocolTemplates.cend() &&
+            (previous == m_protocolTemplates.cend() || !(*previous == *updated))) {
+            setProtocolTemplate(*updated);
+        }
+    }
     m_protocolTemplates = protocolTemplates;
 }
 
@@ -589,10 +620,20 @@ void QuickPlotWindow::setProtocolTemplate(const AppProtocol::ProtocolTemplate &p
     if (m_hasProtocolTemplate && m_protocolTemplate == protocolTemplate) {
         return;
     }
+    m_followTemplateFields = !protocolTemplate.payloadFields.isEmpty() ||
+                             (m_followTemplateFields && m_protocolTemplate.name == protocolTemplate.name);
     m_protocolTemplate = protocolTemplate;
     m_hasProtocolTemplate = true;
     updateProtocolName();
     if (requiresProtocolPayload()) {
+        if (m_followTemplateFields) {
+            m_parserConfig.binaryFields = m_protocolTemplate.payloadFields;
+            m_parserConfig.fields.removeIf([this](const QString &name) {
+                return std::none_of(
+                    m_protocolTemplate.payloadFields.cbegin(), m_protocolTemplate.payloadFields.cend(),
+                    [&name](const auto &field) { return field.name.compare(name, Qt::CaseInsensitive) == 0; });
+            });
+        }
         m_channelTransforms.clear();
         clearData();
     }
@@ -696,6 +737,7 @@ void QuickPlotWindow::updateStatus()
 void QuickPlotWindow::setPaused(bool paused)
 {
     m_paused = paused;
+    m_frameBuffer.clear();
     m_channelValueTimer->stop();
     updateChannelValues();
     if (m_pauseButton) {
@@ -712,11 +754,14 @@ void QuickPlotWindow::showParserSettings()
     if (m_hasProtocolTemplate) {
         dialog.setProtocolTemplate(m_protocolTemplate);
     }
-    if (dialog.exec() == QDialog::Accepted) {
-        configureParser(dialog.parserConfig());
+    const int result = dialog.exec();
+    if (result == PlotParserDialog::EditTemplate) {
+        emit editTemplateRequested(dialog.protocolTemplate().name);
+    } else if (result == QDialog::Accepted) {
         if (dialog.usesProtocolTemplate()) {
             setProtocolTemplate(dialog.protocolTemplate());
         }
+        configureParser(dialog.parserConfig());
     }
 }
 

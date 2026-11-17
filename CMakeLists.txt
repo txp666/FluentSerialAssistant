@@ -2,10 +2,16 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
     FluentSerialAssistant
-    VERSION 0.1.28
+    VERSION 0.1.29
     DESCRIPTION "A Fluent Qt serial assistant prototype"
     LANGUAGES CXX
 )
+
+if(APPLE)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 17)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+endif()
 
 include(GNUInstallDirs)
 
@@ -131,6 +137,10 @@ add_executable(FluentSerialAssistant
     src/app/view/plot_parser_dialog.h
     src/app/view/protocol_template_window.cpp
     src/app/view/protocol_template_window.h
+    src/app/view/protocol_payload_editor.cpp
+    src/app/view/protocol_payload_editor.h
+    src/app/view/protocol_analysis_window.cpp
+    src/app/view/protocol_analysis_window.h
     src/app/view/quick_plot_window.cpp
     src/app/view/quick_plot_window.h
     src/app/view/settings_page.cpp
@@ -200,6 +210,12 @@ target_link_libraries(FluentSerialAssistant
         FluentSerialPlotParser
 )
 
+if(APPLE AND Qt6_VERSION VERSION_EQUAL "6.12.0")
+    target_sources(FluentSerialAssistant PRIVATE src/app/core/macos_accessibility_fix.mm)
+    set_source_files_properties(src/app/core/macos_accessibility_fix.mm PROPERTIES COMPILE_OPTIONS "-fno-objc-arc")
+    target_link_libraries(FluentSerialAssistant PRIVATE "-framework AppKit")
+endif()
+
 if(WIN32)
     target_link_libraries(FluentSerialAssistant PRIVATE shell32)
 endif()
@@ -219,7 +235,7 @@ if(BUILD_TESTING)
     )
     get_target_property(workbench_test_libraries FluentSerialAssistant LINK_LIBRARIES)
     target_link_libraries(FluentSerialTestSupport PUBLIC ${workbench_test_libraries})
-    foreach(test_name IN ITEMS data_table_model frame_codecs plot_value_parser control_service workbench_data_table workbench_quick_plot workbench_reliability protocol_windows terminal_view terminal_colors
+    foreach(test_name IN ITEMS data_table_model frame_codecs plot_value_parser control_service workbench_data_table workbench_quick_plot workbench_reliability protocol_windows protocol_analysis terminal_view terminal_colors
                                auto_reply virtual_serial_pair virtual_serial_workbench update_downloader update_installer
                                update_ui update_manager main_window)
         add_executable(tst_${test_name} tests/tst_${test_name}.cpp)
@@ -227,6 +243,17 @@ if(BUILD_TESTING)
         add_test(NAME ${test_name} COMMAND tst_${test_name})
         set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)
     endforeach()
+    if(APPLE AND Qt6_VERSION VERSION_EQUAL "6.12.0")
+        add_executable(tst_macos_accessibility
+            tests/tst_macos_accessibility.mm
+            src/app/core/macos_accessibility_fix.mm
+        )
+        target_include_directories(tst_macos_accessibility PRIVATE src)
+        target_compile_options(tst_macos_accessibility PRIVATE -fno-objc-arc)
+        target_link_libraries(tst_macos_accessibility PRIVATE Qt6::Widgets Qt6::Test "-framework AppKit")
+        add_test(NAME macos_accessibility COMMAND tst_macos_accessibility)
+        set_tests_properties(macos_accessibility PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=cocoa" TIMEOUT 120)
+    endif()
 endif()
 
 add_executable(fluentserial-cli

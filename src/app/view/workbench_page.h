@@ -31,6 +31,8 @@ class ScriptRunner;
 struct DataTableRecord;
 class QuickPlotWindow;
 class ProtocolTemplateWindow;
+class ProtocolPayloadEditor;
+class ProtocolAnalysisWindow;
 
 class WorkbenchPage : public AppPage, public AppControl::SessionControl
 {
@@ -39,6 +41,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     friend class WorkbenchDataTableTest;
     friend class WorkbenchQuickPlotTest;
     friend class ProtocolWindowsTest;
+    friend class ProtocolAnalysisTest;
     friend class TerminalViewTest;
     friend class TerminalColorsTest;
     friend class WorkbenchReliabilityTest;
@@ -283,6 +286,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void recordReceivedBytes(const QByteArray &data);
     void processBufferedFrameData(const QByteArray &data);
     void flushRxFrameBuffer();
+    void resetProtocolStreams();
     void updateFrameControlState();
     void loadProtocolTemplates(bool restoreSavedSelection = true);
     void saveProtocolTemplates() const;
@@ -290,6 +294,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void updateProtocolTemplateUi();
     void updateProtocolTemplateActionState();
     void showProtocolTemplateWindow();
+    void editProtocolTemplate(const QString &name);
+    void showProtocolAnalysisWindow();
     void updateProtocolTemplatePreview();
     // Why the template editor's fields cannot form a template, or empty.
     QString protocolTemplateInputError() const;
@@ -401,7 +407,7 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     void updateAutoLogStatus();
     void showQuickPlotWindow();
     QuickPlotWindow *createQuickPlotWindow(const AppPlot::ParserConfig &config,
-                                          const AppProtocol::ProtocolTemplate *protocolTemplate = nullptr);
+                                           const AppProtocol::ProtocolTemplate *protocolTemplate = nullptr);
     void appendQuickPlotRecord(const SessionRecord &record);
     void showDataTableWindow();
     void refreshDataTableWindow();
@@ -559,6 +565,8 @@ class WorkbenchPage : public AppPage, public AppControl::SessionControl
     QList<QuickPlotWindow *> m_quickPlotWindows;
     int m_nextPlotWindowNumber = 1;
     ProtocolTemplateWindow *m_protocolTemplateWindow = nullptr;
+    ProtocolPayloadEditor *m_protocolPayloadEditor = nullptr;
+    ProtocolAnalysisWindow *m_protocolAnalysisWindow = nullptr;
     FluentQt::PrimaryPushButton *m_connectButton = nullptr;
     FluentQt::PrimaryPushButton *m_sendButton = nullptr;
     FluentQt::TransparentToolButton *m_receiveModeButton = nullptr;

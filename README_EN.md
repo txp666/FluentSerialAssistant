@@ -34,9 +34,12 @@ Fluent Serial Assistant is a modern Fluent-style serial terminal for Windows, ma
     <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/protocol-editor-en-dark.png"><img src="docs/images/protocol-editor-en-light.png" alt="Frame protocol editor"></picture><p align="center">Frame protocol editor showing byte layout, fields, and checksum</p></td>
     <td width="50%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/data-table-en-dark.png"><img src="docs/images/data-table-en-light.png" alt="Frame table"></picture><p align="center">Frame table with HEX, text, and checksum results</p></td>
   </tr>
+  <tr>
+    <td colspan="2"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/protocol-analysis-en-dark.png"><img src="docs/images/protocol-analysis-en-light.png" alt="Protocol analysis: live fields from three device addresses and their curves on one chart"></picture><p align="center">Protocol analysis: live fields from three device addresses and their curves on one chart</p></td>
+  </tr>
 </table>
 
-The screenshots show the Simplified Chinese interface; English is available in Settings or from the title bar.
+The app supports Simplified Chinese and English, switchable in Settings or from the title bar.
 
 ## Download
 
@@ -72,6 +75,7 @@ The macOS build is not notarized by Apple. If macOS blocks it on first launch, c
 ### Protocols and tools
 
 - Frame protocol templates: define header, length, command, payload, checksum, and frame tail in a visual editor, with the checksum starting at a chosen offset, and check them against a sample or the latest received frame. Once enabled, received records show the command and checksum status.
+- Protocol analysis window: define payload fields and a device address in each template, view live values, and check fields to compare devices and templates on one chart.
 - Checksums: CRC16-Modbus, CRC16-CCITT, CRC32, LRC, XOR, and SUM8, calculated by hand or added when sending. Bytes at the start and end (such as a header or tail) can be skipped; the checksum goes in front of the skipped end bytes and the line ending.
 - Modbus RTU: build common read and write requests with CRC and summarize responses.
 
@@ -102,15 +106,25 @@ The macOS build is not notarized by Apple. If macOS blocks it on first launch, c
 1. Choose a port, set the baud rate, data bits, parity, stop bits, and flow control, and click **Connect**.
 2. Watch traffic in the terminal; turn on timestamps, frame splitting, or HEX display as needed.
 3. Type text or HEX in the send area, pick a line ending and encoding, and send; checksums and loop sending are optional.
-4. Click the plot icon in the terminal toolbar, choose a protocol, and confirm to open a plot window.
-5. Under **Protocol Template** on the left, click **Edit protocol** to define the frame format; once saved and enabled, received records show the parsed result.
+4. Click the plot icon in the terminal toolbar and confirm the parser settings to open a plot window. If the current protocol template defines data fields, its template and fields are filled in automatically.
+5. Under **Protocol Template** on the left, click **Edit protocol** to define the frame format and payload fields, save, then check **Enable** to open the data and plot analysis window.
 6. Automate repeated steps with packets, macros, auto-replies, or scripts.
 7. The broom button at the left of the terminal toolbar clears the terminal and the traffic counters; export records as TXT, CSV, or BIN.
+
+### Protocol analysis window
+
+1. In **Edit protocol**, add data fields with the 1 / 2 / 4 / 8 B or Float32 / Float64 buttons. Fields are ordered by frame position, with type, frame bytes, raw HEX, parsed value, and status on the same row. Select a row to edit its name, payload offset, type, byte order, scale, and add value in the fixed property panel on the right. **Template settings** stays visible on the right, with template selection, creation, save, and delete actions together. Use the field selector below it to configure the header, length, address, command, checksum, or tail.
+   Drag data rows up or down to reorder fields and update their payload offsets. Values use `raw × scale + add`; save to apply. The byte map stays visible, with matching color swatches and HEX cell backgrounds in the field list. Selecting a byte or row opens its properties. Creating a template, selecting a template without a saved sample, or editing its configuration automatically generates enough payload bytes and recalculates length and checksum. You can also paste HEX or use **Latest received frame** to inspect actual data; these samples retain their original bytes when names, scaling, or other settings change. Clear the sample and continue editing to resume generation. Incomplete samples report the missing byte count.
+2. For a bus with multiple devices, set the address size and its byte offset in the whole frame. Data is grouped by the address's HEX bytes. Choose **No device address grouping** to combine frames from a template. Each template supports 32 payload fields; without definitions, payload bytes appear as CH1, CH2, and so on.
+3. Check **Enable** in the sidebar to open analysis with the current template. Use **Data and plot analysis** to reopen the window with the same protocol and curve choices. Check additional templates in the window to parse several frame formats.
+4. The list shows current values and update times for each device's fields. Check **Plot** to draw them on a shared time axis in seconds. Use **Configure** in the toolbar to hide or show the template and field list; capture and plotting continue while it is hidden, with a legend identifying each device curve. The window displays up to 256 fields and 32 curves at a time, retaining the latest 12,000 points per curve. Curve choices survive closing the window and restarting the app.
+5. Pausing, hiding, minimizing, or closing the window stops capture. Clearing keeps fields and curve choices; changing enabled templates or saving template changes clears history. Frames with invalid checksums do not update values; missing fields show “—”. Length fields or a fixed payload length let analysis reassemble raw serial reads; configure receive framing first for templates without length information. Within a completed receive block, incomplete length candidates are skipped so later frames can be decoded. Raw streams continue waiting for the declared length, preserving headers that occur inside payloads.
 
 ### Plot windows
 
 - Every confirmation opens a new window, so several fields can be plotted side by side. The button at the top left shows the current protocol and opens the parser settings.
 - Preview a text or HEX sample before plotting. Binary fields take a type, byte offset, byte order, scale, and offset, read from the whole frame or from the payload of a protocol template.
+- **Create plot** in the protocol editor carries over its current template, fields, and sample. The terminal toolbar also uses the current template when it has data fields. Template plots share field definitions, frame assembly, and checksum validation, with separate curves for each device address. **Edit protocol** returns to the same editor. Saving the same named template updates linked plots and clears their old data before sampling resumes.
 - Click **Channel data** in the toolbar to show or hide the right panel. Hiding it gives the chart the full width while data and channel settings are retained. The list shows each channel's color and latest value; use the checkboxes to show or hide curves, and drag the divider to resize the list.
 - **Channel settings** is collapsed by default; click it to expand or hide it independently. Select a channel to adjust its scale and offset using `displayed = parsed × scale + offset`. Changes apply to retained curves, incoming data, and CSV exports. Parsed values are kept, so **Reset selected channel** restores them. Binary fields apply their parser scale and add value before these channel adjustments.
 - Channel settings belong to each window and are kept by channel name when data is cleared. Changing the parser configuration or payload template resets them; closing the window discards them.

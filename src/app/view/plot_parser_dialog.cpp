@@ -99,11 +99,16 @@ QString protocolHint(AppPlot::Protocol protocol)
 QString PlotParserDialog::protocolName(AppPlot::Protocol protocol)
 {
     switch (protocol) {
-    case AppPlot::Protocol::Delimited: return AppI18n::text("分隔值");
-    case AppPlot::Protocol::KeyValue: return AppI18n::text("键值对");
-    case AppPlot::Protocol::Json: return AppI18n::text("JSON 对象");
-    case AppPlot::Protocol::Binary: return AppI18n::text("二进制字段");
-    default: return AppI18n::text("全部数字");
+    case AppPlot::Protocol::Delimited:
+        return AppI18n::text("分隔值");
+    case AppPlot::Protocol::KeyValue:
+        return AppI18n::text("键值对");
+    case AppPlot::Protocol::Json:
+        return AppI18n::text("JSON 对象");
+    case AppPlot::Protocol::Binary:
+        return AppI18n::text("二进制字段");
+    default:
+        return AppI18n::text("全部数字");
     }
 }
 
@@ -122,9 +127,10 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     root->setContentsMargins(18, 18, 18, 18);
     root->setSpacing(12);
 
-    auto *description = new BodyLabel(requireProtocolChoice
-        ? AppI18n::text("选择本窗口的数据协议，用样例确认解析结果后创建曲线。")
-        : AppI18n::text("本窗口独立使用以下协议；修改协议会清空已有曲线。"), this);
+    auto *description =
+        new BodyLabel(requireProtocolChoice ? AppI18n::text("选择本窗口的数据协议，用样例确认解析结果后创建曲线。")
+                                            : AppI18n::text("本窗口独立使用以下协议；修改协议会清空已有曲线。"),
+                      this);
     description->setWordWrap(true);
     root->addWidget(description);
 
@@ -139,7 +145,8 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
         AppPlot::protocolFromKey(key, &protocol);
         m_protocolCombo->addItem(protocolName(protocol), QIcon(), key);
     }
-    m_protocolCombo->setCurrentIndex(requireProtocolChoice ? 0 : m_protocolCombo->findData(AppPlot::protocolKey(config.protocol)));
+    m_protocolCombo->setCurrentIndex(
+        requireProtocolChoice ? 0 : m_protocolCombo->findData(AppPlot::protocolKey(config.protocol)));
     form->addRow(AppI18n::text("协议类型"), m_protocolCombo);
     m_fieldsEdit = new LineEdit(this);
     m_fieldsEdit->setObjectName(QStringLiteral("plotFieldsEdit"));
@@ -162,7 +169,7 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     m_binarySourceCombo = new ComboBox(m_binaryContainer);
     m_binarySourceCombo->setObjectName(QStringLiteral("plotBinarySourceCombo"));
     m_binarySourceCombo->addItem(AppI18n::text("完整帧"), QIcon(), QStringLiteral("frame"));
-    m_binarySourceCombo->addItem(AppI18n::text("协议载荷"), QIcon(), QStringLiteral("payload"));
+    m_binarySourceCombo->addItem(AppI18n::text("帧协议模板"), QIcon(), QStringLiteral("payload"));
     m_binarySourceCombo->setCurrentIndex(m_binarySourceCombo->findData(AppPlot::binarySourceKey(config.binarySource)));
     sourceRow->addWidget(m_binarySourceCombo);
     sourceRow->addStretch(1);
@@ -176,13 +183,17 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     m_templateCombo->setObjectName(QStringLiteral("plotFrameTemplateCombo"));
     m_templateCombo->addItem(AppI18n::text("请选择帧模板"), QIcon(), -1);
     templateLayout->addWidget(m_templateCombo, 1);
+    m_editTemplateButton = new PushButton(AppI18n::text("编辑协议"), m_templateContainer);
+    m_editTemplateButton->setObjectName(QStringLiteral("plotEditTemplateButton"));
+    templateLayout->addWidget(m_editTemplateButton);
+    connect(m_editTemplateButton, &PushButton::clicked, this, [this]() { done(EditTemplate); });
     binaryLayout->addWidget(m_templateContainer);
 
-    auto *binaryHint = new CaptionLabel(
+    m_binaryHint = new CaptionLabel(
         AppI18n::text("字段留空时按字节生成通道。协议载荷使用本窗口选择的帧模板，并验证帧校验。"), m_binaryContainer);
-    AppUi::setMutedTextColor(binaryHint);
-    binaryHint->setWordWrap(true);
-    binaryLayout->addWidget(binaryHint);
+    AppUi::setMutedTextColor(m_binaryHint);
+    m_binaryHint->setWordWrap(true);
+    binaryLayout->addWidget(m_binaryHint);
 
     m_binaryFieldsTable = new TableWidget(m_binaryContainer);
     m_binaryFieldsTable->setObjectName(QStringLiteral("plotBinaryFieldsTable"));
@@ -218,7 +229,9 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
         addBinaryFieldRow(field);
     }
 
-    auto *fieldButtons = new QHBoxLayout;
+    m_binaryFieldButtons = new QWidget(m_binaryContainer);
+    auto *fieldButtons = new QHBoxLayout(m_binaryFieldButtons);
+    fieldButtons->setContentsMargins(0, 0, 0, 0);
     auto *addFieldButton =
         new PushButton(FluentQt::icon(FluentIcon::Add), AppI18n::text("添加字段"), m_binaryContainer);
     auto *removeFieldButton =
@@ -226,7 +239,7 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     fieldButtons->addWidget(addFieldButton);
     fieldButtons->addWidget(removeFieldButton);
     fieldButtons->addStretch(1);
-    binaryLayout->addLayout(fieldButtons);
+    binaryLayout->addWidget(m_binaryFieldButtons);
     connect(addFieldButton, &PushButton::clicked, this, &PlotParserDialog::addDefaultBinaryField);
     connect(removeFieldButton, &PushButton::clicked, this, &PlotParserDialog::removeSelectedBinaryFields);
 
@@ -290,7 +303,8 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
     auto *buttons = new QHBoxLayout;
     buttons->addStretch(1);
     auto *cancelButton = new PushButton(AppI18n::text("取消"), this);
-    m_applyButton = new PrimaryPushButton(requireProtocolChoice ? AppI18n::text("创建曲线") : AppI18n::text("应用"), this);
+    m_applyButton =
+        new PrimaryPushButton(requireProtocolChoice ? AppI18n::text("创建曲线") : AppI18n::text("应用"), this);
     m_applyButton->setObjectName(QStringLiteral("plotApplyButton"));
     buttons->addWidget(cancelButton);
     buttons->addWidget(m_applyButton);
@@ -306,8 +320,17 @@ PlotParserDialog::PlotParserDialog(const AppPlot::ParserConfig &config, QWidget 
         }
         updateProtocolControls();
     });
-    connect(m_binarySourceCombo, &ComboBox::currentIndexChanged, this, [this](int) { updateProtocolControls(); });
-    connect(m_templateCombo, &ComboBox::currentIndexChanged, this, [this](int) { updatePreview(); });
+    connect(m_binarySourceCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        updateProtocolControls();
+        if (usesProtocolTemplate())
+            loadExample();
+    });
+    connect(m_templateCombo, &ComboBox::currentIndexChanged, this, [this](int) {
+        m_fieldsEdit->clear();
+        updateProtocolControls();
+        if (usesProtocolTemplate())
+            loadExample();
+    });
     connect(m_fieldsEdit, &LineEdit::textChanged, this, [this]() { updatePreview(); });
     connect(m_sampleModeCombo, &ComboBox::currentIndexChanged, this, [this](int) { updatePreview(); });
     connect(m_sampleEdit, &PlainTextEdit::textChanged, this, &PlotParserDialog::updatePreview);
@@ -339,7 +362,7 @@ void PlotParserDialog::setProtocolTemplates(const QList<AppProtocol::ProtocolTem
         }
     }
     m_templateCombo->setCurrentIndex(selectedIndex);
-    updatePreview();
+    updateProtocolControls();
 }
 
 void PlotParserDialog::setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate)
@@ -356,16 +379,39 @@ void PlotParserDialog::setProtocolTemplate(const AppProtocol::ProtocolTemplate &
         m_protocolTemplates.append(protocolTemplate);
         index = m_protocolTemplates.size() - 1;
         const bool hasSameName = std::any_of(m_protocolTemplates.cbegin(), m_protocolTemplates.cend() - 1,
-            [&protocolTemplate](const AppProtocol::ProtocolTemplate &item) {
-                return item.name == protocolTemplate.name;
-            });
+                                             [&protocolTemplate](const AppProtocol::ProtocolTemplate &item) {
+                                                 return item.name == protocolTemplate.name;
+                                             });
         m_templateCombo->addItem(hasSameName ? protocolTemplate.name + AppI18n::text("（当前窗口）")
-                                            : protocolTemplate.name, QIcon(), index);
+                                             : protocolTemplate.name,
+                                 QIcon(), index);
     }
+    const QSignalBlocker blocker(m_templateCombo);
     m_templateCombo->setCurrentIndex(index + 1);
+    updateProtocolControls();
     if (usesProtocolTemplate() && m_sampleEdit->toPlainText().trimmed().isEmpty()) {
         loadExample();
     }
+}
+
+void PlotParserDialog::setSampleHex(const QString &hex)
+{
+    const QSignalBlocker blocker(m_sampleModeCombo);
+    m_sampleModeCombo->setCurrentIndex(m_sampleModeCombo->findData(QStringLiteral("hex")));
+    m_sampleEdit->setPlainText(hex);
+    updatePreview();
+}
+
+void PlotParserDialog::useProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate)
+{
+    m_protocolCombo->setCurrentIndex(m_protocolCombo->findData(QStringLiteral("binary")));
+    m_binarySourceCombo->setCurrentIndex(m_binarySourceCombo->findData(QStringLiteral("payload")));
+    setProtocolTemplate(protocolTemplate);
+}
+
+bool PlotParserDialog::usesTemplateFields() const
+{
+    return usesProtocolTemplate() && !protocolTemplate().payloadFields.isEmpty();
 }
 
 bool PlotParserDialog::usesProtocolTemplate() const
@@ -378,7 +424,7 @@ AppProtocol::ProtocolTemplate PlotParserDialog::protocolTemplate() const
 {
     const int index = m_templateCombo->currentData().toInt();
     return index >= 0 && index < m_protocolTemplates.size() ? m_protocolTemplates.at(index)
-                                                         : AppProtocol::ProtocolTemplate();
+                                                            : AppProtocol::ProtocolTemplate();
 }
 
 void PlotParserDialog::accept()
@@ -403,7 +449,12 @@ bool PlotParserDialog::collectConfig(AppPlot::ParserConfig *config, QString *err
     config->fields = splitFields(m_fieldsEdit->text());
     if (config->protocol == AppPlot::Protocol::Binary) {
         AppPlot::binarySourceFromKey(m_binarySourceCombo->currentData().toString(), &config->binarySource);
-        if (!collectBinaryFields(&config->binaryFields, error)) {
+        if (usesTemplateFields()) {
+            config->binaryFields = protocolTemplate().payloadFields;
+            *error = AppProtocol::payloadConfigurationError(protocolTemplate());
+            if (!error->isEmpty())
+                return false;
+        } else if (!collectBinaryFields(&config->binaryFields, error)) {
             return false;
         }
         if (usesProtocolTemplate()) {
@@ -424,7 +475,18 @@ void PlotParserDialog::updateProtocolControls()
     const bool binary = selected && protocol == AppPlot::Protocol::Binary;
     m_binaryContainer->setVisible(binary);
     m_templateContainer->setVisible(binary && usesProtocolTemplate());
-    m_protocolHint->setText(selected ? protocolHint(protocol) : AppI18n::text("每个曲线窗口都需要单独选择协议。"));
+    const bool templateFields = usesTemplateFields();
+    m_binaryFieldsTable->setVisible(!templateFields);
+    m_binaryFieldButtons->setVisible(!templateFields);
+    m_editTemplateButton->setEnabled(m_templateCombo->currentData().toInt() >= 0);
+    m_binaryHint->setText(
+        templateFields
+            ? AppI18n::text("沿用模板的 %1 个数据字段、字节序及换算。保存模板后，关联曲线同步更新并重新开始采样。")
+                  .arg(protocolTemplate().payloadFields.size())
+            : AppI18n::text("字段留空时按字节生成通道。协议载荷使用本窗口选择的帧模板，并验证帧校验。"));
+    m_protocolHint->setText(usesProtocolTemplate() ? AppI18n::text("由帧协议模板定义数据字段，按设备地址区分曲线。")
+                            : selected             ? protocolHint(protocol)
+                                                   : AppI18n::text("每个曲线窗口都需要单独选择协议。"));
     m_fieldsEdit->setEnabled(selected);
     if (binary != m_binarySample) {
         // Binary fields read bytes while the other protocols read text. Keep the
@@ -529,9 +591,8 @@ void PlotParserDialog::updatePreview()
             m_previewTable->setItem(row, 2, editableItem(QString::number(value.value, 'g', 14)));
         }
     }
-    QString result = samples.isEmpty()
-        ? AppI18n::text("未找到匹配的数字字段，请检查样例、字段筛选或字节偏移。")
-        : AppI18n::text("%1 个采样 · %2 个字段值").arg(samples.size()).arg(totalValues);
+    QString result = samples.isEmpty() ? AppI18n::text("未找到匹配的数字字段，请检查样例、字段筛选或字节偏移。")
+                                       : AppI18n::text("%1 个采样 · %2 个字段值").arg(samples.size()).arg(totalValues);
     if (totalValues > MaximumPreviewRows) {
         result += AppI18n::text(" · 预览前 %1 项").arg(MaximumPreviewRows);
     }
@@ -561,7 +622,7 @@ void PlotParserDialog::loadExample()
         break;
     case AppPlot::Protocol::Binary:
         example = bytesToHex(usesProtocolTemplate() ? AppProtocol::exampleFrame(protocolTemplate())
-                                                   : QByteArray::fromHex("6400C80000004841"));
+                                                    : QByteArray::fromHex("6400C80000004841"));
         break;
     default:
         example = QStringLiteral("24.8 60.5 101.3\n25.1 61.2 101.2");

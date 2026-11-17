@@ -3,6 +3,7 @@
 #include "app/core/app_i18n.h"
 #include "app/core/app_settings.h"
 #include "app/core/font_preferences.h"
+#include "app/core/macos_accessibility_fix.h"
 
 #include <FluentQtWidgets/FluentQtWidgets.h>
 
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
+    AppPlatform::installMacAccessibilityFix();
     Q_INIT_RESOURCE(app);
     Q_INIT_RESOURCE(fluentqtwidgets);
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
