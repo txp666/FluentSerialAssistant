@@ -13,6 +13,7 @@ class LineEdit;
 class CaptionLabel;
 class PlainTextEdit;
 class PrimaryPushButton;
+class PushButton;
 class TableWidget;
 } // namespace FluentQt
 
@@ -21,6 +22,7 @@ class PlotParserDialog : public QDialog
     Q_OBJECT
 
   public:
+    static constexpr int EditTemplate = 2;
     explicit PlotParserDialog(const AppPlot::ParserConfig &config, QWidget *parent = nullptr,
                               bool requireProtocolChoice = false);
 
@@ -30,8 +32,10 @@ class PlotParserDialog : public QDialog
     AppPlot::ParserConfig parserConfig() const;
     void setProtocolTemplates(const QList<AppProtocol::ProtocolTemplate> &protocolTemplates);
     void setProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate);
+    void useProtocolTemplate(const AppProtocol::ProtocolTemplate &protocolTemplate);
     bool usesProtocolTemplate() const;
     AppProtocol::ProtocolTemplate protocolTemplate() const;
+    void setSampleHex(const QString &hex);
 
   protected:
     void accept() override;
@@ -42,6 +46,7 @@ class PlotParserDialog : public QDialog
     void removeSelectedBinaryFields();
     bool collectBinaryFields(QVector<AppPlot::BinaryField> *fields, QString *error) const;
     bool collectConfig(AppPlot::ParserConfig *config, QString *error) const;
+    bool usesTemplateFields() const;
     void updateProtocolControls();
     void updatePreview();
     void loadExample();
@@ -60,8 +65,11 @@ class PlotParserDialog : public QDialog
     FluentQt::CaptionLabel *m_protocolHint = nullptr;
     FluentQt::CaptionLabel *m_previewStatus = nullptr;
     FluentQt::PrimaryPushButton *m_applyButton = nullptr;
+    FluentQt::PushButton *m_editTemplateButton = nullptr;
+    FluentQt::CaptionLabel *m_binaryHint = nullptr;
     QWidget *m_binaryContainer = nullptr;
     QWidget *m_templateContainer = nullptr;
+    QWidget *m_binaryFieldButtons = nullptr;
     QString m_fieldsProtocol;
     bool m_binarySample = false;
     bool m_updatingPreview = false;

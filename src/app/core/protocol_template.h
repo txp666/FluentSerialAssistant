@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/core/checksum_utils.h"
+#include "app/core/plot_value_parser.h"
 
 #include <QtCore/QByteArray>
 #include <QtCore/QJsonArray>
@@ -34,6 +35,11 @@ struct ProtocolTemplate
     int checksumStart = 0;
     // Fixed bytes that end every frame, after the checksum.
     QByteArray trailer;
+    // Field offsets are relative to the payload; addressOffset is relative to
+    // the frame. A zero addressSize keeps all frames in one device group.
+    QVector<AppPlot::BinaryField> payloadFields;
+    int addressOffset = 0;
+    int addressSize = 0;
 };
 
 struct ParseResult
@@ -48,6 +54,12 @@ struct ParseResult
     QByteArray checksum;
     bool checksumChecked = false;
     bool checksumValid = false;
+};
+
+struct DecodedFrame
+{
+    QByteArray bytes;
+    ParseResult parsed;
 };
 
 // Where a frame's fields lie, using its length field when the template has
@@ -77,8 +89,15 @@ ProtocolTemplate fromJson(const QJsonObject &object);
 QJsonObject toJson(const ProtocolTemplate &protocolTemplate);
 QList<ProtocolTemplate> listFromJson(const QJsonArray &array);
 QJsonArray listToJson(const QList<ProtocolTemplate> &protocolTemplates);
+AppPlot::ParserConfig payloadParserConfig(const ProtocolTemplate &protocolTemplate);
+qint64 requiredPayloadBytes(const ProtocolTemplate &protocolTemplate);
+QString payloadConfigurationError(const ProtocolTemplate &protocolTemplate);
 FrameLayout frameLayout(const QByteArray &frame, const ProtocolTemplate &protocolTemplate);
 ParseResult parseFrame(const QByteArray &frame, const ProtocolTemplate &protocolTemplate);
+// Shared by protocol analysis and plots. Keep incomplete frames only for a
+// stream whose template defines a length; returned frames have passed checksum validation.
+QList<DecodedFrame> takeFrames(QByteArray &buffer, const QByteArray &bytes, const ProtocolTemplate &protocolTemplate,
+                               bool stream);
 // A frame that the template parses, or empty when its fields cannot form one.
 QByteArray exampleFrame(const ProtocolTemplate &protocolTemplate);
 

@@ -1,6 +1,7 @@
 #include "app/core/app_i18n.h"
 #include "app/core/app_settings.h"
 #include "app/view/plot_parser_dialog.h"
+#include "app/view/protocol_template_window.h"
 #include "app/view/quick_plot_window.h"
 #include "app/view/workbench_page.h"
 
@@ -554,7 +555,7 @@ class WorkbenchQuickPlotTest : public QObject
         secondTemplate.payloadLength = 2;
         auto *first = page.createQuickPlotWindow(parser, &firstTemplate);
         auto *second = page.createQuickPlotWindow(parser, &secondTemplate);
-        // Windows with equal templates share one parse of each frame.
+        // Windows with equal templates decode the same values independently.
         auto *sameAsFirst = page.createQuickPlotWindow(parser, &firstTemplate);
         QVERIFY(first && second && sameAsFirst);
         const QByteArray frame = checkedFrame();
@@ -588,6 +589,121 @@ class WorkbenchQuickPlotTest : public QObject
         page.handleReceivedData(frame);
         QCOMPARE(first->m_rows.size(), 2);
         QCOMPARE(second->m_rows.size(), 3);
+    }
+
+    void protocolEditorCreatesPlotsFromItsFieldsAndSample()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        auto item = AppProtocol::defaultTemplate();
+        item.payloadFields = {
+            {QStringLiteral("angle"), 0, AppPlot::BinaryType::Int16, AppPlot::ByteOrder::LittleEndian, 0.01, 0}};
+        page.m_protocolTemplates = {item};
+        page.updateProtocolTemplateCombo(0);
+        page.showProtocolTemplateWindow();
+        const QString sample = page.m_protocolTemplateWindow->sampleHex();
+        bool previewMatched = false;
+        QTimer::singleShot(0, &page, [&]() {
+            auto *dialog = qobject_cast<PlotParserDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            auto *preview = dialog->findChild<FluentQt::TableWidget *>(QStringLiteral("plotPreviewTable"));
+            auto *input = dialog->findChild<FluentQt::PlainTextEdit *>(QStringLiteral("plotSampleEdit"));
+            previewMatched = dialog->usesProtocolTemplate() && preview->rowCount() == 1 &&
+                             preview->item(0, 1)->text() == QStringLiteral("angle") && input->toPlainText() == sample;
+            auto *create = dialog->findChild<FluentQt::PushButton *>(QStringLiteral("plotApplyButton"));
+            previewMatched = previewMatched && create->text() == AppI18n::text("创建曲线");
+            create->click();
+            if (dialog->result() != QDialog::Accepted)
+                dialog->reject();
+        });
+        page.m_protocolTemplateWindow
+            ->findChild<FluentQt::PushButton *>(QStringLiteral("protocolTemplateCreatePlotButton"))
+            ->click();
+        QVERIFY(previewMatched);
+        QVERIFY(page.m_quickPlotWindow);
+        QCOMPARE(page.m_quickPlotWindow->m_parserConfig.binaryFields, item.payloadFields);
+        page.handleReceivedData(AppProtocol::exampleFrame(item));
+        QCOMPARE(page.m_quickPlotWindow->m_plot->points(), QVector<QPointF>({QPointF(0, 12.34)}));
+    }
+
+    void templatePlotsSeparateDevicesReassembleFramesAndFollowSavedFields()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        auto item = AppProtocol::defaultTemplate();
+        item.commandSize = 0;
+        item.addressOffset = 3;
+        item.addressSize = 1;
+        item.payloadFields = {
+            {QStringLiteral("angle"), 0, AppPlot::BinaryType::Int16, AppPlot::ByteOrder::LittleEndian, 0.01, 0}};
+        page.m_protocolTemplates = {item};
+        page.updateProtocolTemplateCombo(0);
+        auto config = AppProtocol::payloadParserConfig(item);
+        config.binaryFields.clear();
+        config.fields = {QStringLiteral("angle")};
+        auto *plot = page.createQuickPlotWindow(config, &item);
+        QVERIFY(plot);
+        const auto frameFor = [](int address, int value) {
+            QByteArray frame = QByteArray::fromHex("AA5502");
+            frame += char(address);
+            frame += char(value & 0xff);
+            frame += char(value >> 8);
+            frame += AppChecksum::calculate(frame, QStringLiteral("crc16-modbus"), AppChecksum::ByteOrder::LittleEndian)
+                         .bytes;
+            return frame;
+        };
+        const auto first = frameFor(1, 1234);
+        const auto second = frameFor(2, 567);
+        auto corrupt = first;
+        corrupt[corrupt.size() - 1] ^= 1;
+        page.handleReceivedData(first.left(2));
+        QVERIFY(plot->m_rows.isEmpty());
+        page.handleReceivedData(first.mid(2) + second + corrupt + first);
+        QCOMPARE(plot->m_rows.size(), 3);
+        QCOMPARE(plot->m_channelNames, QVector<QString>({QStringLiteral("01 / angle"), QStringLiteral("02 / angle")}));
+        QCOMPARE(plot->m_plot->points(0), QVector<QPointF>({QPointF(0, 12.34), QPointF(2, 12.34)}));
+        QCOMPARE(plot->m_plot->points(1), QVector<QPointF>({QPointF(1, 5.67)}));
+
+        item.payloadFields = {
+            {QStringLiteral("level"), 1, AppPlot::BinaryType::UInt8, AppPlot::ByteOrder::LittleEndian, 2, 1}};
+        page.fillProtocolTemplateEditor(item);
+        page.saveCurrentProtocolTemplate();
+        QVERIFY(plot->m_rows.isEmpty());
+        page.handleReceivedData(first);
+        QCOMPARE(plot->m_channelNames, QVector<QString>({QStringLiteral("01 / level")}));
+        QCOMPARE(plot->m_plot->points(), QVector<QPointF>({QPointF(0, 9)}));
+    }
+
+    void unrelatedTemplateSavesKeepDraftPlotConfigurationAndHistory()
+    {
+        WorkbenchPage page(nullptr, false, false);
+        auto saved = AppProtocol::defaultTemplate();
+        saved.name = QStringLiteral("A");
+        saved.payloadFields = {
+            {QStringLiteral("angle"), 0, AppPlot::BinaryType::Int16, AppPlot::ByteOrder::LittleEndian, 0.01, 0}};
+        auto other = saved;
+        other.name = QStringLiteral("B");
+        page.m_protocolTemplates = {saved, other};
+        page.updateProtocolTemplateCombo(0);
+        auto draft = saved;
+        draft.payloadFields[0].scale = 0.02;
+        auto *plot = page.createQuickPlotWindow(AppProtocol::payloadParserConfig(draft), &draft);
+        const auto frame = AppProtocol::exampleFrame(saved);
+        page.handleReceivedData(frame);
+        const auto history = plot->m_plot->points();
+        QCOMPARE(history.size(), 1);
+        page.fillProtocolTemplateEditor(other);
+        page.saveCurrentProtocolTemplate();
+        QCOMPARE(plot->m_parserConfig.binaryFields, draft.payloadFields);
+        QCOMPARE(plot->m_plot->points(), history);
+
+        // A real save of the associated template still updates the draft plot.
+        saved.payloadFields[0].scale = 0.03;
+        page.fillProtocolTemplateEditor(saved);
+        page.saveCurrentProtocolTemplate();
+        QCOMPARE(plot->m_parserConfig.binaryFields, saved.payloadFields);
+        QVERIFY(plot->m_rows.isEmpty());
+        page.handleReceivedData(frame);
+        QCOMPARE(plot->m_plot->points().first().y(), 37.02);
     }
 
     void exportRowsFollowThePlotCapacity()

@@ -1,6 +1,8 @@
-#include "app/view/workbench/workbench_page_internal.h"
+#include "app/view/protocol_analysis_window.h"
+#include "app/view/protocol_payload_editor.h"
 #include "app/view/protocol_template_window.h"
 #include "app/view/quick_plot_window.h"
+#include "app/view/workbench/workbench_page_internal.h"
 
 #include <QtCore/QStringList>
 
@@ -140,6 +142,9 @@ void WorkbenchPage::loadProtocolTemplates(bool restoreSavedSelection)
         for (QuickPlotWindow *plotWindow : m_quickPlotWindows) {
             plotWindow->setProtocolTemplates(m_protocolTemplates);
         }
+        if (m_protocolAnalysisWindow) {
+            m_protocolAnalysisWindow->setProtocolTemplates(m_protocolTemplates);
+        }
         return;
     }
 
@@ -175,6 +180,9 @@ void WorkbenchPage::saveProtocolTemplates() const
         if (plotWindow) {
             plotWindow->setProtocolTemplates(m_protocolTemplates);
         }
+    }
+    if (m_protocolAnalysisWindow) {
+        m_protocolAnalysisWindow->setProtocolTemplates(m_protocolTemplates);
     }
     publishSharedList(SharedList::ProtocolTemplates);
 }
@@ -225,7 +233,8 @@ void WorkbenchPage::updateProtocolTemplateActionState()
     }
     if (m_protocolDeleteButton) {
         const int selectedIndex = m_protocolTemplateCombo ? m_protocolTemplateCombo->currentIndex() : -1;
-        const bool selectedTemplate = selectedIndex >= 0 && selectedIndex < m_protocolTemplates.size() && hasName &&
+        const bool selectedTemplate =
+            selectedIndex >= 0 && selectedIndex < m_protocolTemplates.size() && hasName &&
             m_protocolTemplates.at(selectedIndex).name == m_protocolNameEdit->text().trimmed();
         m_protocolDeleteButton->setEnabled(m_protocolTemplates.size() > 1 && selectedTemplate);
     }
@@ -246,12 +255,12 @@ void WorkbenchPage::updateProtocolTemplateActionState()
         if (!enabled) {
             m_protocolStatusLabel->setText(AppI18n::text("协议模板未启用") + QStringLiteral(" · ") + item.name);
         } else {
-            m_protocolStatusLabel->setText(
-                AppI18n::text("%1 · 帧头 %2 B · 命令 %3 B · %4")
-                    .arg(item.name)
-                    .arg(item.header.size())
-                    .arg(item.commandSize)
-                    .arg(AppProtocol::hasChecksum(item) ? AppChecksum::labelForAlgorithm(item.checksumAlgorithm)
+            m_protocolStatusLabel->setText(AppI18n::text("%1 · 帧头 %2 B · 命令 %3 B · %4")
+                                               .arg(item.name)
+                                               .arg(item.header.size())
+                                               .arg(item.commandSize)
+                                               .arg(AppProtocol::hasChecksum(item)
+                                                        ? AppChecksum::labelForAlgorithm(item.checksumAlgorithm)
                                                         : AppI18n::text("无校验")));
         }
     }
@@ -269,6 +278,30 @@ void WorkbenchPage::showProtocolTemplateWindow()
     m_protocolTemplateWindow->showNormal();
     m_protocolTemplateWindow->raise();
     m_protocolTemplateWindow->activateWindow();
+}
+
+void WorkbenchPage::showProtocolAnalysisWindow()
+{
+    if (!m_protocolAnalysisWindow) {
+        m_protocolAnalysisWindow = new ProtocolAnalysisWindow(this);
+        connect(m_protocolAnalysisWindow, &ProtocolAnalysisWindow::parsingEnabledChanged, m_protocolEnabledCheck,
+                &CheckBox::setChecked);
+        connect(m_protocolAnalysisWindow, &ProtocolAnalysisWindow::editTemplateRequested, this,
+                &WorkbenchPage::editProtocolTemplate);
+    }
+    m_protocolAnalysisWindow->setProtocolTemplates(m_protocolTemplates, selectedProtocolTemplate().name);
+    m_protocolAnalysisWindow->setParsingEnabled(m_protocolEnabledCheck->isChecked());
+    m_protocolAnalysisWindow->showNormal();
+    m_protocolAnalysisWindow->raise();
+    m_protocolAnalysisWindow->activateWindow();
+}
+
+void WorkbenchPage::editProtocolTemplate(const QString &name)
+{
+    const int index = m_protocolTemplateCombo->findText(name);
+    if (index >= 0)
+        m_protocolTemplateCombo->setCurrentIndex(index);
+    showProtocolTemplateWindow();
 }
 
 void WorkbenchPage::updateProtocolTemplatePreview()
@@ -299,13 +332,14 @@ void WorkbenchPage::updateProtocolTemplatePreview()
 
 QString WorkbenchPage::protocolTemplateInputError() const
 {
-    return protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit, m_protocolTrailerEdit,
-                              {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
-                               {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
-                               {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
-                               {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
-                               {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit},
-                               {AppI18n::text("校验起始偏移"), m_protocolChecksumStartEdit}});
+    const QString error = protocolInputError(m_protocolNameEdit, m_protocolHeaderEdit, m_protocolTrailerEdit,
+                                             {{AppI18n::text("长度偏移"), m_protocolLengthOffsetEdit},
+                                              {AppI18n::text("命令偏移"), m_protocolCommandOffsetEdit},
+                                              {AppI18n::text("命令长度"), m_protocolCommandSizeEdit},
+                                              {AppI18n::text("载荷偏移"), m_protocolPayloadOffsetEdit},
+                                              {AppI18n::text("载荷长度"), m_protocolPayloadLengthEdit},
+                                              {AppI18n::text("校验起始偏移"), m_protocolChecksumStartEdit}});
+    return error.isEmpty() ? AppProtocol::payloadConfigurationError(currentProtocolTemplateFromUi()) : error;
 }
 
 AppProtocol::ProtocolTemplate WorkbenchPage::selectedProtocolTemplate() const
@@ -350,6 +384,9 @@ AppProtocol::ProtocolTemplate WorkbenchPage::currentProtocolTemplateFromUi() con
         m_protocolChecksumByteOrderCombo ? m_protocolChecksumByteOrderCombo->currentData().toString()
                                          : AppChecksum::byteOrderKey(AppChecksum::ByteOrder::LittleEndian));
     item.checksumStart = intFromEdit(m_protocolChecksumStartEdit);
+    if (m_protocolPayloadEditor) {
+        m_protocolPayloadEditor->applyTo(item);
+    }
     return item;
 }
 
@@ -362,6 +399,7 @@ void WorkbenchPage::applyProtocolTemplate(int index)
 
     const AppProtocol::ProtocolTemplate item = m_protocolTemplates.at(index);
     fillProtocolTemplateEditor(item);
+    updateProtocolTemplateActionState();
     if (m_protocolTemplateWindow) {
         AppSettings settings;
         const QJsonDocument examples = QJsonDocument::fromJson(
@@ -370,18 +408,12 @@ void WorkbenchPage::applyProtocolTemplate(int index)
         if (example.isString()) {
             m_protocolTemplateWindow->setSampleHex(example.toString());
         } else {
-            // Without a saved sample, keep the current one only if it is a valid
-            // frame for this template. Otherwise it would show errors and be
-            // saved as this template's sample.
-            const HexParseResult sample = parseHexPayload(m_protocolTemplateWindow->sampleHex());
-            const AppProtocol::ParseResult parsed =
-                sample.ok ? AppProtocol::parseFrame(sample.bytes, item) : AppProtocol::ParseResult();
-            if (!parsed.ok || (parsed.checksumChecked && !parsed.checksumValid)) {
-                m_protocolTemplateWindow->setSampleHex(bytesToHex(AppProtocol::exampleFrame(item)));
-            }
+            m_protocolTemplateWindow->generateMatchingSample();
         }
     }
-    updateProtocolTemplateActionState();
+    if (m_protocolAnalysisWindow && m_protocolEnabledCheck->isChecked()) {
+        m_protocolAnalysisWindow->setProtocolTemplates(m_protocolTemplates, item.name);
+    }
 }
 
 void WorkbenchPage::fillProtocolTemplateEditor(const AppProtocol::ProtocolTemplate &item)
@@ -407,6 +439,9 @@ void WorkbenchPage::fillProtocolTemplateEditor(const AppProtocol::ProtocolTempla
     setComboCurrentData(m_protocolChecksumAlgorithmCombo, item.checksumAlgorithm);
     setComboCurrentData(m_protocolChecksumByteOrderCombo, AppChecksum::byteOrderKey(item.checksumByteOrder));
     setEditValue(m_protocolChecksumStartEdit, item.checksumStart);
+    if (m_protocolPayloadEditor) {
+        m_protocolPayloadEditor->setProtocolTemplate(item);
+    }
     m_updatingProtocolTemplateUi = false;
 }
 
@@ -440,15 +475,20 @@ void WorkbenchPage::saveCurrentProtocolTemplate()
         const HexParseResult example = parseHexPayload(m_protocolTemplateWindow->sampleHex());
         if (example.ok) {
             AppSettings settings;
-            QJsonObject examples = QJsonDocument::fromJson(
-                settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8()).object();
+            QJsonObject examples =
+                QJsonDocument::fromJson(
+                    settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8())
+                    .object();
             examples.insert(item.name, bytesToHex(example.bytes));
             settings.setValue(QLatin1String(ProtocolTemplateExamplesSettingsKey),
                               QString::fromUtf8(QJsonDocument(examples).toJson(QJsonDocument::Compact)));
         }
     }
-    updateProtocolTemplateCombo(index);
+    updateProtocolTemplateCombo(index, false);
     saveProtocolTemplates();
+    if (m_protocolAnalysisWindow && m_protocolEnabledCheck->isChecked()) {
+        m_protocolAnalysisWindow->setProtocolTemplates(m_protocolTemplates, item.name);
+    }
     showSuccess(AppI18n::text("已保存协议模板"), item.name);
 }
 
@@ -468,8 +508,9 @@ void WorkbenchPage::deleteCurrentProtocolTemplate()
 
     const QString name = m_protocolTemplates.at(index).name;
     AppSettings settings;
-    QJsonObject examples = QJsonDocument::fromJson(
-        settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8()).object();
+    QJsonObject examples =
+        QJsonDocument::fromJson(settings.value(QLatin1String(ProtocolTemplateExamplesSettingsKey)).toString().toUtf8())
+            .object();
     examples.remove(name);
     settings.setValue(QLatin1String(ProtocolTemplateExamplesSettingsKey),
                       QString::fromUtf8(QJsonDocument(examples).toJson(QJsonDocument::Compact)));

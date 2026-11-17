@@ -4,6 +4,248 @@
 <context>
     <name>AppText</name>
     <message>
+        <source>自动样例随配置更新；粘贴 HEX 后保留，清空可恢复自动生成</source>
+        <translation>自动样例随配置更新；粘贴 HEX 后保留，清空可恢复自动生成</translation>
+    </message>
+    <message>
+        <source>数据字段</source>
+        <translation>数据字段</translation>
+    </message>
+    <message>
+        <source>已校验</source>
+        <translation>已校验</translation>
+    </message>
+    <message>
+        <source>字节图</source>
+        <translation>字节图</translation>
+    </message>
+    <message>
+        <source>整帧 %1 B · 载荷从字节 %2 开始 · %3</source>
+        <translation>整帧 %1 B · 载荷从字节 %2 开始 · %3</translation>
+    </message>
+    <message>
+        <source>不匹配</source>
+        <translation>不匹配</translation>
+    </message>
+    <message>
+        <source>%1 位浮点数</source>
+        <translation>%1 位浮点数</translation>
+    </message>
+    <message>
+        <source>%1 位有符号整数</source>
+        <translation>%1 位有符号整数</translation>
+    </message>
+    <message>
+        <source>%1 位无符号整数</source>
+        <translation>%1 位无符号整数</translation>
+    </message>
+    <message>
+        <source>字段属性</source>
+        <translation>字段属性</translation>
+    </message>
+    <message>
+        <source>整帧起点</source>
+        <translation>整帧起点</translation>
+    </message>
+    <message>
+        <source>载荷内起点</source>
+        <translation>载荷内起点</translation>
+    </message>
+    <message>
+        <source>数值类型</source>
+        <translation>数值类型</translation>
+    </message>
+    <message>
+        <source>字段属性 · %1</source>
+        <translation>字段属性 · %1</translation>
+    </message>
+    <message>
+        <source>地址起点按整帧计算，从 0 开始。接收窗口按地址分组显示设备数据。</source>
+        <translation>地址起点按整帧计算，从 0 开始。接收窗口按地址分组显示设备数据。</translation>
+    </message>
+    <message>
+        <source>整帧字节 %1–%2
+显示值 = 原始值 × %3 + %4</source>
+        <translation>整帧字节 %1–%2
+显示值 = 原始值 × %3 + %4</translation>
+    </message>
+    <message>
+        <source>从左侧选择字段，或点击上方的字节类型添加数据字段。</source>
+        <translation>从左侧选择字段，或点击上方的字节类型添加数据字段。</translation>
+    </message>
+    <message>
+        <source>模板设置</source>
+        <translation>模板设置</translation>
+    </message>
+    <message>
+        <source>生成匹配样例</source>
+        <translation>生成匹配样例</translation>
+    </message>
+    <message>
+        <source>帧字段</source>
+        <translation>帧字段</translation>
+    </message>
+    <message>
+        <source>添加数据</source>
+        <translation>添加数据</translation>
+    </message>
+    <message>
+        <source>添加 %1 字段</source>
+        <translation>添加 %1 字段</translation>
+    </message>
+    <message>
+        <source>整帧字节</source>
+        <translation>整帧字节</translation>
+    </message>
+    <message>
+        <source>状态</source>
+        <translation>状态</translation>
+    </message>
+    <message>
+        <source>按整帧字节顺序排列；选择一行，在右侧修改属性。</source>
+        <translation>按整帧字节顺序排列；选择一行，在右侧修改属性。</translation>
+    </message>
+    <message>
+        <source>样例校验失败，请检查校验设置或重新生成样例。</source>
+        <translation>样例校验失败，请检查校验设置或重新生成样例。</translation>
+    </message>
+    <message>
+        <source>样例载荷不足：当前 %1 B，数据字段至少需要 %2 B。</source>
+        <translation>样例载荷不足：当前 %1 B，数据字段至少需要 %2 B。</translation>
+    </message>
+    <message>
+        <source>样例解析通过 · %1 B 载荷 · %2 个数据字段</source>
+        <translation>样例解析通过 · %1 B 载荷 · %2 个数据字段</translation>
+    </message>
+    <message>
+        <source>样例不足</source>
+        <translation>样例不足</translation>
+    </message>
+    <message>
+        <source>已识别</source>
+        <translation>已识别</translation>
+    </message>
+    <message>
+        <source>固定字节</source>
+        <translation>固定字节</translation>
+    </message>
+    <message>
+        <source>无法解析</source>
+        <translation>无法解析</translation>
+    </message>
+    <message>
+        <source>帧无效</source>
+        <translation>帧无效</translation>
+    </message>
+    <message>
+        <source>缺少 %1 B</source>
+        <translation>缺少 %1 B</translation>
+    </message>
+    <message>
+        <source>数值无效</source>
+        <translation>数值无效</translation>
+    </message>
+    <message>
+        <source>已解析</source>
+        <translation>已解析</translation>
+    </message>
+    <message>
+        <source>无法校验</source>
+        <translation>无法校验</translation>
+    </message>
+    <message>
+        <source>载荷范围</source>
+        <translation>载荷范围</translation>
+    </message>
+    <message>
+        <source>不区分设备地址</source>
+        <translation>不区分设备地址</translation>
+    </message>
+    <message>
+        <source>设备地址</source>
+        <translation>设备地址</translation>
+    </message>
+    <message>
+        <source>地址在整帧中的偏移</source>
+        <translation>地址在整帧中的偏移</translation>
+    </message>
+    <message>
+        <source>载荷字段偏移从 0 开始；不同地址的数据独立显示，可勾选到同一张曲线图。</source>
+        <translation>载荷字段偏移从 0 开始；不同地址的数据独立显示，可勾选到同一张曲线图。</translation>
+    </message>
+    <message>
+        <source>删除字段</source>
+        <translation>删除字段</translation>
+    </message>
+    <message>
+        <source>载荷 +%1 · %2</source>
+        <translation>载荷 +%1 · %2</translation>
+    </message>
+    <message>
+        <source>协议解析</source>
+        <translation>协议解析</translation>
+    </message>
+    <message>
+        <source>启用协议解析</source>
+        <translation>启用协议解析</translation>
+    </message>
+    <message>
+        <source>参与解析的模板</source>
+        <translation>参与解析的模板</translation>
+    </message>
+    <message>
+        <source>勾选字段即可显示曲线；载荷字段、倍率和设备地址在编辑协议中设置。</source>
+        <translation>勾选字段即可显示曲线；载荷字段、倍率和设备地址在编辑协议中设置。</translation>
+    </message>
+    <message>
+        <source>曲线</source>
+        <translation>曲线</translation>
+    </message>
+    <message>
+        <source>模板 / 地址</source>
+        <translation>模板 / 地址</translation>
+    </message>
+    <message>
+        <source>更新时间</source>
+        <translation>更新时间</translation>
+    </message>
+    <message>
+        <source>%1 · %2 帧 · %3 个数据字段 · 横轴为秒</source>
+        <translation>%1 · %2 帧 · %3 个数据字段 · 横轴为秒</translation>
+    </message>
+    <message>
+        <source>等待接收所选协议的数据</source>
+        <translation>等待接收所选协议的数据</translation>
+    </message>
+    <message>
+        <source>最多显示 %1 个字段，同时绘制 %2 条曲线</source>
+        <translation>最多显示 %1 个字段，同时绘制 %2 条曲线</translation>
+    </message>
+    <message>
+        <source>最多定义 %1 个载荷字段</source>
+        <translation>最多定义 %1 个载荷字段</translation>
+    </message>
+    <message>
+        <source>设备地址字段范围无效</source>
+        <translation>设备地址字段范围无效</translation>
+    </message>
+    <message>
+        <source>载荷字段名称不能为空或重复</source>
+        <translation>载荷字段名称不能为空或重复</translation>
+    </message>
+    <message>
+        <source>载荷字段 %1 的范围或换算参数无效</source>
+        <translation>载荷字段 %1 的范围或换算参数无效</translation>
+    </message>
+    <message>
+        <source>解析数据与曲线</source>
+        <translation>解析数据与曲线</translation>
+    </message>
+    <message>
+        <source>载荷字段与设备地址</source>
+        <translation>载荷字段与设备地址</translation>
+    </message>
+    <message>
         <source>展开通道设置</source>
         <translation>展开通道设置</translation>
     </message>
@@ -3012,6 +3254,26 @@
     <message>
         <source>当前 %1 B / 需要 %2 B</source>
         <translation>当前 %1 B / 需要 %2 B</translation>
+    </message>
+    <message>
+        <source>字段解析</source>
+        <translation>字段解析</translation>
+    </message>
+    <message>
+        <source>拖动数据字段调整顺序与偏移</source>
+        <translation>拖动数据字段调整顺序与偏移</translation>
+    </message>
+    <message>
+        <source>帧协议模板</source>
+        <translation>帧协议模板</translation>
+    </message>
+    <message>
+        <source>沿用模板的 %1 个数据字段、字节序及换算。保存模板后，关联曲线同步更新并重新开始采样。</source>
+        <translation>沿用模板的 %1 个数据字段、字节序及换算。保存模板后，关联曲线同步更新并重新开始采样。</translation>
+    </message>
+    <message>
+        <source>由帧协议模板定义数据字段，按设备地址区分曲线。</source>
+        <translation>由帧协议模板定义数据字段，按设备地址区分曲线。</translation>
     </message>
 </context>
 <context>

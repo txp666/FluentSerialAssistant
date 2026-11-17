@@ -1,6 +1,8 @@
 #include "app/core/app_settings.h"
 #include "app/core/script_runner.h"
 #include "app/serial/virtual_serial_pair.h"
+#include "app/view/protocol_analysis_window.h"
+#include "app/view/quick_plot_window.h"
 #include "app/view/settings_page.h"
 #include "app/view/workbench_page.h"
 #include "app/view/workbench_sessions_page.h"
@@ -125,6 +127,40 @@ class VirtualSerialWorkbenchTest : public QObject
         connectUi(*second, VirtualSerialPair::portBName());
         QVERIFY(first->controlStatus().connected);
         QVERIFY(second->controlStatus().connected);
+    }
+
+    void reconnectingDiscardsPartialProtocolFramesAndKeepsHistory()
+    {
+        VirtualSerialPair::instance()->setEnabled(true);
+        WorkbenchPage sender(nullptr, false, false);
+        WorkbenchPage receiver(nullptr, false, false);
+        AppProtocol::ProtocolTemplate item;
+        item.name = QStringLiteral("Raw16");
+        item.lengthSize = 0;
+        item.commandSize = 0;
+        item.payloadOffset = 0;
+        item.payloadLength = 2;
+        item.payloadFields = {{QStringLiteral("value"), 0, AppPlot::BinaryType::UInt16}};
+        receiver.m_protocolTemplates = {item};
+        receiver.updateProtocolTemplateCombo(0);
+        receiver.m_protocolEnabledCheck->setChecked(true);
+        auto *window = receiver.createQuickPlotWindow(AppProtocol::payloadParserConfig(item), &item);
+        auto *plot = window->findChild<FluentQt::RealtimePlotWidget *>();
+        auto *values = receiver.m_protocolAnalysisWindow->findChild<FluentQt::TableWidget *>(
+            QStringLiteral("protocolAnalysisValues"));
+        connectUi(sender, VirtualSerialPair::portAName());
+        connectUi(receiver, VirtualSerialPair::portBName());
+        QString error;
+        QVERIFY(sender.controlSendBytes(QByteArray::fromHex("341201"), {}, &error));
+        QTRY_COMPARE(receiver.controlStatus().receivedBytes, 3);
+        QCOMPARE(plot->points(), QVector<QPointF>({QPointF(0, 4660)}));
+
+        receiver.controlDisconnect();
+        connectUi(receiver, VirtualSerialPair::portBName());
+        QVERIFY(sender.controlSendBytes(QByteArray::fromHex("0203"), {}, &error));
+        QTRY_COMPARE(receiver.controlStatus().receivedBytes, 5);
+        QCOMPARE(plot->points(), QVector<QPointF>({QPointF(0, 4660), QPointF(1, 770)}));
+        QTRY_COMPARE(values->item(0, 3)->text(), QStringLiteral("770"));
     }
 
     void autoReplyWorksAcrossThePair()

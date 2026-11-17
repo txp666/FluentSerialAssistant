@@ -57,6 +57,9 @@ struct BinaryField
     double add = 0.0;
 };
 
+bool operator==(const BinaryField &left, const BinaryField &right);
+int binaryTypeSize(BinaryType type);
+
 struct ParserConfig
 {
     Protocol protocol = Protocol::Numbers;

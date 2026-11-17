@@ -1,18 +1,26 @@
 #include "app/view/workbench/workbench_page_internal.h"
 
-#include "app/view/quick_plot_window.h"
 #include "app/view/plot_parser_dialog.h"
-
-#include <algorithm>
-#include <iterator>
+#include "app/view/protocol_template_window.h"
+#include "app/view/quick_plot_window.h"
 
 void WorkbenchPage::showQuickPlotWindow()
 {
-    // Start from the last applied configuration so field filters and binary
-    // fields carry over; the protocol itself still has to be chosen.
-    PlotParserDialog dialog(QuickPlotWindow::savedParserConfig(), window(), true);
+    const auto current = currentProtocolTemplateFromUi();
+    const bool useCurrent = !current.payloadFields.isEmpty() && protocolTemplateInputError().isEmpty();
+    PlotParserDialog dialog(
+        useCurrent ? AppProtocol::payloadParserConfig(current) : QuickPlotWindow::savedParserConfig(), window(), true);
     dialog.setProtocolTemplates(m_protocolTemplates);
-    if (dialog.exec() != QDialog::Accepted) {
+    if (useCurrent) {
+        dialog.useProtocolTemplate(current);
+        dialog.setSampleHex(m_protocolTemplateWindow->sampleHex());
+    }
+    const int result = dialog.exec();
+    if (result == PlotParserDialog::EditTemplate) {
+        editProtocolTemplate(dialog.protocolTemplate().name);
+        return;
+    }
+    if (result != QDialog::Accepted) {
         return;
     }
 
@@ -45,6 +53,7 @@ QuickPlotWindow *WorkbenchPage::createQuickPlotWindow(const AppPlot::ParserConfi
     plotWindow->setWindowTitle(AppI18n::text("曲线 %1").arg(m_nextPlotWindowNumber++));
     m_quickPlotWindows.append(plotWindow);
     m_quickPlotWindow = plotWindow;
+    connect(plotWindow, &QuickPlotWindow::editTemplateRequested, this, &WorkbenchPage::editProtocolTemplate);
     connect(plotWindow, &QObject::destroyed, this, [this, plotWindow]() {
         m_quickPlotWindows.removeAll(plotWindow);
         if (m_quickPlotWindow == plotWindow) {
@@ -62,24 +71,10 @@ void WorkbenchPage::appendQuickPlotRecord(const SessionRecord &record)
     if (record.direction != RecordDirection::Rx) {
         return;
     }
-    // Windows often share a template, so parse the frame once per template.
-    QList<QPair<const AppProtocol::ProtocolTemplate *, AppProtocol::ParseResult>> parsedFrames;
     for (QuickPlotWindow *plotWindow : m_quickPlotWindows) {
         if (!plotWindow->isPlottingActive() || plotWindow->isPaused()) {
             continue;
         }
-        const AppProtocol::ProtocolTemplate *protocolTemplate = plotWindow->payloadTemplate();
-        if (!protocolTemplate) {
-            plotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes);
-            continue;
-        }
-        auto parsed = std::find_if(parsedFrames.cbegin(), parsedFrames.cend(), [protocolTemplate](const auto &entry) {
-            return *entry.first == *protocolTemplate;
-        });
-        if (parsed == parsedFrames.cend()) {
-            parsedFrames.append({protocolTemplate, AppProtocol::parseFrame(record.bytes, *protocolTemplate)});
-            parsed = std::prev(parsedFrames.cend());
-        }
-        plotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes, &parsed->second);
+        plotWindow->appendRecord(record.timestamp, record.terminalText, record.bytes, record.receivedAsStream);
     }
 }

@@ -1,4 +1,5 @@
 #include "app/core/app_i18n.h"
+#include "app/view/protocol_analysis_window.h"
 #include "app/view/workbench/workbench_page_internal.h"
 
 #include <QtGui/QTextBlock>
@@ -461,9 +462,8 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     // records and sent data decode on their own.
     const QString decoded = direction == RecordDirection::Rx && updateStats
                                 ? m_rxStreamDecoder.decode(data, receiveEncodingKey())
-                                : AppTextEncoding::decode(data, direction == RecordDirection::Rx
-                                                                    ? receiveEncodingKey()
-                                                                    : sendEncodingKey());
+                                : AppTextEncoding::decode(data, direction == RecordDirection::Rx ? receiveEncodingKey()
+                                                                                                 : sendEncodingKey());
     record.terminalText = AppTextEncoding::toTerminalText(decoded);
     record.displayText = AppTextEncoding::toSingleLineText(decoded);
     record.sourceLabel = sourceLabel;
@@ -481,6 +481,9 @@ void WorkbenchPage::appendRecord(RecordDirection direction, const QByteArray &da
     writeAutoLogRecord(record);
     appendQuickPlotRecord(record);
     if (direction == RecordDirection::Rx) {
+        if (m_protocolAnalysisWindow) {
+            m_protocolAnalysisWindow->appendRecord(record.timestamp, record.bytes, record.receivedAsStream);
+        }
         updateModbusResponseStatus(data);
     }
 
