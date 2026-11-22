@@ -2,6 +2,7 @@
 
 #include "app/core/app_i18n.h"
 #include "app/core/app_settings.h"
+#include "app/core/font_preferences.h"
 #include "app/core/hex_utils.h"
 #include "app/view/muted_text.h"
 
@@ -11,10 +12,12 @@
 #include <QtCore/QTimer>
 #include <QtGui/QHideEvent>
 #include <QtGui/QPixmap>
+#include <QtGui/QResizeEvent>
 #include <QtGui/QShowEvent>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QSplitter>
+#include <QtWidgets/QStackedWidget>
 #include <QtWidgets/QVBoxLayout>
 
 #include <algorithm>
@@ -23,8 +26,32 @@
 
 namespace {
 constexpr int MaximumRows = 256;
+constexpr int DefaultPanelWidth = 380;
 constexpr auto SelectedTemplatesKey = "protocolAnalysis/templates";
 constexpr auto CurveKeysKey = "protocolAnalysis/curves";
+
+enum ValueColumn
+{
+    CurveColumn,
+    SourceColumn,
+    FieldColumn,
+    ReadingColumn,
+    UpdatedColumn,
+    ValueColumnCount
+};
+
+class AnalysisValuesTable final : public FluentQt::TableWidget
+{
+  public:
+    using TableWidget::TableWidget;
+
+  protected:
+    void resizeEvent(QResizeEvent *event) override
+    {
+        TableWidget::resizeEvent(event);
+        setColumnHidden(UpdatedColumn, width() < 490);
+    }
+};
 
 QString channelKey(const QString &templateName, const QString &address, const QString &fieldName)
 {
@@ -52,19 +79,16 @@ ProtocolAnalysisWindow::ProtocolAnalysisWindow(QWidget *parent) : QWidget(parent
     auto *toolbar = new QHBoxLayout;
     m_enabledCheck = new CheckBox(AppI18n::text("启用协议解析"), this);
     m_enabledCheck->setObjectName(QStringLiteral("protocolAnalysisEnabled"));
-    auto *edit = new PushButton(icon(FluentIcon::Edit), AppI18n::text("编辑协议"), this);
-    edit->setObjectName(QStringLiteral("protocolAnalysisEdit"));
     m_pauseButton = new PushButton(icon(FluentIcon::Pause), AppI18n::text("暂停"), this);
     m_pauseButton->setObjectName(QStringLiteral("protocolAnalysisPause"));
-    auto *clear = new PushButton(AppI18n::text("清空"), this);
+    auto *clear = new PushButton(icon(FluentIcon::Broom), AppI18n::text("清空"), this);
     clear->setObjectName(QStringLiteral("protocolAnalysisClear"));
-    auto *reset = new PushButton(AppI18n::text("复位视图"), this);
-    auto *configuration = new ToggleButton(icon(FluentIcon::Setting), AppI18n::text("配置"), this);
+    auto *reset = new PushButton(icon(FluentIcon::FitPage), AppI18n::text("复位视图"), this);
+    auto *configuration = new ToggleButton(icon(FluentIcon::View), AppI18n::text("数据面板"), this);
     configuration->setObjectName(QStringLiteral("protocolAnalysisConfigurationToggle"));
     configuration->setChecked(true);
     toolbar->addWidget(configuration);
     toolbar->addWidget(m_enabledCheck);
-    toolbar->addWidget(edit);
     toolbar->addStretch();
     toolbar->addWidget(m_pauseButton);
     toolbar->addWidget(clear);
@@ -73,55 +97,70 @@ ProtocolAnalysisWindow::ProtocolAnalysisWindow(QWidget *parent) : QWidget(parent
 
     auto *splitter = new QSplitter(Qt::Horizontal, this);
     splitter->setChildrenCollapsible(false);
-    auto *panel = new QWidget(splitter);
+    auto *panel = new SimpleCardWidget(splitter);
     panel->setObjectName(QStringLiteral("protocolAnalysisConfiguration"));
-    panel->setMinimumWidth(500);
+    panel->setMinimumWidth(322);
     auto *panelLayout = new QVBoxLayout(panel);
-    panelLayout->setContentsMargins(0, 0, 8, 0);
+    panelLayout->setContentsMargins(10, 8, 10, 10);
+    panelLayout->setSpacing(6);
+    auto *templateBar = new QHBoxLayout;
+    auto *templateLabel = new StrongBodyLabel(AppI18n::text("参与解析的模板"), panel);
+    auto *edit = new TransparentPushButton(icon(FluentIcon::Edit), AppI18n::text("编辑协议"), panel);
+    edit->setObjectName(QStringLiteral("protocolAnalysisEdit"));
+    templateBar->addWidget(templateLabel);
+    templateBar->addStretch();
+    templateBar->addWidget(edit);
+    panelLayout->addLayout(templateBar);
+
     m_templateTable = new TableWidget(panel);
     m_templateTable->setObjectName(QStringLiteral("protocolAnalysisTemplates"));
+    m_templateTable->setAccessibleName(templateLabel->text());
     m_templateTable->setColumnCount(1);
-    m_templateTable->setHorizontalHeaderLabels({AppI18n::text("参与解析的模板")});
     m_templateTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    m_templateTable->horizontalHeader()->hide();
     m_templateTable->verticalHeader()->hide();
-    m_templateTable->verticalHeader()->setDefaultSectionSize(36);
+    m_templateTable->verticalHeader()->setDefaultSectionSize(32);
     m_templateTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_templateTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_templateTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_templateTable->setMinimumHeight(86);
-    m_templateTable->setMaximumHeight(140);
+    m_templateTable->setFixedHeight(32);
     panelLayout->addWidget(m_templateTable);
-    auto *hint =
-        new CaptionLabel(AppI18n::text("勾选字段即可显示曲线；载荷字段、倍率和设备地址在编辑协议中设置。"), panel);
-    hint->setWordWrap(true);
-    AppUi::setMutedTextColor(hint);
-    panelLayout->addWidget(hint);
-    m_valueTable = new TableWidget(panel);
+
+    panelLayout->addSpacing(4);
+    m_valueTable = new AnalysisValuesTable(panel);
     m_valueTable->setObjectName(QStringLiteral("protocolAnalysisValues"));
-    m_valueTable->setColumnCount(5);
-    m_valueTable->setHorizontalHeaderLabels({AppI18n::text("曲线"), AppI18n::text("模板 / 地址"), AppI18n::text("字段"),
+    m_valueTable->setColumnCount(ValueColumnCount);
+    m_valueTable->setHorizontalHeaderLabels({AppI18n::text("曲线"), AppI18n::text("来源"), AppI18n::text("字段"),
                                              AppI18n::text("当前值"), AppI18n::text("更新时间")});
     auto *header = m_valueTable->horizontalHeader();
-    header->setSectionResizeMode(0, QHeaderView::Fixed);
-    m_valueTable->setColumnWidth(0, 52);
-    header->setSectionResizeMode(1, QHeaderView::Stretch);
-    header->setSectionResizeMode(2, QHeaderView::Stretch);
-    for (int column : {3, 4}) {
-        header->setSectionResizeMode(column, QHeaderView::Fixed);
-        m_valueTable->setColumnWidth(column, column == 3 ? 92 : 132);
-    }
+    header->setSectionResizeMode(QHeaderView::Fixed);
+    header->setSectionResizeMode(SourceColumn, QHeaderView::Stretch);
+    header->setSectionResizeMode(FieldColumn, QHeaderView::Stretch);
+    m_valueTable->setColumnWidth(CurveColumn, 46);
+    m_valueTable->setColumnWidth(ReadingColumn, 102);
+    m_valueTable->setColumnWidth(UpdatedColumn, 118);
+    m_valueTable->setColumnHidden(UpdatedColumn, true);
+    for (int column : {SourceColumn, FieldColumn})
+        m_valueTable->horizontalHeaderItem(column)->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    const auto cellPadding =
+        QStringLiteral("QTableWidget#protocolAnalysisValues::item { padding-left: 12px; padding-right: 10px; }");
+    FluentStyleSheet::setCustomStyleSheet(m_valueTable, cellPadding, cellPadding);
     m_valueTable->verticalHeader()->hide();
-    m_valueTable->verticalHeader()->setDefaultSectionSize(36);
+    m_valueTable->verticalHeader()->setDefaultSectionSize(32);
     m_valueTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_valueTable->setWordWrap(false);
     m_valueTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     panelLayout->addWidget(m_valueTable, 1);
-    m_plot = new RealtimePlotWidget(splitter);
+
+    m_plotStack = new QStackedWidget(splitter);
+    m_plot = new RealtimePlotWidget(m_plotStack);
     m_plot->setObjectName(QStringLiteral("protocolAnalysisPlot"));
     m_plot->setCapacity(12000);
     m_plot->setVisibleSpan(10);
     m_plot->setMaximumVisiblePoints(2000);
     m_plot->setLegendVisible(false);
+    m_plot->setValueTagsVisible(false);
+    m_plot->setFillVisible(false);
     m_plot->setCrosshairVisible(true);
     m_plot->setAutoScroll(true);
     m_plot->setAutoYRange(true);
@@ -129,15 +168,31 @@ ProtocolAnalysisWindow::ProtocolAnalysisWindow(QWidget *parent) : QWidget(parent
     m_refreshRate = m_plot->refreshRate();
     m_plot->setRefreshRate(0);
     m_plot->setUpdatesEnabled(false);
+    m_plotStack->addWidget(m_plot);
+    auto *emptyPlot = new SimpleCardWidget(m_plotStack);
+    auto *emptyLayout = new QVBoxLayout(emptyPlot);
+    auto *plotIcon = new IconWidget(FluentIcon::Market, emptyPlot);
+    plotIcon->setFixedSize(30, 30);
+    m_plotHint = new BodyLabel(emptyPlot);
+    m_plotHint->setWordWrap(true);
+    m_plotHint->setAlignment(Qt::AlignCenter);
+    AppUi::setMutedTextColor(m_plotHint);
+    emptyLayout->addStretch();
+    emptyLayout->addWidget(plotIcon, 0, Qt::AlignHCenter);
+    emptyLayout->addWidget(m_plotHint);
+    emptyLayout->addStretch();
+    m_plotStack->addWidget(emptyPlot);
+
     splitter->addWidget(panel);
-    splitter->addWidget(m_plot);
-    splitter->setStretchFactor(0, 1);
+    splitter->addWidget(m_plotStack);
+    splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
-    splitter->setSizes({570, 680});
+    splitter->setSizes({DefaultPanelWidth, width() - DefaultPanelWidth});
     root->addWidget(splitter, 1);
     connect(configuration, &PushButton::toggled, this, [this, panel](bool visible) {
         panel->setVisible(visible);
         m_plot->setLegendVisible(!visible);
+        m_plot->setValueTagsVisible(!visible);
     });
     m_status = new CaptionLabel(this);
     m_status->setObjectName(QStringLiteral("protocolAnalysisStatus"));
@@ -176,7 +231,7 @@ ProtocolAnalysisWindow::ProtocolAnalysisWindow(QWidget *parent) : QWidget(parent
         resetChannels();
     });
     connect(m_valueTable, &TableWidget::itemChanged, this, [this](QTableWidgetItem *item) {
-        if (item->column() == 0) {
+        if (item->column() == CurveColumn) {
             setCurveVisible(item->row(), item->checkState() == Qt::Checked);
         }
     });
@@ -203,12 +258,14 @@ void ProtocolAnalysisWindow::setProtocolTemplates(const QList<AppProtocol::Proto
         auto *name = new QTableWidgetItem(item.name);
         name->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsUserCheckable);
         name->setCheckState(m_selectedTemplates.contains(item.name) ? Qt::Checked : Qt::Unchecked);
+        name->setToolTip(item.name);
         m_templateTable->setItem(row, 0, name);
         if (item.name == selectedTemplate) {
             m_templateTable->selectRow(row);
         }
     }
-    m_templateTable->setFixedHeight(qBound(86, 36 * (int(m_templates.size()) + 1) + 4, 140));
+    m_templateTable->setFixedHeight(m_templateTable->verticalHeader()->defaultSectionSize() *
+                                    qBound(1, int(m_templates.size()), 3));
     resetChannels();
 }
 
@@ -258,6 +315,16 @@ void ProtocolAnalysisWindow::changeEvent(QEvent *event)
 
 void ProtocolAnalysisWindow::resetChannels()
 {
+    const auto isSelected = [this](const auto &item) { return m_selectedTemplates.contains(item.name); };
+    const auto first = std::find_if(m_templates.cbegin(), m_templates.cend(), isSelected);
+    const bool singleTemplate = first != m_templates.cend() && std::none_of(first + 1, m_templates.cend(), isSelected);
+    m_addressOnly = singleTemplate && first->addressSize > 0;
+    m_valueTable->horizontalHeaderItem(SourceColumn)->setText(AppI18n::text(m_addressOnly ? "地址" : "来源"));
+    auto *header = m_valueTable->horizontalHeader();
+    header->setSectionResizeMode(SourceColumn, m_addressOnly ? QHeaderView::Fixed : QHeaderView::Stretch);
+    if (m_addressOnly)
+        m_valueTable->setColumnWidth(SourceColumn, qMax(68, 36 + 21 * first->addressSize));
+
     m_channels.clear();
     m_channelIndexes.clear();
     m_valueTable->setRowCount(0);
@@ -267,7 +334,7 @@ void ProtocolAnalysisWindow::resetChannels()
     m_limited = false;
     clearData();
     for (const auto &item : m_templates) {
-        if (m_selectedTemplates.contains(item.name) && item.addressSize == 0) {
+        if (isSelected(item) && item.addressSize == 0) {
             for (const auto &field : item.payloadFields) {
                 channelFor(item.name, {}, field.name);
             }
@@ -305,10 +372,10 @@ int ProtocolAnalysisWindow::channelFor(const QString &templateName, const QStrin
         return -1;
     }
     const int row = m_channels.size();
-    const QString device = templateName + (address.isEmpty() ? QString() : QStringLiteral(" · ") + address);
+    const QString source = address.isEmpty() ? templateName : address + QStringLiteral(" · ") + templateName;
     Channel channel;
     channel.key = key;
-    channel.label = device + QStringLiteral(" / ") + fieldName;
+    channel.label = source + QStringLiteral(" / ") + fieldName;
     channel.value = std::numeric_limits<double>::quiet_NaN();
     m_channels.append(channel);
     m_channelIndexes.insert(key, row);
@@ -318,14 +385,19 @@ int ProtocolAnalysisWindow::channelFor(const QString &templateName, const QStrin
         for (int column = 0; column < m_valueTable->columnCount(); ++column) {
             m_valueTable->setItem(row, column, new QTableWidgetItem);
         }
-        auto *check = m_valueTable->item(row, 0);
+        auto *check = m_valueTable->item(row, CurveColumn);
         check->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsUserCheckable);
         check->setCheckState(m_curveKeys.contains(key) ? Qt::Checked : Qt::Unchecked);
-        m_valueTable->item(row, 1)->setText(device);
-        m_valueTable->item(row, 1)->setToolTip(device);
-        m_valueTable->item(row, 2)->setText(fieldName);
-        m_valueTable->item(row, 2)->setToolTip(fieldName);
-        m_valueTable->item(row, 3)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        m_valueTable->item(row, SourceColumn)->setText(m_addressOnly ? address : source);
+        m_valueTable->item(row, SourceColumn)->setToolTip(source);
+        m_valueTable->item(row, FieldColumn)->setText(fieldName);
+        m_valueTable->item(row, FieldColumn)->setToolTip(fieldName);
+        QFont numberFont = AppFontPreferences::inputMonospaceFont();
+        numberFont.setPixelSize(13);
+        for (int column : {ReadingColumn, UpdatedColumn}) {
+            m_valueTable->item(row, column)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            m_valueTable->item(row, column)->setFont(numberFont);
+        }
     }
     if (m_curveKeys.contains(key)) {
         setCurveVisible(row, true);
@@ -339,10 +411,10 @@ void ProtocolAnalysisWindow::setCurveVisible(int row, bool visible)
     const QSignalBlocker blocker(m_valueTable);
     int checked = 0;
     for (int index = 0; index < m_valueTable->rowCount(); ++index) {
-        checked += m_valueTable->item(index, 0)->checkState() == Qt::Checked;
+        checked += m_valueTable->item(index, CurveColumn)->checkState() == Qt::Checked;
     }
     if (visible && checked > AppPlot::MaximumChannels) {
-        m_valueTable->item(row, 0)->setCheckState(Qt::Unchecked);
+        m_valueTable->item(row, CurveColumn)->setCheckState(Qt::Unchecked);
         m_limited = true;
         updateStatus();
         return;
@@ -359,7 +431,7 @@ void ProtocolAnalysisWindow::setCurveVisible(int row, bool visible)
         }
         QPixmap swatch(10, 10);
         swatch.fill(m_plot->seriesColor(channel.series));
-        m_valueTable->item(row, 2)->setIcon(QIcon(swatch));
+        m_valueTable->item(row, FieldColumn)->setIcon(QIcon(swatch));
     }
     if (channel.series >= 0) {
         m_plot->setSeriesVisible(channel.series, visible);
@@ -371,6 +443,7 @@ void ProtocolAnalysisWindow::setCurveVisible(int row, bool visible)
     }
     AppSettings settings;
     settings.setValue(QLatin1String(CurveKeysKey), m_curveKeys.values());
+    updateStatus();
 }
 
 void ProtocolAnalysisWindow::appendRecord(const QDateTime &timestamp, const QByteArray &bytes, bool stream)
@@ -439,15 +512,19 @@ void ProtocolAnalysisWindow::appendFrame(const QDateTime &timestamp, const QByte
 void ProtocolAnalysisWindow::updateValues()
 {
     const QSignalBlocker blocker(m_valueTable);
+    const QString updatedLabel = AppI18n::text("更新时间");
     for (int row = 0; row < m_channels.size(); ++row) {
         const auto &channel = m_channels.at(row);
-        m_valueTable->item(row, 3)->setText(std::isfinite(channel.value) ? QString::number(channel.value, 'g', 12)
-                                                                         : QStringLiteral("—"));
-        m_valueTable->item(row, 3)->setToolTip(std::isfinite(channel.value) ? QString::number(channel.value, 'g', 16)
-                                                                            : QString());
-        m_valueTable->item(row, 4)->setText(channel.timestamp.isValid()
-                                                ? channel.timestamp.toString(QStringLiteral("HH:mm:ss.zzz"))
-                                                : QStringLiteral("—"));
+        const bool hasValue = std::isfinite(channel.value);
+        const bool hasTime = channel.timestamp.isValid();
+        const auto time = hasTime ? channel.timestamp.toString(QStringLiteral("HH:mm:ss.zzz")) : QStringLiteral("—");
+        auto *reading = m_valueTable->item(row, ReadingColumn);
+        reading->setText(hasValue ? QString::number(channel.value, 'g', 12) : QStringLiteral("—"));
+        reading->setToolTip(
+            hasTime ? QStringLiteral("%1\n%2 %3")
+                          .arg(hasValue ? QString::number(channel.value, 'g', 16) : reading->text(), updatedLabel, time)
+                    : QString());
+        m_valueTable->item(row, UpdatedColumn)->setText(time);
     }
     updateStatus();
 }
@@ -459,12 +536,32 @@ void ProtocolAnalysisWindow::updateStatus()
                                                  : AppI18n::text("实时");
     QString text =
         AppI18n::text("%1 · %2 帧 · %3 个数据字段 · 横轴为秒").arg(state).arg(m_frameCount).arg(m_channels.size());
-    if (m_channels.isEmpty()) {
-        text += QStringLiteral(" · ") + AppI18n::text("等待接收所选协议的数据");
-    }
     if (m_limited) {
         text += QStringLiteral(" · ") +
                 AppI18n::text("最多显示 %1 个字段，同时绘制 %2 条曲线").arg(MaximumRows).arg(AppPlot::MaximumChannels);
     }
     m_status->setText(text);
+
+    const bool plotting = m_plot->sampleCount() > 0 &&
+                          std::any_of(m_channels.cbegin(), m_channels.cend(),
+                                      [this](const Channel &channel) { return m_curveKeys.contains(channel.key); });
+    if (plotting) {
+        m_plotStack->setCurrentWidget(m_plot);
+        return;
+    }
+    const bool templateSelected = std::any_of(m_templates.cbegin(), m_templates.cend(), [this](const auto &item) {
+        return m_selectedTemplates.contains(item.name);
+    });
+    if (!m_enabledCheck->isChecked()) {
+        m_plotHint->setText(AppI18n::text("启用协议解析以接收数据"));
+    } else if (m_paused) {
+        m_plotHint->setText(AppI18n::text("点击“继续”恢复采集"));
+    } else if (!templateSelected) {
+        m_plotHint->setText(AppI18n::text("在数据面板中勾选要解析的模板"));
+    } else if (m_frameCount == 0 || m_channels.isEmpty()) {
+        m_plotHint->setText(AppI18n::text("等待接收所选协议的数据"));
+    } else {
+        m_plotHint->setText(AppI18n::text("在数据面板中勾选要绘制的字段"));
+    }
+    m_plotStack->setCurrentWidget(m_plotHint->parentWidget());
 }

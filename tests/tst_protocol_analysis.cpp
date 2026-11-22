@@ -227,8 +227,8 @@ class ProtocolAnalysisTest : public QObject
         QCOMPARE(table->rowCount(), 6);
         QTRY_COMPARE(table->item(0, 3)->text(), QStringLiteral("70.33"));
         QTRY_COMPARE(table->item(3, 3)->text(), QStringLiteral("-59.04"));
-        QVERIFY(table->item(0, 1)->text().endsWith(QStringLiteral("01")));
-        QVERIFY(table->item(3, 1)->text().endsWith(QStringLiteral("02")));
+        QCOMPARE(table->item(0, 1)->text(), QStringLiteral("01"));
+        QCOMPARE(table->item(3, 1)->text(), QStringLiteral("02"));
         table->item(0, 0)->setCheckState(Qt::Checked);
         table->item(3, 0)->setCheckState(Qt::Checked);
         QCOMPARE(plot(window)->seriesCount(), 2);
@@ -263,6 +263,8 @@ class ProtocolAnalysisTest : public QObject
         QCOMPARE(values(window)->rowCount(), 6);
         QTRY_COMPARE(values(window)->item(0, 3)->text(), QStringLiteral("1.23"));
         QTRY_COMPARE(values(window)->item(3, 3)->text(), QStringLiteral("4.56"));
+        QCOMPARE(values(window)->item(0, 1)->text(), QStringLiteral("01 · Motors"));
+        QCOMPARE(values(window)->item(3, 1)->text(), QStringLiteral("01 · Sensors"));
         templates->item(0, 0)->setCheckState(Qt::Unchecked);
         window.appendRecord(now, motorFrame(1));
         QCOMPARE(values(window)->rowCount(), 0);
@@ -286,7 +288,7 @@ class ProtocolAnalysisTest : public QObject
         bad[bad.size() - 1] ^= 0x01;
         window.appendRecord(now, bad + motorFrame(4), true);
         QCOMPARE(values(window)->rowCount(), 9);
-        QVERIFY(values(window)->item(6, 1)->text().endsWith(QStringLiteral("04")));
+        QCOMPARE(values(window)->item(6, 1)->text(), QStringLiteral("04"));
     }
 
     void endedRecordsRecoverAfterAnIncompleteLengthCandidate()
