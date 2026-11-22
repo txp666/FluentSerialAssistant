@@ -7,8 +7,10 @@
 #include <QtCore/QSet>
 #include <QtWidgets/QWidget>
 
+class QStackedWidget;
 class QTimer;
 namespace FluentQt {
+class BodyLabel;
 class CaptionLabel;
 class CheckBox;
 class PushButton;
@@ -69,7 +71,9 @@ class ProtocolAnalysisWindow : public QWidget
     FluentQt::PushButton *m_pauseButton = nullptr;
     FluentQt::TableWidget *m_templateTable = nullptr;
     FluentQt::TableWidget *m_valueTable = nullptr;
+    QStackedWidget *m_plotStack = nullptr;
     FluentQt::RealtimePlotWidget *m_plot = nullptr;
+    FluentQt::BodyLabel *m_plotHint = nullptr;
     FluentQt::CaptionLabel *m_status = nullptr;
     QTimer *m_valueTimer = nullptr;
     QDateTime m_startTime;
@@ -77,6 +81,7 @@ class ProtocolAnalysisWindow : public QWidget
     qint64 m_frameCount = 0;
     int m_allocatedSeries = 0;
     int m_refreshRate = 30;
+    bool m_addressOnly = false;
     bool m_paused = false;
     bool m_limited = false;
 };

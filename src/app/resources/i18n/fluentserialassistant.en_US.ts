@@ -194,16 +194,28 @@ Displayed = raw × %3 + %4</translation>
         <translation>Templates to parse</translation>
     </message>
     <message>
-        <source>勾选字段即可显示曲线；载荷字段、倍率和设备地址在编辑协议中设置。</source>
-        <translation>Check fields to plot them. Configure payload fields, scaling, and device addresses in Edit protocol.</translation>
+        <source>数据面板</source>
+        <translation>Data panel</translation>
+    </message>
+    <message>
+        <source>启用协议解析以接收数据</source>
+        <translation>Enable protocol analysis to receive data</translation>
+    </message>
+    <message>
+        <source>点击“继续”恢复采集</source>
+        <translation>Click Resume to continue capturing data</translation>
+    </message>
+    <message>
+        <source>在数据面板中勾选要解析的模板</source>
+        <translation>Check a template in the data panel to parse its frames</translation>
+    </message>
+    <message>
+        <source>在数据面板中勾选要绘制的字段</source>
+        <translation>Check a field in the data panel to plot it</translation>
     </message>
     <message>
         <source>曲线</source>
         <translation>Plot</translation>
-    </message>
-    <message>
-        <source>模板 / 地址</source>
-        <translation>Template / address</translation>
     </message>
     <message>
         <source>更新时间</source>

@@ -194,16 +194,28 @@
         <translation>参与解析的模板</translation>
     </message>
     <message>
-        <source>勾选字段即可显示曲线；载荷字段、倍率和设备地址在编辑协议中设置。</source>
-        <translation>勾选字段即可显示曲线；载荷字段、倍率和设备地址在编辑协议中设置。</translation>
+        <source>数据面板</source>
+        <translation>数据面板</translation>
+    </message>
+    <message>
+        <source>启用协议解析以接收数据</source>
+        <translation>启用协议解析以接收数据</translation>
+    </message>
+    <message>
+        <source>点击“继续”恢复采集</source>
+        <translation>点击“继续”恢复采集</translation>
+    </message>
+    <message>
+        <source>在数据面板中勾选要解析的模板</source>
+        <translation>在数据面板中勾选要解析的模板</translation>
+    </message>
+    <message>
+        <source>在数据面板中勾选要绘制的字段</source>
+        <translation>在数据面板中勾选要绘制的字段</translation>
     </message>
     <message>
         <source>曲线</source>
         <translation>曲线</translation>
-    </message>
-    <message>
-        <source>模板 / 地址</source>
-        <translation>模板 / 地址</translation>
     </message>
     <message>
         <source>更新时间</source>
